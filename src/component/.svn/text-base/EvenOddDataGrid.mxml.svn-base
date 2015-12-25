@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:DataGrid xmlns:mx="http://www.adobe.com/2006/mxml">
+	<mx:Script>
+		<![CDATA[
+			override protected function drawRowBackground(s:Sprite, rowIndex:int, y:Number, height:Number, color:uint, dataIndex:int):void{
+				if(dataIndex % 2 == 0) color = 0xccccff;
+					super.drawRowBackground(s, rowIndex, y, height, color, dataIndex);
+			}
+		]]>
+	</mx:Script>
+</mx:DataGrid>

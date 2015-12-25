@@ -1,0 +1,707 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute"
+	  xmlns:chart="component.chart.*" width="100%" height="100%" xmlns:cutpage="component.cutpage.*"
+	 horizontalScrollPolicy="off" xmlns:mycomponents="org.utmost.mycomponents.*" implements="module.ModuleInterface" xmlns:hi="http://hi.csdn.net/To9m"
+	 xmlns:components="component.*" creationComplete="watchLanguageChange()">
+	 <mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Script>
+		<![CDATA[
+			import component.downloadImage4Pop;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+			import component.chart.GanttHeaderRenderer;
+			import mx.core.Application;
+			import mx.binding.utils.ChangeWatcher;
+			import mx.controls.DataGrid;
+			import mx.core.IFlexDisplayObject;
+			import component.chart.printPage;
+			import component.stageModifyBox;
+			import mx.modules.IModuleInfo;
+			import mx.events.ModuleEvent;
+			import mx.modules.ModuleManager;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import component.fileDown;
+			import component.downLoadImage;
+			import component.chart.ganttBox;
+			import component.chart.importBox;
+			import mx.events.CloseEvent;
+			import org.utmost.service.UtmostService;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.StaticChannelSet;
+			import com.right.UserRight;
+			import mx.managers.PopUpManager;
+			import component.ganttModifyBox;
+			import mx.controls.Alert;
+			import mx.collections.ArrayCollection;
+			import com.ganttBean.GanttStage;
+			import com.ganttBean.Gantt;
+			import component.detailComp.detail;
+			[Bindable] 
+			private var ganttArr:ArrayCollection;
+			
+			private var moduleInfo:IModuleInfo;
+			
+			private var obj:Object;
+			
+			private var obj1:Object;
+			
+			private var funcuuid:String;	//current note UUID
+			
+			private var classuuid:String;	//catagory UUID
+			
+			private var nodetype:String;	//current note type 1:root catagory；2：branch ；3：leaf
+			
+			private var isHistory:Boolean = false;	
+			//button display or not
+			private var isShowBtn:Boolean = false;	
+			
+			private var mouseYPosition:Number = 0;
+			private var mouseXPosition:Number = 0;
+			
+			private var documentUUID:String = null;
+			
+			private function watchLanguageChange():void{
+				ChangeWatcher.watch(Application.application, "language", function(event:Event):void{
+				 refreshGeneralGridColumns();
+				});
+			}
+			
+			public function set $documentUUID(_uuid:String):void{
+            	documentUUID = _uuid;
+            }
+			
+			/**
+			 * Interface implementation
+			 */
+			public function set $treeSelectNode(_node:Object):void
+			{
+				funcuuid = _node.nodeuuid;
+				nodetype = _node.nodetype;
+				classuuid = _node.rootuuid;
+				trace("_Node:"+_node.nodeuuid);
+				trace("_Node:"+_node.nodetype);
+				trace("............gantt data grid root uuid:" + _node.rootuuid);
+				isShowBtn = UserRight.isShowbutton(funcuuid);
+				if(gvb != null && gvb.getChildren().length > 1){
+					gvb.removeChildAt(1);
+				}
+				
+				init();
+				if(dg != null && ganttCanvas != null){
+					mouseYPosition=0;
+					mouseXPosition=1000;
+				}
+			}
+
+			public function set $moduletree(_tree:ArrayCollection):void {
+				trace("_tree:"+_tree);
+			}
+			public function set $menuData(_menu:ArrayCollection):void {
+				trace("_menu:"+_menu);
+			}
+			public function set $selectNodeFuncUUID(_funcuuid:String):void {
+				trace("_funcuuid:"+_funcuuid);
+			}
+			/**
+			 * Interface implementation
+			 **/
+			
+			public function init():void{
+				if(dg != null){
+					mouseYPosition = dg.verticalScrollPosition;
+				}
+				if(ganttCanvas != null){
+					mouseXPosition = ganttCanvas.horizontalScrollPosition;
+				}
+				if(modifyBox!=null){
+					modifyBox.visible=false;
+					modifyBox.includeInLayout=false;
+				}
+				if(dgBox!=null){
+					dgBox.visible=true;
+					dgBox.includeInLayout=true;
+				}
+				
+				switchMode();	//set button status
+				
+				var isLeaf:Boolean;
+				if(nodetype == "3"){
+					isLeaf = true;
+				}else{
+					isLeaf = false;
+				}
+				var auto:UtmostService = new UtmostService("GanttService",resultHandle);
+				auto.ro.queryGanttsByFunc(UserRight.getUserUUID(), funcuuid,isLeaf, isHistory);
+			} 
+			private var prewdata:ArrayCollection;
+			public function resultHandle(e:ResultEvent):void{
+				var ga:ArrayCollection = ArrayCollection(e.result);
+				
+				if(ga==null){
+					ga = new ArrayCollection();
+				}
+				
+				prewdata=new ArrayCollection();
+				prewdata=ga;
+				flushGanttGird(ga);
+			}
+			
+			/**
+			 * Set scroll bar to current date
+			 * */
+			public function setScrollBar():void{
+				ganttCanvas.horizontalScrollPosition = 1100;
+			}
+			
+			public function showLegendBox():void{
+				legendBox.setStyle("showEffect", blurShow);
+				legendBox.visible = true;
+			}
+			
+			public function hideLegendBox():void{
+				legendBox.setStyle("hideEffect", blurHide);
+				legendBox.visible = false;
+			}
+			
+			private function setGantt():void{
+				if(dg.selectedItem == null || dg.selectedItem.type == "year"){
+					Alert.show("Please select a plan.");	
+					return;
+				}
+				var ganttBox:ganttModifyBox=ganttModifyBox(PopUpManager.createPopUp(this.parentApplication as DisplayObject,ganttModifyBox,true));
+			 	var gantt:Object = dg.selectedItem;
+			 	ganttBox.gantt = gantt;
+			 	ganttBox.addEventListener(CloseEvent.CLOSE,refData);
+			 	ganttBox.addEventListener(Event.REMOVED_FROM_STAGE,refData);
+			 	PopUpManager.centerPopUp(ganttBox);
+			}
+			
+			private function setStage():void{
+				if(dg.selectedItem == null || dg.selectedItem.type == "year"){
+					Alert.show("Please select a plan.");	
+					return;
+				}
+				var stageBox:stageModifyBox=stageModifyBox(PopUpManager.createPopUp(this.parentApplication as DisplayObject,stageModifyBox,true));
+			 	var gantt:Object = dg.selectedItem;
+			 	stageBox.gantt = gantt;
+			 	stageBox.addEventListener(CloseEvent.CLOSE,refData);
+			 	stageBox.addEventListener(Event.REMOVED_FROM_STAGE,refData);
+			 	PopUpManager.centerPopUp(stageBox);
+			}
+			
+			public function refData(e:Event):void{
+				init();
+			}
+			
+		 	private function showPreview():void{
+				 		var obj:printPage=printPage(PopUpManager.createPopUp(this.parentApplication as DisplayObject, printPage, true));
+				 			obj.printJob=prewdata;
+							PopUpManager.centerPopUp(obj);
+			}
+			
+			/**
+			 * Set data for column No.
+			 * */
+			private function showNo(item:Object,column:DataGridColumn):String{
+				if(item.type!=null && item.type=="year"){
+					return "";
+				}
+				var noStr:String = new String();
+				if(item["standard_attribute1"]!=null){
+					noStr += item["standard_attribute1"];
+				}
+				if(item["standard_attribute2"]!=null){
+					noStr += item["standard_attribute2"];
+				}
+				if(item["standard_attribute3"]!=null){
+					noStr += item["standard_attribute3"]+" ";
+				}
+				if(item["no_"]!=null){
+					noStr += item["no_"]+"-";
+				}
+				if(item["version_"]!=null){
+					noStr += item["version_"];
+				}
+				return noStr;
+			}
+			
+			//call this function when change language or query data
+			private function refreshGeneralGridColumns():void{
+				var language:String = Application.application.language;
+				var colArr:Array = new Array();	
+		   		//No_
+		   		var dc_no:DataGridColumn = new DataGridColumn();
+				dc_no.dataField = "no_";
+				dc_no.width = dg.width*.11;
+				dc_no.headerText = resourceManager.getString('dataGrid','no');
+				//render item as label
+				dc_no.itemRenderer = new ClassFactory(mx.controls.Label);
+				dc_no.labelFunction = showNo;
+				colArr.push(dc_no);
+				
+				//title_en
+				if (language == "en_US"){
+			   		var dc_title_en:DataGridColumn = new DataGridColumn();
+					dc_title_en.dataField = "title_en";
+					dc_title_en.width = dg.width*.2;
+					dc_title_en.headerText = resourceManager.getString('dataGrid','title_en');
+					dc_title_en.itemRenderer = new ClassFactory(mx.controls.Label);
+					colArr.push(dc_title_en);
+				}
+				
+				//title_ch
+				if (language == "zh_CN"){
+			   		var dc_title_ch:DataGridColumn = new DataGridColumn();
+					dc_title_ch.dataField = "title_ch";
+					dc_title_ch.width = dg.width*.2;
+					dc_title_ch.headerText = resourceManager.getString('dataGrid','title_ch');
+					dc_title_ch.itemRenderer = new ClassFactory(mx.controls.Label);
+					colArr.push(dc_title_ch);
+				}
+				
+				//status
+				var dc_status:DataGridColumn = new DataGridColumn();
+				dc_status.dataField = "status";
+				dc_status.width = dg.width*.1;
+				dc_status.headerText = resourceManager.getString('dataGrid','status');
+				dc_status.itemRenderer = new ClassFactory(mx.controls.Label);
+				colArr.push(dc_status);
+				
+				//Estimated Date of Implementation for New Type
+				var execute_date_str:DataGridColumn = new DataGridColumn();
+				execute_date_str.dataField = "execute_date_str";
+				execute_date_str.width = dg.width*.26;
+				execute_date_str.headerText = resourceManager.getString('dataGrid','executeDate1');
+				execute_date_str.itemRenderer = new ClassFactory(mx.controls.Label);
+				colArr.push(execute_date_str);
+				
+				//Estimated Date of Implementation for In-Production 
+				var online_auto_execute_date_str:DataGridColumn = new DataGridColumn();
+				online_auto_execute_date_str.dataField = "online_auto_execute_date_str";
+				online_auto_execute_date_str.width = dg.width*.24;
+				online_auto_execute_date_str.headerText = resourceManager.getString('dataGrid','executeDate2');
+				online_auto_execute_date_str.itemRenderer = new ClassFactory(mx.controls.Label);
+				colArr.push(online_auto_execute_date_str);
+							
+				var dc_download_en:DataGridColumn = new DataGridColumn();
+	   			dc_download_en.headerText = resourceManager.getString('BatchDownload','download');
+	   			//render item in downloadImage4Pop form
+	   			var cfg:ClassFactory = new ClassFactory(downloadImage4Pop);
+	   			//set data for downloadImage4Pop form 
+	   			cfg.properties = {commondata_uuid:"commondata_uuid",func_uuid:"func_uuid"};
+				dc_download_en.itemRenderer = cfg;
+				dc_download_en.width = dg.width*.09;
+				colArr.push(dc_download_en);
+				
+				dg.columns = colArr;
+				
+				toggleBtn.toolTip = resourceManager.getString('manageView', 'hide.show.ganttTip');
+			}
+			
+		   	/**
+		   	 * Refresh data 
+		   	 * */
+		   	private function flushGanttGird(ac:ArrayCollection):void{
+				
+				dg.dataProvider = null;
+				
+				dg.dataProvider = ac;
+		   		refreshGeneralGridColumns();
+				
+				var ganttArr:Array = new Array();
+				
+				var dc_gantt:DataGridColumn = new DataGridColumn();
+				dc_gantt.dataField = "gantts";
+				dc_gantt.headerText = resourceManager.getString('dataGrid','ganttChart');
+				dc_gantt.headerRenderer = new ClassFactory(component.chart.GanttHeaderRenderer);
+				dc_gantt.itemRenderer = new ClassFactory(component.chart.ganttBox);
+				ganttArr.push(dc_gantt);
+				
+				dg2.columns = ganttArr;
+				
+				dg2.dataProvider = null;
+				
+				dg2.dataProvider = ac;
+				dg.verticalScrollPosition = mouseYPosition;
+				ganttCanvas.horizontalScrollPosition = mouseXPosition;
+				syncScroll(dg, dg2);
+				
+				//if a document is created, search the relevant document automatically
+				var index:int = -1;
+				if(documentUUID!=null){
+					for each(var item:Object in dg2.dataProvider){
+						index = index+1;
+						if(item!=null&&item["commondata_uuid"]==this.documentUUID){
+							dg.selectedItem = item;
+							dg.scrollToIndex(index);
+							dg.verticalScrollPosition = index;
+							var event:MouseEvent = new MouseEvent(MouseEvent.DOUBLE_CLICK);
+							dg.dispatchEvent(event);
+							dg.selectedIndex = index;
+							break;
+						}
+					}
+					documentUUID = null;
+				}
+		   	}
+
+		   	private function publish():void{
+		   		if(dg.selectedItem == null){
+		   			Alert.show(resourceManager.getString("errormsg", "noselect"));
+		   			return;
+		   		}
+		   		var auto:UtmostService = new UtmostService("GanttService",function(e:ResultEvent):void{
+		   			if(e.result == 404){
+		   				Alert.show("Node is not found in 'Issued standards', please check if the corresponding class exists.");
+		   			}else if(e.result == 0){
+		   				Alert.show("The standard is published.");
+		   				init();
+		   			}
+		   		});
+				auto.ro.publish(dg.selectedItem.uuid);
+		   	}
+		   	
+		   	private function showHistory():void{
+		   		isHistory = true;
+		   		init();
+		   	}
+		   	
+		   	private function showNormal():void{
+		   		isHistory = false;
+		   		init();
+		   	}
+		   	
+		   /**
+		   	 * swith function buttons status
+		   	 * */
+   	        private function switchMode():void{
+		   		if(isHistory){	
+		   			if(backBtn!=null){
+		   				backBtn.visible = false;
+		   				backBtn.includeInLayout = false;
+		   			}
+		   			if(normalBtn!=null){
+			   			normalBtn.visible = true;
+			   			normalBtn.includeInLayout = true;
+		   			}
+		   			if(republishBtn!=null){
+			   			republishBtn.visible = true;
+			   			republishBtn.includeInLayout = true;
+		   			}
+		   			
+		   			if(historyBtn!=null){
+			   			historyBtn.visible = false;
+			   			historyBtn.includeInLayout = false;
+		   			}
+
+		   		}else{
+		   			if(backBtn!=null){
+		   				if(isShowBtn){
+			   				backBtn.visible = true;
+			   				backBtn.includeInLayout = true;
+		   				}
+		   			}
+		   			if(normalBtn!=null){
+			   			normalBtn.visible = false;
+			   			normalBtn.includeInLayout = false;
+		   			}
+		   			if(republishBtn!=null){
+			   			republishBtn.visible = false;
+			   			republishBtn.includeInLayout = false;
+		   			}
+		   			
+		   			if(historyBtn!=null){
+			   			historyBtn.visible = true;
+			   			historyBtn.includeInLayout = true;
+		   			}
+
+		   		}
+		   	}
+		   	//load modify screen
+		   	public function modifyInfo():void
+			{
+				if (dg.selectedIndex >= 0){
+					loadModule();
+				}
+				else{
+					Alert.show(resourceManager.getString("errormsg", "selectone"), resourceManager.getString("errormsg", "alert"));
+				}
+			}
+			
+			public function loadModule():void
+			{
+				moduleInfo=ModuleManager.getModule("module/datainput/DataModifyModule.swf");
+				moduleInfo.addEventListener(ModuleEvent.READY, function(e:ModuleEvent):void
+					{
+						var mo:Object=moduleInfo.factory.create();
+						mo._funcState="4";
+						mo._classuuid=classuuid;
+						mo._comuuid=dg.selectedItem.uuid;
+
+						var dmo:DisplayObject=mo as DisplayObject;
+						modifyBox.removeAllChildren();
+						modifyBox.addChild(dmo);
+
+						dmo.addEventListener(Event.REMOVED_FROM_STAGE, function(e:Event):void{
+							modifyBox.visible=false;
+							modifyBox.includeInLayout=false;
+							dgBox.visible=true;
+							dgBox.includeInLayout=true;
+							init();
+						});
+
+						modifyBox.visible=true;
+						modifyBox.includeInLayout=true;
+						dgBox.visible=false;
+						dgBox.includeInLayout=false;
+					});
+				moduleInfo.load();
+			}
+			
+			private function delCommondata():void{
+
+				if (dg.selectedItem == null)
+				{
+					Alert.show(resourceManager.getString("errormsg", "noselect"));
+					return;
+				}
+				Alert.yesLabel=resourceManager.getString("errormsg", "yes");
+				Alert.noLabel=resourceManager.getString("errormsg", "no");
+				Alert.show(resourceManager.getString("errormsg", "suredel"), resourceManager.getString("errormsg", "alert"), 3, this, function(e:CloseEvent):void
+					{
+						if (e.detail == Alert.YES)
+						{
+							doDel();
+						}
+					});
+			}
+			
+			/**
+			 * Confirm delete
+			 * */
+			private function doDel():void{
+				var utmost_del:UtmostService=new UtmostService("InformationPublishService", function(e:ResultEvent):void
+					{
+						if (e.result == 0)
+						{
+							Alert.show(resourceManager.getString("errormsg", "delsucc"), resourceManager.getString("errormsg", "alert"));
+							init();
+						}else{
+							Alert.show(resourceManager.getString("errormsg", "actionFailt"));
+						}
+					});
+				utmost_del.ro.deleteCommondata(dg.selectedItem.uuid, "true");	//Second parameter decides wether delete gantt record
+			}
+			
+			/**
+			 * Rollback a published standar
+			 * */
+			private function republish():void{
+				if (dg.selectedItem == null)
+				{
+					Alert.show(resourceManager.getString("errormsg", "noselect"));
+					return;
+				}
+				Alert.yesLabel=resourceManager.getString("errormsg", "yes");
+				Alert.noLabel=resourceManager.getString("errormsg", "no");
+				Alert.show(resourceManager.getString("dataGrid", "surerollback"), resourceManager.getString("errormsg", "alert"), 3, this, function(e:CloseEvent):void
+					{
+						if (e.detail == Alert.YES)
+						{
+							rollback();
+						}
+					});
+			}
+			
+			/**
+			 * Confirm roll back
+			 * */
+			private function rollback():void{
+				var utmost_rollback:UtmostService=new UtmostService("GanttService", function(e:ResultEvent):void
+					{
+						if (e.result == 0)
+						{
+							Alert.show(resourceManager.getString("dataGrid", "rollbacksucc"), resourceManager.getString("errormsg", "alert"));
+							init();
+						}else{
+							Alert.show(resourceManager.getString("errormsg", "actionFailt"));
+						}
+					});
+				utmost_rollback.ro.republish(dg.selectedItem.uuid);	//Changed status of seletcted to not issued. 
+			}
+			//scroll move together
+			private function syncScroll(eventObj:DataGrid, followObj:DataGrid):void{
+				followObj.verticalScrollPosition = eventObj.verticalScrollPosition;
+			}
+			private function canSyncScroll(eventObj:Canvas, followObj:Canvas):void{
+				followObj.verticalScrollPosition = eventObj.verticalScrollPosition;
+			}
+			private function toggleView():void{
+				if(dg != null){
+					mouseYPosition = dg.verticalScrollPosition;
+				}
+				if(ganttCanvas != null){
+					mouseXPosition = ganttCanvas.horizontalScrollPosition;
+				}
+				if(ganttCanvas.visible == true){
+					listCanvas.width = dividedCanvas.width*0.97;
+					ganttCanvas.width = 0;
+					toggleBtn.label = "<<";
+					var dd1:DataGridColumn = dg.columns[0];
+					dd1.width=dg.width*.11;
+					var dd2:DataGridColumn = dg.columns[1];
+					dd2.width=dg.width*.17;
+					var dd3:DataGridColumn = dg.columns[2];
+					dd3.width=dg.width*.1;
+					var dd4:DataGridColumn = dg.columns[3];
+					dd4.width=dg.width*.25;
+					var dd5:DataGridColumn = dg.columns[4];
+					dd5.width=dg.width*.23;
+					var dd6:DataGridColumn = dg.columns[5];
+					dd6.width=dg.width*.14;
+					ganttCanvas.visible = false;
+				}else{
+					listCanvas.width = dividedCanvas.width*0.3;
+					ganttCanvas.width = dividedCanvas.width*0.67;
+					toggleBtn.label = ">>";
+					ganttCanvas.visible = true;
+				}
+			}
+			//call this function when double click a item
+			private function clickItem(dg:EvenOddDataGrid):void{
+				if (dg.selectedIndex >= 0)
+				{
+					if (dg.selectedItem.hasOwnProperty("uuid"))
+					{
+						trace("..............selected item uuid:" + dg.selectedItem.uuid + "...func uuid:" + funcuuid + "...class uuid:" + classuuid);
+						showDetail(dg.selectedItem.uuid);
+						//Cancel selected item
+						dg.verticalScrollPosition = dg.selectedIndex;
+						dg.scrollToIndex(dg.selectedIndex);
+						//dg.selectedItem=null;
+					}
+					trace("selectedIndex gt 0");
+				}
+				trace("Double click me!");
+			}
+			//show a item detail
+			public function showDetail(uuid:String):void
+			{
+				//if has detail screen, remove it
+				if (gvb.getChildren().length > 1)
+				{
+					gvb.removeChildAt(1);
+				}
+				//can vertical scroll
+				listCanvas.verticalScrollPolicy = "on";
+				ganttCanvas.verticalScrollPolicy = "on";
+				//initial detail info
+				var dataDetail:detail=new detail();
+				trace("simple rootuuid:" + classuuid + "...nodeuuid:" + funcuuid + "...uuid:" + uuid);
+				dataDetail.setuseruuid=UserRight.getUserUUID();
+				dataDetail.setprotected=(UserRight.hasMenuRight(funcuuid, "4") == "1" ? true : false);//hasProtected
+				dataDetail.setrootuuid=classuuid;
+				dataDetail.setnodeuuid=funcuuid;
+				dataDetail.recordUUID_=uuid;
+				dataDetail.listCanvasDetail = listCanvas;
+				dataDetail.ganttCanvasDetail = ganttCanvas;
+				
+				dataDetail.percentWidth=97;
+				dataDetail.percentHeight=50;
+				dgBox.percentHeight=50;
+				gvb.addChild(dataDetail);
+			}
+		]]>
+	</mx:Script>
+	
+	<!--<mx:XML id="ganttData" source="xml/ganttData.xml"/>-->
+	
+	<mx:Metadata>
+	   [ResourceBundle("dataGrid")]
+	   [ResourceBundle("BatchDownload")]
+	   [ResourceBundle("errormsg")]
+	   [ResourceBundle("manageView")]
+	</mx:Metadata>
+	
+	<mx:Blur id="blurShow" blurXFrom="20" blurYFrom="20" blurXTo="0" blurYTo="0" duration="100"/>
+	
+	<mx:Blur id="blurHide" blurXFrom="0" blurYFrom="0" blurXTo="30" blurYTo="30" duration="100"/>
+	<hi:SuperPrintJob id="pj" container="{this.parentApplication}" scaleType="FlexPrintJobScaleType.FILL_PAGE" 
+	  pageWidth="806" pageHeight="560" previewPanelRatio="1" printAsBitmap="true"/>
+	<mx:VDividedBox id="gvb" height="100%" width="100%">
+		<mx:VBox id="dgBox" width="100%" height="100%" horizontalScrollPolicy="off" verticalGap="0">
+		<mx:Label height="36"  text="{resourceManager.getString('manageView', 'doc.content.attention')}" color="#A8ADB3"  textDecoration="underline"/>
+		<mx:HBox width="100%" horizontalScrollPolicy="off" verticalScrollPolicy="off" paddingTop="5" paddingLeft="10" horizontalGap="0" verticalAlign="middle">
+			<mx:Canvas width="25" height="10" backgroundColor="#A21E4D" mouseOver="showLegendBox()" mouseOut="hideLegendBox()"/>
+			<mx:LinkButton label="{resourceManager.getString('dataGrid','legend')}" mouseOver="showLegendBox()" mouseOut="hideLegendBox()"/>
+			<mycomponents:Components_LinkButton id="printBtn" iconType="right" label="{resourceManager.getString('dataGrid','print')}" click="showPreview()"/>
+			<mx:HBox id="backBtn" visible="false" includeInLayout="false" horizontalGap="0" creationComplete="{switchMode();}">
+				<mycomponents:Components_LinkButton id="setGanttBtn" iconType="right" label="{resourceManager.getString('dataGrid','setGantt')}" click="setGantt()"/>
+				<mycomponents:Components_LinkButton id="setStageBtn" iconType="right" label="{resourceManager.getString('dataGrid','setStage')}" click="setStage()"/>
+				<mycomponents:Components_LinkButton id="modifyBtn" iconType="right" label="{resourceManager.getString('dataGrid','modify')}" click="{modifyInfo();}"/>
+				<mycomponents:Components_LinkButton id="deleteBtn" iconType="right" label="{resourceManager.getString('dataGrid','delete')}" click="{delCommondata();}"/>
+				<mycomponents:Components_LinkButton id="publishBtn" iconType="right" label="{resourceManager.getString('dataGrid','publish')}" click="publish()"/>
+			</mx:HBox>
+			<mycomponents:Components_LinkButton id="historyBtn" iconType="right" label="{resourceManager.getString('dataGrid','history')}" click="showHistory()"/>
+			<mycomponents:Components_LinkButton id="republishBtn" visible="false" includeInLayout="false" iconType="right" label="{resourceManager.getString('dataGrid','republish')}" click="republish()"/>
+			<mycomponents:Components_LinkButton id="normalBtn" visible="false" includeInLayout="false" iconType="right" label="{resourceManager.getString('dataGrid','normal')}" click="showNormal()"/>
+		</mx:HBox>
+		<mx:HBox id="hb" width="100%" height="100%" horizontalGap="0" horizontalScrollPolicy="off" paddingBottom="5">
+			<mx:HBox width="100%" height="100%" horizontalGap="3" id="dividedCanvas">
+			<mx:Canvas id="listCanvas" width="98%" height="100%" verticalScrollPolicy="off" scroll="canSyncScroll(listCanvas,ganttCanvas)">
+				<components:EvenOddDataGrid styleName="gantt" id="dg" rowHeight="34"  doubleClickEnabled="true" doubleClick="clickItem(dg)" horizontalGridLineColor="#000000" horizontalGridLines="true" scroll="syncScroll(dg, dg2);" sortableColumns="false" width="100%" height="100%" minHeight="360" draggableColumns="false" dragEnabled="false" dragMoveEnabled="false" dropEnabled="false">									
+					
+				</components:EvenOddDataGrid>
+			</mx:Canvas>
+			<mx:LinkButton id="toggleBtn" 
+				label="&lt;&lt;"
+				paddingLeft="0" paddingRight="0" 
+			 	width="2%"
+				click="toggleView()"/>
+			<mx:Canvas styleName="gantt" id="ganttCanvas" width="0" height="100%" verticalScrollPolicy="off" visible="false" scroll="canSyncScroll(ganttCanvas,listCanvas)">
+				<components:EvenOddDataGrid id="dg2" horizontalGridLineColor="#000000" horizontalGridLines="true" scroll="syncScroll(dg2, dg);" sortableColumns="false" width="2520" height="100%" minHeight="360" draggableColumns="false" dragEnabled="false" dragMoveEnabled="false" dropEnabled="false">
+				</components:EvenOddDataGrid>
+			</mx:Canvas>
+				
+			</mx:HBox>
+		</mx:HBox>
+		<!--cutpage:CutPageHBox   x="0"/-->
+	</mx:VBox>
+	</mx:VDividedBox>
+	<mx:VBox id="modifyBox" width="100%" height="100%" visible="false" includeInLayout="false"/>
+	<mx:VBox x="15" y="68" id="legendBox" width="255" height="230" backgroundColor="#FFFFFF" visible="false" verticalGap="0" borderStyle="solid" borderColor="#959595" cornerRadius="3" paddingLeft="20" paddingTop="12">
+		<mx:HBox width="100%" verticalAlign="middle">
+			<mx:Canvas width="21" height="6" backgroundColor="#F6E5BC"/>
+			<mx:Text text="{resourceManager.getString('dataGrid','prePreparation')}"/>
+		</mx:HBox>
+		<mx:HBox width="100%" verticalAlign="middle">
+			<mx:Canvas width="21" height="6" backgroundColor="#E7F3F3"/>
+			<mx:Text text="{resourceManager.getString('dataGrid','planning')}"/>
+		</mx:HBox>
+		<mx:HBox width="100%" verticalAlign="middle">
+			<mx:Canvas width="21" height="6" backgroundColor="#EBCED7"/>
+			<mx:Text text="{resourceManager.getString('dataGrid','drafting')}"/>
+		</mx:HBox>
+		<mx:HBox width="100%" verticalAlign="middle">
+			<mx:Canvas width="21" height="6" backgroundColor="#C6DFE7"/>
+			<mx:Text text="{resourceManager.getString('dataGrid','draftingForComments')}"/>
+		</mx:HBox>
+		<mx:HBox width="100%" verticalAlign="middle">
+			<mx:Canvas width="21" height="6" backgroundColor="#C26D88"/>
+			<mx:Text text="{resourceManager.getString('dataGrid','draftingForApprovalPhase')}"/>
+		</mx:HBox>
+		<mx:HBox width="100%" verticalAlign="middle">
+			<mx:Canvas width="21" height="6" backgroundColor="#E4E4E5"/>
+			<mx:Text text="{resourceManager.getString('dataGrid','approving')}"/>
+		</mx:HBox>
+		<mx:HBox width="100%" verticalAlign="middle">
+			<mx:Canvas width="21" height="6" backgroundColor="#A21E4D"/>
+			<mx:Text text="{resourceManager.getString('dataGrid','publication')}"/>
+		</mx:HBox>
+	</mx:VBox>
+	<mx:Style>
+		ToolTip
+		{
+			font-size: 15;
+		}
+	</mx:Style>
+</mx:Module>

@@ -1,0 +1,495 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow title="{resourceManager.getString('dataGrid','advancedsearch')}" xmlns:mx="http://www.adobe.com/2006/mxml" showCloseButton="true" width="800" height="300" close="closeWin()"
+	creationComplete="init()"
+	xmlns:mycomponents="org.utmost.mycomponents.*">
+	<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Script> 
+		<![CDATA[ 
+			import mx.core.Application;
+			import com.right.UserRight;
+			import mx.controls.Alert;
+			import mx.collections.ArrayCollection;
+			import com.pagination.PageHelper;
+			import org.utmost.effect.PopUpEffect;
+			import mx.managers.PopUpManager;
+			import com.hp.events.CommonEvent;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import org.utmost.util.ShortcutKeyUtil;
+			[Bindable]
+			private var _category:String = "";
+			[Bindable]
+			private var _validNodes:String = "";
+			private var _moduleTree:ArrayCollection;
+			
+			public function set moduleTree(mt:ArrayCollection):void{
+				this._moduleTree = mt;
+			}
+			
+			public function get moduleTree():ArrayCollection{
+				return this._moduleTree;
+			}
+			//clear handler
+			public function clearHandler():void{
+				_category = "";
+				_validNodes = "";
+				selectedCategory.text="";
+			}
+			[Bindable]
+			private var page:PageHelper;
+			//Putting all items after widget is created
+			private var validataCheckBoxArr:Array=new Array();
+			[Bindable]
+			private var isSelected:Boolean = false;
+			//Judge user if has report preview rights
+			[Bindable]
+			public var isRight:Boolean ;
+			//when tapping enter , start to search
+			private function enterButtonAction():void{
+				if(isRight){
+						highSearch('report');
+				}else{
+						highSearch('search');
+				}
+			}
+			//Confirm if has report preview rights when initial
+			private function init():void{
+				/* if(UserRight.role.length > 1){
+					var obj:Object = UserRight.role.getItemAt(1);
+					if("Report" == obj.rolename){
+						isRight = true;
+					}
+				} */
+				ShortcutKeyUtil.setFocusAndSubmit(this,enterButtonAction);
+				if(isRight){
+					submit_button.label = resourceManager.getString('dataGrid','reportView');
+					submit_button.addEventListener(MouseEvent.CLICK,function():void{
+						highSearch('report');
+					});
+				}else{
+					submit_button.label = resourceManager.getString('dataGrid','search');
+					submit_button.addEventListener(MouseEvent.CLICK,function():void{
+						highSearch('search');
+					});
+				}
+				var utm:UtmostService=new UtmostService("SearchService", function(e:ResultEvent):void{
+					if (e.result != null)
+					{
+					   var hbox:HBox = createHBox();
+					   authorityList.addChild(hbox);
+					   var list:ArrayCollection = e.result as ArrayCollection;
+					   for(var i:int=0;i<list.length;i++){
+					   	if(i!=0&&i%8==0){
+					   		hbox = createHBox();
+					   		authorityList.addChild(hbox);
+					   	 }
+					  
+					     var authority:Object = list.getItemAt(i);
+					     var checkbox:CheckBox = new CheckBox();
+					     checkbox.id = 'is'+authority.toString();
+					     checkbox.label = authority.toString();
+					     checkbox.selected = isSelected;
+					     checkbox.width=90;
+					     hbox.addChild(checkbox);
+					   	  
+					   }
+					}
+					     hbox = createHBox();
+					     authorityList.addChild(hbox);
+					     var otherCheckbox:CheckBox = new CheckBox();
+					     otherCheckbox.id = 'isOthers';
+					     otherCheckbox.label = 'Others';
+					     otherCheckbox.selected = isSelected;
+					     otherCheckbox.width=100;
+					     hbox.addChild(otherCheckbox);
+					     var otherInput:TextInput = new TextInput();
+					     otherInput.id = 'otherInput';
+					     otherInput.width=300;
+					     otherInput.maxChars=400;
+					     otherInput.toolTip = resourceManager.getString('manageView', 'doc.msg.standardPro.other');
+					     hbox.addChild(otherInput);
+				});
+				utm.ro.getLegends();
+				
+				initDisplay();
+			}
+			
+			private function displayStandards():void{
+				mandatoryLine.visible=true;
+				mandatoryLine.includeInLayout=true;
+				mandatoryArea.visible=true;
+				mandatoryArea.includeInLayout=true;
+				statusLine.visible=true;
+				statusLine.includeInLayout=true;
+				statusArea.visible=true;
+				statusArea.includeInLayout=true;
+				impleDateLine.visible=true;
+				impleDateLine.includeInLayout=true;
+				impleDateArea.visible=true;
+				impleDateArea.includeInLayout=true;
+				appLine.visible=true;
+				appLine.includeInLayout=true;
+				appArea.visible=true;
+				appArea.includeInLayout=true;
+				standardProLine.visible=true;
+				standardProLine.includeInLayout=true;
+				standardProArea.visible=true;
+				standardProArea.includeInLayout=true;
+				powerTypeLine.visible=true;
+				powerTypeLine.includeInLayout=true;
+				powerTypeArea.visible=true;
+				powerTypeArea.includeInLayout=true;
+				typeApprovalLine.visible=true;
+				typeApprovalLine.includeInLayout=true;
+				typeApprovalArea.visible=true;
+				typeApprovalArea.includeInLayout=true;
+				authorityLine.visible=false;
+				authorityLine.includeInLayout=false;
+				authorityList.visible=false;
+				authorityList.includeInLayout=false;
+				this.width=1000;
+				this.height=500;
+			}
+			
+			private function displayLawOrRegulation():void{
+				mandatoryLine.visible=false;
+				mandatoryLine.includeInLayout=false;
+				mandatoryArea.visible=false;
+				mandatoryArea.includeInLayout=false;
+				statusLine.visible=false;
+				statusLine.includeInLayout=false;
+				statusArea.visible=false;
+				statusArea.includeInLayout=false;
+				impleDateLine.visible=false;
+				impleDateLine.includeInLayout=false;
+				impleDateArea.visible=false;
+				impleDateArea.includeInLayout=false;
+				appLine.visible=false;
+				appLine.includeInLayout=false;
+				appArea.visible=false;
+				appArea.includeInLayout=false;
+				standardProLine.visible=false;
+				standardProLine.includeInLayout=false;
+				standardProArea.visible=false;
+				standardProArea.includeInLayout=false;
+				powerTypeLine.visible=false;
+				powerTypeLine.includeInLayout=false;
+				powerTypeArea.visible=false;
+				powerTypeArea.includeInLayout=false;
+				typeApprovalLine.visible=false;
+				typeApprovalLine.includeInLayout=false;
+				typeApprovalArea.visible=false;
+				typeApprovalArea.includeInLayout=false;
+				authorityLine.visible=true;
+				authorityLine.includeInLayout=true;
+				authorityList.visible=true;
+				authorityList.includeInLayout=true;
+				this.width=1000;
+				this.height=400;
+			}
+			
+			private function initDisplay():void{
+				mandatoryLine.visible=false;
+				mandatoryLine.includeInLayout=false;
+				mandatoryArea.visible=false;
+				mandatoryArea.includeInLayout=false;
+				statusLine.visible=false;
+				statusLine.includeInLayout=false;
+				statusArea.visible=false;
+				statusArea.includeInLayout=false;
+				impleDateLine.visible=false;
+				impleDateLine.includeInLayout=false;
+				impleDateArea.visible=false;
+				impleDateArea.includeInLayout=false;
+				appLine.visible=false;
+				appLine.includeInLayout=false;
+				appArea.visible=false;
+				appArea.includeInLayout=false;
+				standardProLine.visible=false;
+				standardProLine.includeInLayout=false;
+				standardProArea.visible=false;
+				standardProArea.includeInLayout=false;
+				powerTypeLine.visible=false;
+				powerTypeLine.includeInLayout=false;
+				powerTypeArea.visible=false;
+				powerTypeArea.includeInLayout=false;
+				typeApprovalLine.visible=false;
+				typeApprovalLine.includeInLayout=false;
+				typeApprovalArea.visible=false;
+				typeApprovalArea.includeInLayout=false;
+				authorityLine.visible=false;
+				authorityLine.includeInLayout=false;
+				authorityList.visible=false;
+				authorityList.includeInLayout=false;
+				this.width=800;
+				this.height=300;
+				
+			}
+			
+			private function createHBox():HBox{
+				var box:HBox = new HBox();
+				box.setStyle("verticalAlign","middle");
+				box.setStyle("width","100%");
+				box.setStyle("height","10%");
+				return box;
+			}
+			
+			public function get getValidateArr():Array{
+				return validataCheckBoxArr;
+			}
+			//Call this function when click 'search' or 'report preview' button
+			private function highSearch(flag:String):void
+			{
+				dispatchEvent(new Event("AdvanceSearchComponent_true"));
+				this.closeWin();
+				if("report" == flag){
+					Application.application.generateReport = true;
+				}else if("search" == flag){
+					Application.application.generateReport = false;
+				}
+			}
+			//Close advanced search screen(in fact,set visible is false for keeping to remember items selected is selected)
+			private function closeWin():void
+			{
+				this.visible = false;
+			}
+			
+			private function emptyValues():void{
+				execute_date.selectedDate = null;
+				online_auto_execute_date.selectedDate = null;
+				status2.selectedItem = first;
+				input1.text = "";
+				for(var i:int=0;i<validataCheckBoxArr.length;i++){
+					var obj:Object = validataCheckBoxArr[i];
+					if(obj is HBox){
+						var arr:Array = obj.getChildren();
+						for each(var cObj:Object in arr){
+							if(cObj is CheckBox){
+								cObj.selected = false;
+							}
+						}
+					}
+					if(obj is CheckBox){
+						obj.selected = false;
+					}
+					if(obj is FormItem){
+						var itemArr:Array = obj.getChildren();
+						for each(var arrObj:Object in itemArr){
+							if(arrObj is HBox){
+								var subArr:Array = arrObj.getChildren();
+								for each(var subObj:Object in subArr){
+									if(subObj is CheckBox){
+										subObj.selected = false;
+									}else if(subObj is TextInput){
+										subObj.text = "";
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			//undo all items is not selected
+			private function Undo():void{
+				emptyValues()
+				clearHandler();
+				initDisplay();
+			}
+			//select a category, when double click node, then node description transfer to textinput
+			public function selectCategory():void{
+				var categoryWindow:inputBoxCategory = inputBoxCategory(PopUpManager.createPopUp(this.parentApplication as DisplayObject, inputBoxCategory, true));
+				categoryWindow.treeProvider = moduleTree;
+				categoryWindow.addEventListener(CommonEvent.SEARCH_DIRECTORY_SELECTED,
+					function(event:Event):void{
+						var labelField:String = resourceManager.getString('manageView', 'doc.category.tree.label.field');
+						_category = categoryWindow.selectedItem[labelField];
+						_validNodes = categoryWindow.validNodes;
+						selectedCategory.text = _validNodes;
+						var classuuid:String = categoryWindow.selectedItem['classuuid'];
+						if(classuuid=='02'||classuuid=='0201'||classuuid=='0202'){
+							displayStandards();
+						}else if(classuuid=='03'){
+						    displayLawOrRegulation();
+						}else{
+							initDisplay();
+						}
+						emptyValues();
+					}
+				);
+				PopUpManager.centerPopUp(categoryWindow);
+			}
+			//key event
+			private function filterKey(event:KeyboardEvent):void{
+				if(event.keyCode == 8 || event.keyCode == 46){
+					clearHandler();
+					event.currentTarget.text = "";
+				}
+			}
+		]]>
+	</mx:Script>
+	<mx:Metadata>
+		[ResourceBundle("dataGrid")]
+	</mx:Metadata>
+	<mx:Form styleName="advancedSearch" id="advanceSearch" paddingTop="0" paddingRight="0" paddingBottom="0" paddingLeft="0">
+		<mx:HBox width="100%" height="5%" verticalAlign="middle">
+			<mx:Label text="{resourceManager.getString('dataGrid','selecteditem')+':'}" left="true"/><mx:Spacer width="100%"/><mx:LinkButton click="{Undo();}" label="{resourceManager.getString('dataGrid','undoall')}" textDecoration="underline"/>
+		</mx:HBox>
+		<mx:HRule width="100%" height="1"/>
+	    <mx:FormItem fontWeight="bold" label="{resourceManager.getString('config','search.category')}">
+			<mx:HBox width="100%" horizontalGap="0">
+				<mx:TextInput text="{_category}" editable="true" keyDown="filterKey(event)" 
+					keyUp="filterKey(event)" click="selectCategory()" textInput="event.preventDefault();"/>
+				<mx:TextInput id="selectedCategory"  creationComplete="{validataCheckBoxArr.push(selectedCategory);}" visible="false" includeInLayout="false"/>
+			</mx:HBox>
+		</mx:FormItem>
+		<mx:HRule width="100%" height="1"/>
+		<mx:FormItem fontWeight="bold" label="{resourceManager.getString('dataGrid','effectstatus')+':'}">
+			<mx:HBox id="effect_status" width="100%"
+				 height="10%" 
+				 verticalAlign="middle" creationComplete="{validataCheckBoxArr.push(effect_status);}">
+				<mx:CheckBox id="cb01" label="Effective" selected="{isSelected}"/>
+				<mx:CheckBox id="cb02" label="Abolished" selected="{isSelected}"/>
+			</mx:HBox> 
+		</mx:FormItem>
+		<mx:HRule width="100%" height="1"/>
+		<mx:FormItem fontWeight="bold" label="{resourceManager.getString('dataGrid','keywords')+':'}">
+			<mx:HBox id="key_words" width="100%"
+				 height="10%"
+				 verticalAlign="middle" creationComplete="{validataCheckBoxArr.push(key_words);}">
+				<mx:TextInput fontWeight="normal" width="200"
+						  id="input1"
+						  visible="true"
+						  restrict="^'="
+						  maxChars="1000"/>
+			</mx:HBox>
+		</mx:FormItem>
+		<mx:HRule id="mandatoryLine" width="100%" height="1"/>
+			<mx:FormItem id="mandatoryArea" fontWeight="bold" label="{resourceManager.getString('dataGrid','mandatoryOrNot')+':'}">
+				<mx:HBox id="ismandatory" width="100%" height="10%" verticalAlign="middle" creationComplete="{validataCheckBoxArr.push(ismandatory);}">
+					<mx:CheckBox id="cb03" label="Yes" selected="{isSelected}"/>
+					<mx:CheckBox id="cb04" label="No" selected="{isSelected}"/>
+				</mx:HBox> 
+			</mx:FormItem>
+			<mx:HRule id="statusLine" width="100%" height="1"/>
+			<mx:FormItem id="statusArea" fontWeight="bold" label="{resourceManager.getString('dataGrid','filestatus')+':'}">
+				<mx:HBox id="statusm" width="100%" height="10%" verticalAlign="middle" creationComplete="{validataCheckBoxArr.push(statusm);}">
+					<mx:ComboBox id="status2" width="200">
+						<mx:Array>
+						    <mx:String id="first"></mx:String>
+							<mx:String>Under Planning</mx:String>
+							<mx:String>Plan issued</mx:String>
+							<mx:String>Comment</mx:String>
+							<mx:String>Examination</mx:String>
+							<mx:String>Ask for approval</mx:String>
+							<mx:String>WTO/TBT</mx:String>
+							<mx:String>Published</mx:String>
+							<mx:String>Implemented</mx:String>
+							<mx:String>Abolished</mx:String>
+						</mx:Array>
+					</mx:ComboBox>
+				</mx:HBox>
+			</mx:FormItem> 
+			<mx:HRule id="impleDateLine" width="100%" height="1"/> 
+			<mx:FormItem id="impleDateArea" fontWeight="bold" label="{resourceManager.getString('dataGrid','implementdate')+':'}">
+				<mx:HBox width="100%" height="10%" verticalAlign="middle">
+					<mx:Label fontWeight="normal" text="For New Type before" creationComplete="{validataCheckBoxArr.push(execute_date);}"/>
+					<mx:DateField id="execute_date" formatString="YYYY-MM-DD" width="137" yearNavigationEnabled="true"/>
+					<mx:Label fontWeight="normal" text="For In-Production before" creationComplete="{validataCheckBoxArr.push(online_auto_execute_date);}"/>
+					<mx:DateField id="online_auto_execute_date" formatString="YYYY-MM-DD" width="137" yearNavigationEnabled="true"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:HRule id="appLine" width="100%" height="1"/>
+			<mx:FormItem id="appArea" fontWeight="bold" label="{resourceManager.getString('dataGrid','applicability')+':'}">
+				<mx:HBox width="100%"
+					 height="10%"
+					 verticalAlign="middle">
+					<mx:HBox id="applicability"
+						 verticalAlign="middle"
+						 creationComplete="{validataCheckBoxArr.push(applicability);}">
+						<mx:CheckBox id="cb05" label="M1"
+									 visible="true" selected="{isSelected}"/>
+						<mx:CheckBox id="cb06" label="M2"
+									 visible="true" selected="{isSelected}"/>
+						<mx:CheckBox id="cb07" label="M3"
+									 visible="true" selected="{isSelected}"/>
+						<mx:CheckBox id="cb08" label="N1"
+									 visible="true" selected="{isSelected}"/>
+						<mx:CheckBox id="cb09" label="N2"
+									 visible="true" selected="{isSelected}"/>
+						<mx:CheckBox id="cb20" label="N3"
+									 visible="true" selected="{isSelected}"/>
+						<mx:CheckBox id="cb21" label="O1"
+									 visible="true" selected="{isSelected}"/>
+						<mx:CheckBox id="cb22" label="O2"
+									 visible="true" selected="{isSelected}"/>
+						<mx:CheckBox id="cb23" label="O3"
+									 visible="true" selected="{isSelected}"/>
+						<mx:CheckBox id="cb24" label="O4"
+									 visible="true" selected="{isSelected}"/>
+					</mx:HBox>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:HRule id="standardProLine" width="100%" height="1"/>
+			<mx:FormItem id="standardProArea" fontWeight="bold" label="{resourceManager.getString('dataGrid','standardpro')+':'}">
+				<mx:HBox id="standard_attribute1" width="100%" height="10%" verticalAlign="middle" creationComplete="{validataCheckBoxArr.push(standard_attribute1);}">
+					<mx:CheckBox id="cb29" label="DB" selected="{isSelected}"/>
+					<mx:CheckBox id="cb26" label="GA" selected="{isSelected}"/>
+					<mx:CheckBox id="cb25" label="GB" selected="{isSelected}"/>
+					<mx:CheckBox id="cb27_1" label="HG" selected="{isSelected}"/>
+					<mx:CheckBox id="cb27" label="HJ" selected="{isSelected}"/>
+					<mx:CheckBox id="cb28_1" label="JB" selected="{isSelected}"/>
+					<mx:CheckBox id="cb28_2" label="JG" selected="{isSelected}"/>
+					<mx:CheckBox id="cb28" label="JT" selected="{isSelected}"/>
+					<mx:CheckBox id="cb29_1" label="NB" selected="{isSelected}"/>
+					<mx:CheckBox id="cb30" label="QC" selected="{isSelected}"/>
+					<mx:CheckBox id="cb31" label="SZJQ" selected="{isSelected}"/>
+					<mx:CheckBox id="cb31_1" label="Others" selected="{isSelected}"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:HRule id="powerTypeLine" width="100%" height="1"/>
+			<mx:FormItem id="powerTypeArea" fontWeight="bold" label="{resourceManager.getString('dataGrid','powertype')+':'}">
+				<mx:HBox id="power_type" width="100%" height="10%" verticalAlign="middle" creationComplete="{validataCheckBoxArr.push(power_type);}">
+					<mx:CheckBox id="cb32" label="Gasoline" selected="{isSelected}"/>
+					<mx:CheckBox id="cb33" label="Diesel" selected="{isSelected}"/>
+					<mx:CheckBox id="cb34" label="HEV(incl. PHEV)" selected="{isSelected}"/>
+					<mx:CheckBox id="cb40" label="EV" selected="{isSelected}"/>
+					<mx:CheckBox id="cb35" label="BEV" selected="{isSelected}"/>
+					<mx:CheckBox id="cb36" label="FCEV" selected="{isSelected}"/>
+					<mx:CheckBox id="cb37" label="LPG" selected="{isSelected}"/>
+					<mx:CheckBox id="cb38" label="CNG" selected="{isSelected}"/>
+					<mx:CheckBox id="cb39" label="Others" selected="{isSelected}"/>
+				</mx:HBox>
+			</mx:FormItem>
+			
+			<mx:HRule id="typeApprovalLine" width="100%" height="1"/>
+			<mx:FormItem id="typeApprovalArea" fontWeight="bold" label="{resourceManager.getString('dataGrid','typeapproval')+':'}">
+				<mx:HBox width="100%" height="10%" verticalAlign="middle">
+					<mx:CheckBox id="isccc" label="CCC Catalog"  selected="{isSelected}" 
+						creationComplete="{validataCheckBoxArr.push(isccc);}"/>
+					<mx:CheckBox id="isbulletin" label="MIIT Catalog" selected="{isSelected}" 
+						creationComplete="{validataCheckBoxArr.push(isbulletin);}"/>
+					<mx:CheckBox id="is_national_emi" label="National Emission" selected="{isSelected}" 
+						creationComplete="{validataCheckBoxArr.push(is_national_emi);}"/>
+					<mx:CheckBox id="is_local_emi" label="Local Emission" selected="{isSelected}" 
+						creationComplete="{validataCheckBoxArr.push(is_local_emi);}"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:HRule id="authorityLine" width="100%" height="1"/>
+		   <mx:FormItem fontWeight="bold" id='authorityList' label="{resourceManager.getString('dataGrid','authority')}" creationComplete="{validataCheckBoxArr.push(authorityList);}">
+			<!--mx:HBox width="100%" height="10%" verticalAlign="middle">
+				<mx:CheckBox id="isccc" label="CCC Catalog"  selected="{isSelected}" 
+					creationComplete="{validataCheckBoxArr.push(isccc);}"/>
+
+			</mx:HBox-->
+		  </mx:FormItem>
+		<mx:HRule width="100%" height="1"/>
+		<mx:FormItem width="750">
+			<mx:ControlBar width="100%"
+					   horizontalAlign="left"
+					   verticalAlign="middle">
+					<mycomponents:Components_LinkButton iconType="right"
+														id="submit_button"/>
+			</mx:ControlBar>
+		</mx:FormItem>
+	</mx:Form>
+</mx:TitleWindow>

@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="init()" width="100%" height="100%" layout="absolute" xmlns:ilog="http://www.ilog.com/2007/ilog/flex" xmlns:component="component.*" xmlns:cutpage="component.cutpage.*">
+	<mx:Script> 
+	<![CDATA[ 
+		import mx.modules.IModuleInfo;
+	//	import flash.display.click;
+		import mx.events.ModuleEvent;  
+        import mx.modules.ModuleManager;  
+        import mx.modules.IModuleInfo;
+		import mx.effects.easing.*;        
+			private function showSearch():void{
+				if(my_hbox.y==-390){
+					mymove.end();
+					mymove.yTo=0;
+					mymove.play();
+					myvbox.percentHeight=100;
+				}else{
+					mymove.end();
+					mymove.yTo=-390;
+					mymove.play();
+					
+				}
+			}
+			private function myeffectEnd(event:Event):void{
+				if(my_hbox.y==-390){
+					my_hbox.visible=false;
+					my_hbox.includeInLayout=false;
+				}
+			}
+			private function myeffectStart(event:Event):void{
+				if(my_hbox.y==-390){
+					my_hbox.visible=true;
+					my_hbox.includeInLayout=true;
+				}
+			}
+		private var _moduleInfo:IModuleInfo;
+		
+		private var detail:DisplayObject;
+		
+		public function init():void{
+			myvbox.setChildIndex(view_dg,0);
+			myvbox.setChildIndex(my_hbox,1);
+//			myvbox.setChildIndex(searchbox,1);
+			_moduleInfo = ModuleManager.getModule( 'module/chart/ChartModule.swf' );
+   			_moduleInfo.addEventListener( ModuleEvent.READY,moduleLoadHandler ); 
+            _moduleInfo.load();
+		}
+		
+		public function goToURL():void {
+//        	try {
+//          		navigateToURL(new URLRequest(ur), '_self');
+//        	} catch (e:SecurityError) {
+//          		trace("Cannot navigate to URL "+ur);
+//        	}
+			if(vd.getChildren().length > 1){
+				vd.removeChildAt(1);
+			}
+			
+			vd.addChild(detail);
+    	} 
+    	
+    	public function moduleLoadHandler(event:ModuleEvent):void{
+    		detail = _moduleInfo.factory.create() as DisplayObject;
+    	}  
+	]]>
+</mx:Script>
+<mx:XMLList id="dataSource">
+ 		<DataSource>
+            <one>标准法规</one>
+            <two>GB 19753-XXXX </two>
+            <three>Test methods for energy consumption of light-duty hybrid electric vehicles</three> 
+            <four></four>
+            <img>img/light/green_light.png</img>   
+            <view></view> 
+            
+        </DataSource>
+        <DataSource>
+            <one>标准法规</one>
+            <two>GB 19753-XXXX </two>
+            <three>Test methods for energy consumption of light-duty hybrid electric vehicles</three> 
+            <four></four>
+            <img>img/light/red_light.png</img> 
+            <view></view> 
+              
+        </DataSource>
+         <DataSource>
+            <one>标准法规</one>
+            <two>GB 19753-XXXX </two>
+            <three>Test methods for energy consumption of light-duty hybrid electric vehicles</three> 
+            <four></four>
+            <img>img/light/yellow_light.png</img>  
+            <view></view>  
+            
+        </DataSource>
+        
+    </mx:XMLList>
+    <mx:Fade id="fadeOut" duration="1000" alphaFrom="1.0" alphaTo="0.0"/>
+    <mx:Fade id="fadeIn" duration="1000" alphaFrom="0.0" alphaTo="1.0"/>
+	<mx:Move id="mymove" duration="1000" effectStart="{myeffectStart(event)}" effectEnd="{myeffectEnd(event)}" target="{my_hbox}" />
+	<mx:Canvas width="100%" height="100%" id="canvas" >
+		<mx:VDividedBox id="vd" width="100%" height="100%">
+			<mx:VBox     width="100%" height="100%" verticalAlign="top" horizontalAlign="left">
+			<mx:Canvas id="myvbox" width="100%" height="100%">
+				<mx:Panel  visible="false" includeInLayout="false"  id="my_hbox"  height="390" y="-390"  x="0">
+					<mx:VBox    verticalGap="10"  paddingLeft="10" paddingBottom="10" paddingRight="10" paddingTop="10"   >
+					<mx:HBox width="100%" verticalAlign="middle" >
+					<mx:CheckBox label=" " id="taiCheckbox" selected="false" />
+						<mx:Label text="生效状态:" />
+						<mx:ComboBox  width="100"  showEffect="{fadeIn}" removedEffect="{fadeOut}" visible="{taiCheckbox.selected}" includeInLayout="{taiCheckbox.selected}"  >
+							<mx:Array>
+								<mx:String>生效</mx:String>
+								<mx:String>废止</mx:String>
+							</mx:Array>
+						</mx:ComboBox>
+					</mx:HBox>
+				
+				<mx:HBox width="100%" verticalAlign="middle" >
+					<mx:CheckBox label=" " id="caiCheckbox" selected="false" />
+					<mx:Label text="采用程度:" />
+						<mx:ComboBox   width="100" showEffect="{fadeIn}" removedEffect="{fadeOut}" visible="{caiCheckbox.selected}" includeInLayout="{caiCheckbox.selected}">
+							<mx:Array>
+								<mx:String>IDT</mx:String>
+								<mx:String>MOD</mx:String>
+								<mx:String>NEQ</mx:String>
+							</mx:Array>
+						</mx:ComboBox>
+					</mx:HBox>
+					
+					
+					<mx:HBox width="100%" verticalAlign="middle" >
+					<mx:CheckBox label=" " id="allch" selected="false" />
+						 <mx:Label text="适用范围:" />
+				 		 <mx:CheckBox showEffect="{fadeIn}" removedEffect="{fadeOut}" label="M1" visible="{allch.selected}" includeInLayout="{allch.selected}"  />
+						 <mx:CheckBox showEffect="{fadeIn}" removedEffect="{fadeOut}" label="M2" visible="{allch.selected}" includeInLayout="{allch.selected}" />
+						 <mx:CheckBox showEffect="{fadeIn}" removedEffect="{fadeOut}" label="M3" visible="{allch.selected}" includeInLayout="{allch.selected}"/>
+						 <mx:CheckBox showEffect="{fadeIn}" removedEffect="{fadeOut}" label="N1" visible="{allch.selected}" includeInLayout="{allch.selected}"/>
+						 <mx:CheckBox showEffect="{fadeIn}" removedEffect="{fadeOut}" label="N2" visible="{allch.selected}" includeInLayout="{allch.selected}"/>
+						 <mx:CheckBox showEffect="{fadeIn}" removedEffect="{fadeOut}" label="N3" visible="{allch.selected}" includeInLayout="{allch.selected}"/>
+						 <mx:CheckBox showEffect="{fadeIn}" removedEffect="{fadeOut}" label="O1" visible="{allch.selected}" includeInLayout="{allch.selected}"/>
+						 <mx:CheckBox showEffect="{fadeIn}" removedEffect="{fadeOut}" label="O2" visible="{allch.selected}" includeInLayout="{allch.selected}"/>
+						 <mx:CheckBox showEffect="{fadeIn}" removedEffect="{fadeOut}" label="O3" visible="{allch.selected}" includeInLayout="{allch.selected}"/>
+						 <mx:CheckBox showEffect="{fadeIn}" removedEffect="{fadeOut}" label="O4" visible="{allch.selected}" includeInLayout="{allch.selected}"/>
+					</mx:HBox>
+					<mx:HBox width="100%" verticalAlign="middle" >
+						<mx:CheckBox label=" " id="cheCheckbox" selected="false" />
+						<mx:Label text="整车还是零部件?" />
+						<mx:RadioButtonGroup id="zhengche" />
+						<mx:RadioButton groupName="zhengche" showEffect="{fadeIn}" removedEffect="{fadeOut}" label="整车" visible="{cheCheckbox.selected}" includeInLayout="{cheCheckbox.selected}"/>
+						<mx:RadioButton groupName="zhengche" showEffect="{fadeIn}" removedEffect="{fadeOut}" label="零部件" visible="{cheCheckbox.selected}" includeInLayout="{cheCheckbox.selected}"/>
+					</mx:HBox>
+					<mx:HBox width="100%" verticalAlign="middle" >
+						<mx:CheckBox label=" " id="maCheckbox" selected="false" />
+						<mx:Label text="Mandatory or not?" />
+						<mx:RadioButtonGroup id="ma1" />
+						<mx:RadioButton groupName="ma1" label="Yes" showEffect="{fadeIn}" removedEffect="{fadeOut}" visible="{maCheckbox.selected}" includeInLayout="{maCheckbox.selected}"/>
+						<mx:RadioButton groupName="ma1" label="No" showEffect="{fadeIn}" removedEffect="{fadeOut}" visible="{maCheckbox.selected}" includeInLayout="{maCheckbox.selected}"/>
+					</mx:HBox>
+					
+					<mx:HBox width="100%" verticalAlign="middle" >
+						<mx:CheckBox label=" " id="ccCheckbox" selected="false" />
+						<mx:Label text="CCC or not?" />
+						<mx:RadioButtonGroup id="ma3" />
+						<mx:RadioButton groupName="ma3" label="Yes" showEffect="{fadeIn}" removedEffect="{fadeOut}" visible="{ccCheckbox.selected}" includeInLayout="{ccCheckbox.selected}"/>
+						<mx:RadioButton groupName="ma3" label="No" showEffect="{fadeIn}" removedEffect="{fadeOut}" visible="{ccCheckbox.selected}" includeInLayout="{ccCheckbox.selected}"/>
+					</mx:HBox>
+					
+					<mx:HBox width="100%" verticalAlign="middle" >
+						<mx:CheckBox label=" " id="buCheckbox" selected="false" />
+						<mx:Label text="Bulletin?" />
+						<mx:RadioButtonGroup id="ma2" />
+						<mx:RadioButton groupName="ma2" label="Yes" showEffect="{fadeIn}" removedEffect="{fadeOut}" visible="{buCheckbox.selected}" includeInLayout="{buCheckbox.selected}"/>
+						<mx:RadioButton groupName="ma2" label="No" showEffect="{fadeIn}" removedEffect="{fadeOut}" visible="{buCheckbox.selected}" includeInLayout="{buCheckbox.selected}"/>
+					</mx:HBox>
+					
+					<mx:HBox width="100%" verticalAlign="middle" >
+						<mx:CheckBox label=" " id="keyCheckbox" selected="false" />
+							<mx:Label text="KeyWord:" />
+							<mx:TextInput width="200"  showEffect="{fadeIn}" removedEffect="{fadeOut}" visible="{keyCheckbox.selected}" includeInLayout="{keyCheckbox.selected}"/>
+					</mx:HBox>
+					<mx:ApplicationControlBar width="100%" horizontalAlign="center" verticalAlign="middle">
+							<mx:Spacer height="15" />
+							<mx:Button label="Search" id="submit_button"  />
+							<mx:Button label="Cancel" id="chance_button" click="{showSearch()}"  />
+					</mx:ApplicationControlBar>
+				</mx:VBox>
+				</mx:Panel>
+				<mx:DataGrid id="view_dg" 
+					width="100%" 
+					height="100%" 
+					doubleClickEnabled="true"
+					doubleClick="goToURL()"
+					dataProvider="{dataSource}" 
+					fontSize="12">
+					<mx:columns>
+						<mx:DataGridColumn dataField="one" width="10" headerText="标准规范" textAlign="center"/>
+						<mx:DataGridColumn dataField="two" width="15" headerText="Standard No" textAlign="center"/>
+						<mx:DataGridColumn dataField="three" width="30" headerText="Standard Name" textAlign="center"/>
+						<mx:DataGridColumn dataField="four" width="8"  headerText="Standard Level" textAlign="center">
+							<mx:itemRenderer>
+								<mx:Component>
+									<mx:HBox  width="100%" horizontalAlign="center">
+									<component:downLoadImage  source="{data.img}" />
+									</mx:HBox>
+								</mx:Component>
+							</mx:itemRenderer>
+						</mx:DataGridColumn>
+						<mx:DataGridColumn dataField="view" width="8"  headerText="甘特图" textAlign="center" >
+							<mx:itemRenderer >
+								<mx:Component>
+								<mx:HBox width="100%" height="100%" horizontalAlign="center">
+									<mx:Image source="img/chart/stats.gif" width="21" height="21" /> 
+								</mx:HBox>
+								</mx:Component>
+							</mx:itemRenderer>
+						</mx:DataGridColumn>
+					</mx:columns>
+				</mx:DataGrid> 
+			</mx:Canvas>
+				<mx:HBox id="searchbox"  width="100%">
+					<mx:LinkButton label="Search" click="{showSearch()}" />
+					<cutpage:CutPageHBox   x="0"/>
+				</mx:HBox>
+			</mx:VBox>
+		</mx:VDividedBox>
+	</mx:Canvas>
+</mx:Module>

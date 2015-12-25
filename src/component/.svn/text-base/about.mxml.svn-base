@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<mx:TitleWindow title="About" 
+	showCloseButton="true" 
+	width="400" height="200" 
+	close="close()" 
+	xmlns:mx="http://www.adobe.com/2006/mxml">
+	<mx:Script>
+		<![CDATA[
+			import mx.managers.PopUpManager;
+			private function close():void{
+				PopUpManager.removePopUp(this);
+			}
+		]]>
+	</mx:Script>
+	<mx:Form fontSize="13">
+		<mx:FormItem label="System Description">
+			<mx:TextInput editable="false" text=""/>
+		</mx:FormItem>
+		<mx:FormItem label="Version">
+			<mx:TextInput editable="false" text=""/>
+		</mx:FormItem>
+		<mx:FormItem label="Publish Date">
+			<mx:TextInput editable="false" text=""/>
+		</mx:FormItem>
+	</mx:Form>
+</mx:TitleWindow>

@@ -1,0 +1,705 @@
+<?xml version="1.0" encoding="GBK"?>
+<mx:TitleWindow title="{resourceManager.getString('downloadList','popUpTitle')}" 
+				showCloseButton="true" 
+				width="{Application.application.width * 0.5}" height="{Application.application.height* 0.6}" 
+				creationComplete="init()"
+				close="{close();}" 
+				xmlns:mx="http://www.adobe.com/2006/mxml"   
+				xmlns:display="flash.display.*"
+				xmlns:mycomponents="org.utmost.mycomponents.*">
+	<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Metadata>
+		[ResourceBundle("downloadList")]
+	</mx:Metadata>
+	<mx:Script>
+		<![CDATA[
+			import com.Validator;
+			import mx.controls.HRule;
+			import mx.containers.HBox;
+			import mx.formatters.DateFormatter;
+			import fr.kapit.data.utils.HashMap;
+			import mx.collections.ArrayCollection;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import org.utmost.effect.PopUpEffect;
+			import mx.core.Application;
+			import mx.controls.Alert;
+			import mx.controls.Label;
+			import com.right.UserRight;
+			import org.utmost.service.StaticChannelSet;
+			import component.downloadList;
+			import mx.managers.PopUpManager;
+			import mx.core.IFlexDisplayObject;
+			import component.BatchDownLoad;
+			
+			public var commondata_uuid:String;
+			public var category:String;
+			public var func_uuid:String;
+			
+			private var list:ArrayCollection = new ArrayCollection();
+			private var gb_en:String;
+			private var gb_en_swf:String;
+			private var gb_ch:String;
+			private var gb_ch_swf:String;
+			private var eec:String;
+			private var eec_swf:String;
+			private var ece_r:String;
+			private var ece_r_swf:String;
+			private var fmvss:String;
+			private var fmvss_swf:String;
+			private var others:String;
+			private var ganttFile:Object;
+			private var commonFile:Object;
+			private var othersTitle:String;
+			
+			private var batchDownLoad:BatchDownLoad;
+			
+			internal function init():void{
+				//magic number code,still need improvment
+				if(resourceManager.getString('downloadList','draftingFunc') == category){
+					flag.visible = true;
+				}else{
+					flag.visible = false;
+				}
+				
+				var utmost:UtmostService = new UtmostService("BatchDownloadService",ganttService_resultHandler);
+				utmost.ro.queryGanttsAndCommonAppendixByUuid(commondata_uuid);
+				//set visiblity of buttons based on func right.1102-downloadList,3-download
+				var showButton:String = UserRight.hasFuncRight("1102","3");
+				if("0" === showButton){
+					buttonA.visible = false;
+					buttonC.visible = false;
+				}
+			}
+			
+			private function ganttService_resultHandler(event:ResultEvent):void{
+				var returnList:ArrayCollection = event.result as ArrayCollection;
+				ganttFile = returnList.getItemAt(0);
+				commonFile = returnList.getItemAt(1);
+				
+				gb_en = commonFile.download_gb_en;
+				gb_ch = commonFile.download_gb_ch;
+				eec = commonFile.download_eec;
+				ece_r = commonFile.download_ece_r;
+				fmvss = commonFile.download_fmvss;
+				
+				gb_en_swf = commonFile.download_gb_en_swf;
+				gb_ch_swf = commonFile.download_gb_ch_swf;
+				eec_swf = commonFile.download_eec_swf;
+				ece_r_swf = commonFile.download_ece_r_swf;
+				fmvss_swf = commonFile.download_fmvss_swf;
+				//others = commonFile.download_others; 
+				others = commonFile.doc_;
+				othersTitle = commonFile.doc_title;
+				
+				makeStandars(gb_en,gb_en_swf,gb_ch,gb_ch_swf,false,false);
+				makeReferences(eec,eec_swf,ece_r,ece_r_swf,fmvss,fmvss_swf,others,othersTitle,false,false);
+				makeDateFiles(ganttFile,false,false);
+				showCountLabel();
+
+			}
+			
+			private function makeStandars(gb_en:String,gb_en_swf:String,gb_ch:String,gb_ch_swf:String,isSelected:Boolean,fireEvent:Boolean):void{
+				standarsList.removeAllChildren();
+				//if both standars is null, there no need to show the panel
+				if(Validator.notNullAndEmpty(gb_en)|| Validator.notNullAndEmpty(gb_en_swf) || Validator.notNullAndEmpty(gb_ch) || Validator.notNullAndEmpty(gb_ch_swf)){
+					var standarsLabel:Label = new Label();
+					var ut:UtmostService = new UtmostService("DownloadListService",function(e:ResultEvent):void{
+						var path:String = e.result.toString();
+						var pathList:Array = path.split("|||");
+						/* var re:String = ".*?Standards";
+						if(pathList[0].toString().match(re)){
+							standarsLabel.text = pathList[1];
+						}else{
+							standarsLabel.text = pathList[0];
+						} */
+						
+						standarsLabel.text = pathList[0];
+					});
+					ut.ro.getPath(func_uuid);
+					
+					standarsLabel.percentWidth = 100;
+					
+					standarsList.addChild(standarsLabel);
+					
+					if(Validator.notNullAndEmpty(gb_en)|| Validator.notNullAndEmpty(gb_en_swf)){
+						var enBox:HBox = new HBox();
+						enBox.percentWidth = 90;
+						
+						var enLabel:Label = new Label();
+						enLabel.percentWidth = 10;
+						enLabel.text = resourceManager.getString('downloadList','en');
+						enLabel.styleName = "downloadDoc";
+						var enVBox:VBox = new VBox();
+						
+						if(Validator.notNullAndEmpty(gb_en)){
+							var enHBox:HBox = new HBox();
+							
+							var enCheckBox:CheckBox = new CheckBox();
+							enCheckBox.data = gb_en;
+							enCheckBox.addEventListener(MouseEvent.CLICK,makeList);
+							
+							var enText:Label = new Label();
+							enText.text = commonFile.download_gb_en_orig;
+							enText.width = standarsList.width * 0.7;
+							enText.truncateToFit = true;
+							
+							if(fireEvent){
+								enCheckBox.selected = !isSelected;
+								enCheckBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+							}
+							
+							enHBox.addChild(enCheckBox);
+							enHBox.addChild(enText);
+							enVBox.addChild(enHBox);
+						}
+						if(Validator.notNullAndEmpty(gb_en_swf)){
+							var en_swfHBox:HBox = new HBox();
+							
+							var en_swfCheckBox:CheckBox = new CheckBox();
+							en_swfCheckBox.data = gb_en_swf;
+							en_swfCheckBox.addEventListener(MouseEvent.CLICK,makeList);
+							
+							var en_swfText:Label = new Label();
+							en_swfText.text = commonFile.download_gb_en_swf_orig;
+							en_swfText.width = standarsList.width * 0.7;
+							en_swfText.truncateToFit = true;
+							if(fireEvent){
+								en_swfCheckBox.selected = !isSelected;
+								en_swfCheckBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+							}
+							
+							en_swfHBox.addChild(en_swfCheckBox);
+							en_swfHBox.addChild(en_swfText);
+							enVBox.addChild(en_swfHBox);
+						}
+						
+						enBox.addChild(enLabel);
+						enBox.addChild(enVBox);
+						standarsList.addChild(enBox);
+					}
+					
+					if(Validator.notNullAndEmpty(gb_ch) || Validator.notNullAndEmpty(gb_ch_swf)){
+						var chBox:HBox = new HBox();
+						chBox.percentWidth = 90;
+						
+						var chLabel:Label = new Label();
+						chLabel.percentWidth = 10;
+						chLabel.text = resourceManager.getString('downloadList','ch');
+						chLabel.styleName = "downloadDoc";
+						var chVBox:VBox = new VBox();
+						
+						if(Validator.notNullAndEmpty(gb_ch)){
+							var chHBox:HBox = new HBox();
+							
+							var chCheckBox:CheckBox = new CheckBox();
+							chCheckBox.data = gb_ch;
+							chCheckBox.addEventListener(MouseEvent.CLICK,makeList);
+							
+							var chText:Label = new Label();
+							chText.text = commonFile.download_gb_ch_orig;
+							chText.width = standarsList.width * 0.7 ;
+							chText.truncateToFit = true;
+							
+							if(fireEvent){
+								chCheckBox.selected = !isSelected;
+								chCheckBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+							}
+							
+							chHBox.addChild(chCheckBox);
+							chHBox.addChild(chText);
+							chVBox.addChild(chHBox);
+						}
+						if(Validator.notNullAndEmpty(gb_ch_swf)){
+							var ch_swfHBox:HBox = new HBox();
+							
+							var ch_swfCheckBox:CheckBox = new CheckBox();
+							ch_swfCheckBox.data = gb_ch_swf;
+							ch_swfCheckBox.addEventListener(MouseEvent.CLICK,makeList);
+							
+							var ch_swfText:Label = new Label();
+							ch_swfText.text = commonFile.download_gb_ch_swf_orig;
+							ch_swfText.width = standarsList.width * 0.7;
+							ch_swfText.truncateToFit = true;
+							ch_swfText.styleName = "downloadDoc";
+							if(fireEvent){
+								ch_swfCheckBox.selected = !isSelected;
+								ch_swfCheckBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+							}
+							
+							ch_swfHBox.addChild(ch_swfCheckBox);
+							ch_swfHBox.addChild(ch_swfText);
+							chVBox.addChild(ch_swfHBox);
+						}
+						
+						chBox.addChild(chLabel);
+						chBox.addChild(chVBox);
+						standarsList.addChild(chBox);
+					}
+					
+					var rule:HRule = new HRule();
+					rule.percentWidth = 100;
+					rule.height = 1;
+					
+					standarsList.addChild(rule);
+				}
+			}
+			
+			private function makeReferences(eec:String,eec_swf:String,ece_r:String,ece_r_swf:String,fmvss:String,fmvss_swf:String,others:String,othersTitle:String,isSelected:Boolean,fireEvent:Boolean):void{
+				referencesList.removeAllChildren();
+				//if all references is null, there no need to show the panel
+				if(Validator.notNullAndEmpty(eec) || Validator.notNullAndEmpty(eec_swf) || Validator.notNullAndEmpty(ece_r) ||  Validator.notNullAndEmpty(ece_r_swf) || Validator.notNullAndEmpty(fmvss) || Validator.notNullAndEmpty(fmvss_swf) || Validator.notNullAndEmpty(others)){
+					var referenceLabel:Label = new Label();
+					referenceLabel.text = resourceManager.getString('downloadList','references');
+					referenceLabel.percentWidth = 100;
+					
+					referencesList.addChild(referenceLabel);
+					if(Validator.notNullAndEmpty(eec) || Validator.notNullAndEmpty(eec_swf)){
+						var eecBox:HBox = new HBox();
+						eecBox.percentWidth = 90;
+						
+						var eecLabel:Label = new Label();
+						eecLabel.percentWidth = 10;
+						eecLabel.text = resourceManager.getString('downloadList','eec');
+						
+						var eecVBox:VBox = new VBox();
+						
+						if(Validator.notNullAndEmpty(eec)){
+							var eecHBox:HBox = new HBox();
+							
+							var eecCheckBox:CheckBox = new CheckBox();
+							eecCheckBox.data = eec;
+							eecCheckBox.addEventListener(MouseEvent.CLICK,makeList);
+							
+							var eecText:Label = new Label();
+							eecText.text = commonFile.download_eec_orig;
+							eecText.width = referencesList.width * 0.7 ;
+							eecText.truncateToFit = true;
+							
+							if(fireEvent){
+								eecCheckBox.selected = !isSelected;
+								eecCheckBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+							}
+							
+							eecHBox.addChild(eecCheckBox);
+							eecHBox.addChild(eecText);
+							eecVBox.addChild(eecHBox);
+						}
+						if(Validator.notNullAndEmpty(eec_swf)){
+							var eec_swfHBox:HBox = new HBox();
+							
+							var eec_swfCheckBox:CheckBox = new CheckBox();
+							eec_swfCheckBox.data = eec_swf;
+							eec_swfCheckBox.addEventListener(MouseEvent.CLICK,makeList);
+							
+							var eec_swfText:Label = new Label();
+							eec_swfText.text = commonFile.download_eec_swf_orig;
+							eec_swfText.width = referencesList.width * 0.7 ;
+							eec_swfText.truncateToFit = true;
+							
+							if(fireEvent){
+								eec_swfCheckBox.selected = !isSelected;
+								eec_swfCheckBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+							}
+							
+							eec_swfHBox.addChild(eec_swfCheckBox);
+							eec_swfHBox.addChild(eec_swfText);
+							eecVBox.addChild(eec_swfHBox);
+						}
+						
+						eecBox.addChild(eecLabel);
+						eecBox.addChild(eecVBox);
+						referencesList.addChild(eecBox);
+					}
+					
+					if(Validator.notNullAndEmpty(ece_r) ||  Validator.notNullAndEmpty(ece_r_swf)){
+						var ece_rBox:HBox = new HBox();
+						ece_rBox.percentWidth = 90;
+						
+						var ece_rLabel:Label = new Label();
+						ece_rLabel.percentWidth = 10;
+						ece_rLabel.text = resourceManager.getString('downloadList','ece_r');
+						
+						var ece_rVBox:VBox = new VBox();
+						if(Validator.notNullAndEmpty(ece_r)){
+							var ece_rHBox:HBox = new HBox();
+							
+							var ece_rCheckBox:CheckBox = new CheckBox();
+							ece_rCheckBox.data = ece_r;
+							ece_rCheckBox.addEventListener(MouseEvent.CLICK,makeList);
+							
+							var ece_rText:Label = new Label();
+							ece_rText.text = commonFile.download_ece_r_orig;
+							ece_rText.width = referencesList.width * 0.7 ;
+							ece_rText.truncateToFit = true;
+							
+							if(fireEvent){
+								ece_rCheckBox.selected = !isSelected;
+								ece_rCheckBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+							}
+							
+							ece_rHBox.addChild(ece_rCheckBox);
+							ece_rHBox.addChild(ece_rText);
+							ece_rVBox.addChild(ece_rHBox);
+						}
+						if(Validator.notNullAndEmpty(ece_r_swf)){
+							var ece_r_swfHBox:HBox = new HBox();
+							
+							var ece_r_swfCheckBox:CheckBox = new CheckBox();
+							ece_r_swfCheckBox.data = ece_r_swf;
+							ece_r_swfCheckBox.addEventListener(MouseEvent.CLICK,makeList);
+							
+							var ece_r_swfText:Label = new Label();
+							ece_r_swfText.text = commonFile.download_ece_r_swf_orig;
+							ece_r_swfText.width = referencesList.width * 0.7 ;
+							ece_r_swfText.truncateToFit = true;
+							
+							if(fireEvent){
+								ece_r_swfCheckBox.selected = !isSelected;
+								ece_r_swfCheckBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+							}
+							
+							ece_r_swfHBox.addChild(ece_r_swfCheckBox);
+							ece_r_swfHBox.addChild(ece_r_swfText);
+							ece_rVBox.addChild(ece_r_swfHBox);
+						}
+						
+						ece_rBox.addChild(ece_rLabel);
+						ece_rBox.addChild(ece_rVBox);
+						referencesList.addChild(ece_rBox);
+					}
+					
+					if(Validator.notNullAndEmpty(fmvss) || Validator.notNullAndEmpty(fmvss_swf)){
+						var fmvssBox:HBox = new HBox();
+						fmvssBox.percentWidth = 90;
+						
+						var fmvssLabel:Label = new Label();
+						fmvssLabel.percentWidth = 10;
+						fmvssLabel.text = resourceManager.getString('downloadList','fmvss');
+						
+						var fmvssVBox:VBox = new VBox();
+						
+						if(Validator.notNullAndEmpty(fmvss)){
+							var fmvssHBox:HBox = new HBox();
+							
+							var fmvssCheckBox:CheckBox = new CheckBox();
+							fmvssCheckBox.data = fmvss;
+							fmvssCheckBox.addEventListener(MouseEvent.CLICK,makeList);
+							
+							var fmvssText:Label = new Label();
+							fmvssText.text = commonFile.download_fmvss_orig;
+							fmvssText.width = referencesList.width * 0.7 ;
+							fmvssText.truncateToFit = true;
+							
+							if(fireEvent){
+								fmvssCheckBox.selected = !isSelected;
+								fmvssCheckBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+							}
+							
+							fmvssHBox.addChild(fmvssCheckBox);
+							fmvssHBox.addChild(fmvssText);
+							fmvssVBox.addChild(fmvssHBox);
+						}
+						if(Validator.notNullAndEmpty(fmvss_swf)){
+							var fmvss_swfHBox:HBox = new HBox();
+							
+							var fmvss_swfCheckBox:CheckBox = new CheckBox();
+							fmvss_swfCheckBox.data = fmvss_swf;
+							fmvss_swfCheckBox.addEventListener(MouseEvent.CLICK,makeList);
+							
+							var fmvss_swfText:Label = new Label();
+							fmvss_swfText.text = commonFile.download_fmvss_swf_orig;
+							fmvss_swfText.width = referencesList.width * 0.7 ;
+							fmvss_swfText.truncateToFit = true;
+							
+							if(fireEvent){
+								fmvss_swfCheckBox.selected = !isSelected;
+								fmvss_swfCheckBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+							}
+							
+							fmvss_swfHBox.addChild(fmvss_swfCheckBox);
+							fmvss_swfHBox.addChild(fmvss_swfText);
+							fmvssVBox.addChild(fmvss_swfHBox);
+						}
+						
+						fmvssBox.addChild(fmvssLabel);
+						fmvssBox.addChild(fmvssVBox);
+						referencesList.addChild(fmvssBox);
+					}
+					
+					if(Validator.notNullAndEmpty(others) && Validator.notNullAndEmpty(othersTitle)){
+						var otherFiles:Array = others.substring(0,others.length-1).split("/");
+						var otherTitles:Array = othersTitle.substring(0,others.length-1).split("/");
+						var otherFileBox:HBox = new HBox();
+						otherFileBox.percentWidth = 90;
+						
+						var otherFileLabel:Label = new Label();
+						otherFileLabel.percentWidth = 10;
+						otherFileLabel.text = resourceManager.getString('downloadList','other');
+						
+						var otherFileVBox:VBox = new VBox();
+						//for each(var otherFile:String in otherFiles){
+						for(var i:int;i<otherFiles.length;i++){	
+								var otherFileHBox:HBox = new HBox();
+								
+								var otherFileCheckBox:CheckBox = new CheckBox();
+								
+								otherFileCheckBox.data = otherFiles[i];
+								otherFileCheckBox.addEventListener(MouseEvent.CLICK,makeList);
+								
+								var otherFileText:Label = new Label();
+								otherFileText.text = otherTitles[i];
+								otherFileText.width = referencesList.width * 0.7 ;
+								otherFileText.truncateToFit = true;
+								
+								if(fireEvent){
+									otherFileCheckBox.selected = !isSelected;
+									otherFileCheckBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+								}
+								
+								otherFileHBox.addChild(otherFileCheckBox);
+								otherFileHBox.addChild(otherFileText);
+								otherFileVBox.addChild(otherFileHBox);
+						}
+						otherFileBox.addChild(otherFileLabel);
+						otherFileBox.addChild(otherFileVBox);
+						referencesList.addChild(otherFileBox);
+						
+					}
+					
+					var rule:HRule = new HRule();
+					rule.percentWidth = 100;
+					rule.height = 1;
+					
+					referencesList.addChild(rule);
+				}
+			}
+			
+			private function makeDateFiles(ganttFile:Object,isSelected:Boolean,fireEvent:Boolean):void{
+				dateList.removeAllChildren();
+				var ganttDate:String = "";
+				for(ganttDate in ganttFile){
+					var dateNum:Number = new Number(ganttDate);
+					var df:DateFormatter = new DateFormatter();
+					df.formatString = "YYYY-MM-DD";
+					var dateStr:String = df.format(new Date(dateNum));
+					var label:Label = new Label();
+					label.text = resourceManager.getString('downloadList','dateFlag')+ dateStr;
+					label.percentWidth = 100;
+					dateList.addChild(label);
+						
+					var filelist:ArrayCollection = ganttFile[ganttDate] as ArrayCollection;
+					var hbox:HBox = new HBox();
+					hbox.percentWidth = 90;
+					
+					var fileLabel:Label = new Label();
+					fileLabel.percentWidth = 10;
+					fileLabel.text = resourceManager.getString('downloadList','other');
+					
+					var fileVBox:VBox = new VBox();
+					
+					for each(var file:Object in filelist){
+						var fileHbox:HBox = new HBox();
+						
+						var checkBox:CheckBox = new CheckBox();
+						checkBox.data = file.file_name;
+						checkBox.addEventListener(MouseEvent.CLICK,makeList);
+						
+						var text:Label = new Label();
+						text.text = file.file_name;
+						text.width = dateList.width * 0.7;
+						text.truncateToFit = true;
+						
+						if(fireEvent){
+							checkBox.selected = !isSelected;
+							checkBox.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
+						}
+						fileHbox.addChild(checkBox);
+						fileHbox.addChild(text);
+						fileVBox.addChild(fileHbox);
+					}
+					
+					hbox.addChild(fileLabel);
+					hbox.addChild(fileVBox);
+					dateList.addChild(hbox);
+				} 
+				if(ganttDate != ""){
+					var rule:HRule = new HRule();
+					rule.percentWidth = 100;
+					rule.height = 1;
+					dateList.addChild(rule);
+				}
+			}
+			
+			private function makeList(e:MouseEvent):void{
+				var isExsisted:Boolean = false;
+				for(var i:int = 0;i<list.length;i++){
+					if(list.getItemAt(i).document_title == e.currentTarget.data){
+						isExsisted = true;
+						if(!e.currentTarget.selected){
+							list.removeItemAt(i);
+						}
+						break;
+					}
+				}
+				//it has to be selected to add a new object
+				if(!isExsisted && e.currentTarget.selected){
+					var obj:Object = new Object();
+					//when selected item is in standars or references,e.currentTarget.data = e.currentTarget.label
+					//add new function uuid is no longer in use
+					obj["document_title"] = e.currentTarget.data;
+					obj["user_uuid"] = UserRight.getUserUUID();
+					obj["func_uuid"] = func_uuid;
+					list.addItem(obj);
+				}
+				showCountLabel();
+			}
+			
+			private function download():void{
+				if(list.length > 1){
+					downloadAll();
+				}else if (list.length < 1){
+					Alert.show(resourceManager.getString('downloadList','message3'));
+				}else{
+					var downloadURL:String = makeURL("download");
+					var request:URLRequest = new URLRequest(encodeURI(downloadURL));
+					request.method=URLRequestMethod.POST;
+					navigateToURL(request, "_blank");
+				}
+			}
+			
+			private function downloadAll():void{
+				createPop();
+				var ut:UtmostService=new UtmostService("FileUtil", function(e:ResultEvent):void{
+					var url:String=e.result as String;
+					if (url != null){
+						PopUpManager.removePopUp(batchDownLoad);
+					}
+					//set url, method is zipDownload meaning call java method zipDownload, besides, transfer data need to use in java
+					var downloadURL:String= StaticChannelSet.getWebRoot() + 
+											"/download.form?method=zipDownload&url=" + url + 
+											"&useruuid=" + UserRight.getUserUUID();
+					var request:URLRequest=new URLRequest(encodeURI(downloadURL));
+					//set transfer type is post(two type:'get' and 'post')
+					request.method=URLRequestMethod.POST;	
+					//not open a new window
+					navigateToURL(request, '_self'); 
+				});
+				
+				ut.ro.zipFile(list, UserRight.getUserUUID());				
+			}
+			
+			private function createPop():void{
+				batchDownLoad=new BatchDownLoad();
+				PopUpManager.addPopUp(batchDownLoad, this, true);
+				PopUpManager.centerPopUp(batchDownLoad);
+			}
+			
+			private function view():void{
+				if (list.length != 1){
+					Alert.show(resourceManager.getString('downloadList','message4'));
+				}else{
+					var downloadURL:String = makeURL("view");
+					var request:URLRequest = new URLRequest(encodeURI(downloadURL));
+					request.method=URLRequestMethod.POST;
+					navigateToURL(request, "_blank");
+				}
+			}
+			//piece together url
+			private function makeURL(action:String):String{
+				var url:String = "";
+				
+				var filename:String = list.getItemAt(0).document_title;
+				var funcuuid:String = func_uuid;
+				var useruuid:String = UserRight.getUserUUID();
+				//seems harmless when set to ""
+				var author:String="";
+				var last_modify_date_str:String="";
+				//set url, method is download meaning call java method zipDownload, besides, transfer data need to use in java
+				url=StaticChannelSet.getWebRoot() + 
+				   "/download.form?method=download&path=UPLOAD&name=" + filename + 
+				   "&uuid=" + funcuuid + 
+				   "&author=" + author + 
+				   "&useruuid=" + useruuid + 
+				   "&last_modify_date_str=" + last_modify_date_str + 
+				   "&action=" + action;
+				return url;
+				
+			}
+			//show count
+			private function showCountLabel():void{ 
+				countLabel.text = resourceManager.getString('downloadList','selectCount') + list.length.toString();
+			}
+			//select all
+			private function selectAll():void{
+				makeStandars(gb_en,gb_en_swf,gb_ch,gb_ch_swf,all.selected,true);
+				makeReferences(eec,eec_swf,ece_r,ece_r_swf,fmvss,fmvss_swf,others,othersTitle,all.selected,true);
+			}
+			
+			private function selectFlag():void{ 
+				makeDateFiles(ganttFile,flag.selected,true);
+			}
+			//add items selected to list
+			private function addToList():void{
+				if (list.length < 1){
+					Alert.show(resourceManager.getString('downloadList','message3'));
+					return;
+				}
+				var utmost:UtmostService = new UtmostService("DownloadListService",function(e:ResultEvent):void{
+					Alert.show(resourceManager.getString('downloadList','message2'));
+					Application.application.showCount();
+				});
+				utmost.ro.addToList(list);
+			}
+			
+			private function close():void{ 
+				PopUpManager.removePopUp(this);
+			}
+			//open list screen
+			 private function showList():void{
+				var obj:IFlexDisplayObject=PopUpManager.createPopUp(this as DisplayObject, downloadList, true);
+				PopUpManager.centerPopUp(obj);
+			}
+		]]>
+	</mx:Script>
+	<mx:VBox width="100%"
+			 horizontalAlign="center">
+		
+		<mx:VBox horizontalAlign="center"
+				 width="100%">
+			<mx:HBox width="90%">
+				<mx:Label width="10%"/>
+				<mx:CheckBox styleName="downloadDoc" id="all"
+							 label="{resourceManager.getString('downloadList','checkBoxLabel1')}"
+							 click="selectAll()"/>
+				<mx:CheckBox styleName="downloadDoc" label="{resourceManager.getString('downloadList','checkBoxLabel2')}"
+							 id="flag"
+							 click="selectFlag()"/>
+			</mx:HBox>
+			<mx:HRule width="100%" height="1"/>
+		</mx:VBox>
+		
+		<mx:VBox styleName="downloadDoc" id="standarsList"
+				 horizontalAlign="center"
+				 width="100%">
+		</mx:VBox>
+		<mx:VBox styleName="downloadDoc" id="referencesList"
+				 horizontalAlign="center"
+				 width="100%">
+		</mx:VBox>
+		<mx:VBox styleName="downloadDoc" id="dateList"
+				 horizontalAlign="center"
+				 width="100%">
+		</mx:VBox>
+		<mx:HBox width="100%"
+				 horizontalAlign="left">
+			<mx:Label styleName="downloadDoc" id="countLabel"
+					  width="40%"
+					  textAlign="left"/>
+			<mx:Button styleName="downloadDoc" id="buttonA" label="{resourceManager.getString('downloadList','buttonLabel1')}"				       click="addToList()"/>
+			<mx:Button styleName="downloadDoc" label="{resourceManager.getString('downloadList','buttonLabel2')}"
+					   click="view()"/>
+			<mx:Button styleName="downloadDoc" id="buttonC" label="{resourceManager.getString('downloadList','buttonLabel3')}"					   click="download()"/>
+		</mx:HBox>
+	</mx:VBox>
+</mx:TitleWindow>

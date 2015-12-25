@@ -1,0 +1,653 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+///////////////////////////////////////////////////////////////////////////////
+// Licensed Materials - Property of IBM
+// 5724-Y31
+// (c) Copyright IBM Corporation 2007, 2009. All Rights Reserved.
+//
+// Note to U.S. Government Users Restricted Rights:
+// Use, duplication or disclosure restricted by GSA ADP Schedule
+// Contract with IBM Corp.
+///////////////////////////////////////////////////////////////////////////////
+-->
+
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml"
+  xmlns:ilog="http://www.ilog.com/2007/ilog/flex"
+  xmlns:local="*"
+  layout="absolute" width="100%" height="100%"
+  xmlns:chart="module.chart.*" horizontalScrollPolicy="off">
+
+  
+  <mx:Script>
+    <![CDATA[
+    	import module.chart.ilog.Constraint;
+    	import module.chart.ilog.Resource;
+    	import module.chart.ilog.Task;
+    	import module.chart.ilog.DataServices;
+      import ilog.utils.LicenseHandler;
+      import mx.validators.EmailValidator;
+      import ilog.utils.TimeUnit;
+      import ilog.utils.GregorianCalendar;
+      import ilog.gantt.TaskItemEditKind;
+      import mx.core.EdgeMetrics;
+      import mx.events.DataGridEventReason;
+      import mx.controls.DateField;
+      import mx.controls.AdvancedDataGrid;
+      import mx.collections.IList;
+      import mx.collections.IViewCursor;
+      import mx.collections.IHierarchicalCollectionViewCursor;
+      import mx.collections.ArrayCollection;
+      import ilog.gantt.ConstraintItem;
+      import mx.utils.StringUtil;
+      import ilog.gantt.ConstraintKind;
+      import ilog.core.DataItem;
+      import mx.messaging.SubscriptionInfo;
+      import mx.collections.IHierarchicalData;
+      import flash.utils.getQualifiedClassName;
+      import mx.collections.XMLListCollection;
+      import mx.formatters.DateFormatter;
+      import mx.core.IDataRenderer;
+      import mx.core.IProgrammaticSkin;
+      import mx.core.IInvalidating;
+      import mx.collections.IHierarchicalCollectionView;
+      import mx.collections.ICollectionView;
+      import mx.collections.HierarchicalCollectionView;
+
+      import ilog.gantt.GanttSheetEvent;
+      import ilog.gantt.TaskItem;
+      import mx.collections.HierarchicalData;
+      import mx.events.AdvancedDataGridEvent;
+      import mx.resources.ResourceManager;
+
+      //------------------------------------------------------------------------
+      //
+      //  Constants
+      //
+      //------------------------------------------------------------------------
+
+      private static const ZOOM_OUT_RATIO:Number = 2;
+      private static const ZOOM_IN_RATIO:Number = 1 / ZOOM_OUT_RATIO;
+
+      //------------------------------------------------------------------------
+      //
+      //  Static utilities
+      //
+      //------------------------------------------------------------------------
+
+      public static function getString(key:String):String {
+        var s:String;
+        try {
+          s = ResourceManager.getInstance().getString("taskchartsample", "taskchartsample."+key);
+        } catch (e:Error) {
+          s = null;
+        }
+        return s == null ? key : s;
+      }
+
+      //------------------------------------------------------------------------
+      //
+      //  Variables
+      //
+      //------------------------------------------------------------------------
+
+      // Semaphore indicating that the selection is currently being synchronized.
+      private var _synchronizingSelection:Boolean;
+      
+      //------------------------------------------------------------------------
+      //
+      //  Properties
+      //
+      //------------------------------------------------------------------------
+
+
+      //-------------------------------
+      //  taskTooltipDateFormatter
+      //-------------------------------
+      
+      private var _taskTooltipDateFormatter:DateFormatter;
+      
+      private function get taskTooltipDateFormatter():DateFormatter {
+        if (!_taskTooltipDateFormatter)
+        {
+          _taskTooltipDateFormatter = new DateFormatter();
+          _taskTooltipDateFormatter.formatString = getString("dateformat.task.tooltip");
+        }
+        return _taskTooltipDateFormatter;
+      }
+
+      //-------------------------------
+      //  milestoneLabelDateFormatter
+      //-------------------------------
+
+      private var _milestoneLabelDateFormatter:DateFormatter;
+      
+      private function get milestoneLabelDateFormatter():DateFormatter {
+        if (!_milestoneLabelDateFormatter)
+        {
+          _milestoneLabelDateFormatter = new DateFormatter();
+          _milestoneLabelDateFormatter.formatString = getString("dateformat.milestone.label");
+        }
+        return _milestoneLabelDateFormatter;
+      }
+
+      //-------------------------------
+      //  selectedItem
+      //-------------------------------
+      [Bindable]
+      public var selectedItem:Object;
+
+      //------------------------------------------------------------------------
+      //
+      //  Initialization
+      //
+      //------------------------------------------------------------------------
+
+      private function init():void
+      {
+        loadDataModel();
+      }
+
+      //------------------------------------------------------------------------
+      //
+      //  Data
+      //
+      //------------------------------------------------------------------------
+      
+      public function loadDataModel():void
+      {
+        loader_complete();
+      }
+
+      private function loader_progress(event:ProgressEvent):void
+      {
+        pb.setProgress(event.bytesLoaded, event.bytesTotal);
+      }
+        
+      private function loader_complete():void
+      {
+        // Hide the progress bar
+        pb.setProgress(100,100);
+        var t:Timer = new Timer(1500, 1);
+        t.addEventListener(TimerEvent.TIMER_COMPLETE, function(e:Event):void {
+          hideProgressBar.play([pb]);
+        });
+        t.start();
+
+        //Load the data model
+        var data:XML = myChartData;
+
+        var dataServices:DataServices = DataServices.getInstance();
+        dataServices.fill(data);
+
+        taskChart.taskDataProvider = dataServices.taskCollection;
+        taskChart.constraintDataProvider = dataServices.constraintCollection;
+
+        dataGrid.validateNow();
+        dataGrid.expandAll();
+        ganttSheet.visibleTimeRangeStart = new Date(2009,8,1);
+        ganttSheet.visibleTimeRangeEnd = new Date(2010, 1, 1);
+        ganttSheet.showAll(50);
+      }
+
+      /**
+       * Returns the label for a task data provider item.
+       */
+      private function getTaskLabel(item:Object):String
+      {
+        var task:Task = item as Task;
+        if (!task)
+          return null;
+
+        if (task.milestone)
+        {
+          return milestoneLabelDateFormatter.format(task.endTime);
+        }
+        else
+        {
+          var resources:Array = DataServices.getInstance().getResourcesForTask(task);
+
+          var labels:Array = [];
+          for each (var r:Resource in resources)
+          {
+            labels.push(r.name);
+          }
+
+          return labels.join(", ");
+        }
+      }
+      
+      /**
+       * Returns the tooltip for a DataItem.
+       */
+      private function getToolTip(item:DataItem):String
+      {
+        if (item is TaskItem)
+        {
+          var taskItem:TaskItem = TaskItem(item);
+
+          if (taskItem.isMilestone)
+          {
+            return StringUtil.substitute(
+                getString("tooltip.format.milestone"),
+                Task(taskItem.data).name,
+                taskTooltipDateFormatter.format(taskItem.startTime));
+          }
+          else
+          {
+            return StringUtil.substitute(
+                getString("tooltip.format.task"),
+                Task(taskItem.data).name,
+                taskTooltipDateFormatter.format(taskItem.startTime),
+                taskTooltipDateFormatter.format(taskItem.endTime));
+          }
+        }
+        else if (item is ConstraintItem)
+        {
+          var constraintItem:ConstraintItem = ConstraintItem(item);
+
+          return StringUtil.substitute(
+              getString("tooltip.format.constraint." + constraintItem.kind),
+              Task(constraintItem.fromTask).name,
+              Task(constraintItem.toTask).name
+          );
+        }
+        return null;
+      } 
+      
+      private function commitItem(item:DataItem):void
+      {
+        if (item is TaskItem)
+        {
+          var taskItem:TaskItem = TaskItem(item);
+          var task:Task = item.data as Task;
+          task.startTime = new Date(taskItem.startTime);
+          task.endTime = new Date(taskItem.endTime);
+        }  
+      }
+      
+      //------------------------------------------------------------------------
+      //
+      //  Data grid event handlers
+      //
+      //------------------------------------------------------------------------
+
+      private function dataGrid_itemEditEndHandler(event:AdvancedDataGridEvent):void
+      {
+        // Check the reason for the event.
+        if (event.reason == DataGridEventReason.CANCELLED)
+        {
+            // Do not update cell.
+            return;
+        }            
+
+        var dataGrid:AdvancedDataGrid = event.currentTarget as AdvancedDataGrid;
+        var newDate:Date;
+        
+        if (event.dataField == "startTime")
+        {
+          newDate = DateField(dataGrid.itemEditorInstance).selectedDate;
+          adjustStartTime(newDate);
+        }
+        else if (event.dataField == "endTime")
+        {
+          newDate = DateField(dataGrid.itemEditorInstance).selectedDate;
+          adjustEndTime(newDate);
+        }
+      }
+      
+      /**
+       * Handles the change events from the data grid to synchronize the 
+       * selection in the Gantt sheet.
+       */
+      private function dataGrid_changeHandler(event:Event):void
+      {
+        if (_synchronizingSelection)
+          return;
+          
+        _synchronizingSelection = true;
+
+        var dataGrid:AdvancedDataGrid = AdvancedDataGrid(event.currentTarget);
+        ganttSheet.selectedItems = dataGrid.selectedItems;
+        selectedItem = dataGrid.selectedItem;
+
+        _synchronizingSelection = false;
+      }
+      
+      //------------------------------------------------------------------------
+      //
+      //  Gantt sheet event handlers
+      //
+      //------------------------------------------------------------------------
+
+      private function ganttSheet_itemEditMoveHandler(event:GanttSheetEvent):void
+      {
+        event.preventDefault();
+  
+        var ganttSheet:GanttSheet = GanttSheet(event.currentTarget);
+        var calendar:GregorianCalendar = ganttSheet.calendar;
+        var taskItem:TaskItem = event.itemRenderer.data as TaskItem;
+  
+        // Snaps the start time on the snapping time precision.
+        var time:Date = calendar.round(taskItem.startTime, 
+                                       ganttSheet.snappingTimePrecision.unit,
+                                       ganttSheet.snappingTimePrecision.steps);
+
+        // Align the start time on the start of work day
+        adjustStartTime(time);
+  
+        // Move the item while preserving a constant duration.
+        if (time.time != taskItem.startTime.time)
+        {
+          var duration:Number = taskItem.endTime.time - taskItem.startTime.time;
+          taskItem.startTime.time = time.time;
+          taskItem.endTime.time = time.time + duration;
+        }
+      }
+      
+      private function ganttSheet_itemEditResizeHandler(event:GanttSheetEvent):void
+      {
+        event.preventDefault();
+        
+        var ganttSheet:GanttSheet = GanttSheet(event.currentTarget);
+        var calendar:GregorianCalendar = ganttSheet.calendar;
+        var taskItem:TaskItem = event.itemRenderer.data as TaskItem;
+  
+        var time:Date;
+  
+        if (ganttSheet.editKind == TaskItemEditKind.RESIZE_START)
+        {
+          // Snaps the start time on the snapping time precision.
+          time = calendar.round(taskItem.startTime, 
+                                ganttSheet.snappingTimePrecision.unit,
+                                ganttSheet.snappingTimePrecision.steps);
+          // Align on the start time on the start of work day 
+          adjustStartTime(time);
+  
+          var endDayStartTime:Date = new Date(taskItem.endTime.time);
+          adjustStartTime(endDayStartTime);
+          
+          // Prevent the start time from being greater than the start of work 
+          // day of the end day.
+          if (time.time > endDayStartTime.time)
+            time = endDayStartTime;
+  
+          if (time.time != taskItem.startTime.time)
+            taskItem.startTime.time = time.time;
+        }
+        else if (ganttSheet.editKind == TaskItemEditKind.RESIZE_END)
+        {
+          // Snaps the end time on the snapping time precision.
+          time = calendar.round(taskItem.endTime,
+                                ganttSheet.snappingTimePrecision.unit,
+                                ganttSheet.snappingTimePrecision.steps);
+
+          // Align the end time on the end of work day  
+          adjustEndTime(time);
+          
+          var startDayEndTime:Date = new Date(taskItem.startTime.time);
+          adjustEndTime(startDayEndTime);
+
+          // Prevent the end time from being greater than the end of work 
+          // day of the start day.
+          if (time.time < startDayEndTime.time)
+            time = startDayEndTime;
+  
+          if (time.time != taskItem.endTime.time)
+            taskItem.endTime.time = time.time;
+        }
+      }
+
+      /**
+       * Handles the change events from the Gantt sheet to update the
+       * selectedItem and synchronize the selection in the data grid.
+       */ 
+      private function ganttSheet_changeHandler(event:GanttSheetEvent):void
+      {
+        if (_synchronizingSelection)
+          return;
+
+        _synchronizingSelection = true;
+          
+        var ganttSheet:GanttSheet = GanttSheet(event.currentTarget);
+        selectedItem = ganttSheet.selectedItem;
+        
+        var selectedTasks:Array = [];
+        for each (var i:Object in ganttSheet.selectedItems) {
+          if (i is Task)
+            selectedTasks.push(i);
+        }
+        dataGrid.selectedItems = selectedTasks;
+
+        _synchronizingSelection = false;
+      }
+      
+      /**
+       * Handles the itemClick events from the Gantt sheet to scroll the view so 
+       * that the complete task is visible, or the most of the constraint is 
+       * visible.
+       */
+      private function ganttSheet_itemClickHandler(event:GanttSheetEvent):void
+      {
+        var item:Object = event.item;
+        if (item)
+          ganttSheet.scrollToItem(item, 25);
+      }
+
+      /**
+       * Handles the visibleTimeRangeChange events from the Gantt sheet to
+       * control the state of the zoom and unzoom buttons.
+       */
+      private function ganttSheet_visibleTimeRangeChangeHandler(event:GanttSheetEvent):void
+      {
+        zoomButton.enabled = ganttSheet.zoomFactor > ganttSheet.minZoomFactor;
+        unzoomButton.enabled = 
+            ganttSheet.visibleTimeRangeStart.time != ganttSheet.minVisibleTime.time
+            || ganttSheet.visibleTimeRangeEnd.time != ganttSheet.maxVisibleTime.time;
+      }
+
+      //------------------------------------------------------------------------
+      //
+      //  User interface actions
+      //
+      //------------------------------------------------------------------------
+
+      private function zoomIn():void
+      {
+        if (!ganttSheet.selectedItem)
+        {
+          ganttSheet.zoom(ZOOM_IN_RATIO, null, true);
+        }
+        else
+        {
+          var item:Object = ganttSheet.selectedItem;
+          var taskItem:TaskItem = ganttSheet.itemToTaskItem(item);
+          if (!taskItem)
+            return;
+
+          var center:Date = new Date( ( taskItem.startTime.time + taskItem.endTime.time ) / 2 );
+          ganttSheet.zoom(ZOOM_IN_RATIO, center, true);
+        }
+      }
+
+      public function deleteItem():void
+      {
+        if (!selectedItem)
+          return;
+
+        var dataServices:DataServices = DataServices.getInstance();
+        if (selectedItem is ConstraintItem)
+        {
+          dataServices.deleteConstraint(selectedItem.data as Constraint);
+        }
+        else if (selectedItem is TaskItem)
+        {
+          dataServices.deleteTask(selectedItem.data as Task);
+        }
+      }
+      
+      //------------------------------------------------------------------------
+      //
+      //  Utilities
+      //
+      //------------------------------------------------------------------------
+      
+      public function adjustStartTime(date:Date):Date
+      {
+        // work day starts at 08:00
+        date.hours = 8;
+        date.minutes = 0;
+        date.seconds = 0;
+        date.milliseconds = 0;
+        return date;
+      }
+      
+      public function adjustEndTime(date:Date):Date
+      {
+        // work day ends at 17:00
+        date.hours = 17;
+        date.minutes = 0;
+        date.seconds = 0;
+        date.milliseconds = 0;
+        return date;
+      }
+
+      public function getConstraintKindLabel(kind:String):String
+      {
+        return getString("label." + kind);
+      }
+
+    ]]>
+  </mx:Script>
+  <mx:XML id="myChartData" source="module/chart/model.xml" />
+  <mx:Parallel id="hideProgressBar" effectEnd="toolbar.removeChild(pb);">
+    <mx:Fade alphaFrom="1" alphaTo="0" duration="1500"/>    
+  </mx:Parallel>
+  
+  <mx:VBox width="100%" height="100%" verticalGap="1" left="5" right="5" top="5"
+    bottom="5" horizontalScrollPolicy="off">
+   
+    <mx:ApplicationControlBar id="toolbar" width="100%" height="40"
+      >
+      <mx:HBox>
+        <mx:Button toolTip="@Resource(bundle='taskchartsample', key='taskchartsample.button.tip.ExpandAll')" click="dataGrid.expandAll()"
+          icon="@Embed('/img/resources/expanded.png')" width="47" height="28"/>
+        
+        <mx:Button toolTip="@Resource(bundle='taskchartsample', key='taskchartsample.button.tip.CollapseAll')" click="dataGrid.collapseAll();dataGrid.dispatchEvent(new AdvancedDataGridEvent(AdvancedDataGridEvent.ITEM_CLOSE));"
+          icon="@Embed('/img/resources/unhierarchical.png')" width="47" height="28"/>
+      </mx:HBox>
+      <mx:HBox x="{dataGrid.width + 10}">
+        <mx:Button id="zoomButton" toolTip="@Resource(bundle='taskchartsample', key='taskchartsample.button.tip.ZoomIn')" click="zoomIn()"
+          icon="@Embed('/img/resources/zoom in5.png')" width="47" height="28"/>
+        <mx:Button id="unzoomButton" toolTip="@Resource(bundle='taskchartsample', key='taskchartsample.button.tip.ZoomOut')" click="ganttSheet.zoom(ZOOM_OUT_RATIO, null, true)"
+          icon="@Embed('/img/resources/zoom out7.png')" width="47" height="28"/>
+        <mx:Button click="ganttSheet.showAll(10, true)"
+          icon="@Embed('/img/resources/zoom fit6.png')" width="47" height="28"
+          toolTip="@Resource(bundle='taskchartsample', key='taskchartsample.button.tip.ZoomToFit')"/>
+      </mx:HBox>
+      <mx:ProgressBar id="pb" x="{itemPanel.x}" width="{itemPanel.width}" mode="manual"/>
+      <mx:HBox width="100%" horizontalAlign="right" paddingRight="20">
+      	<mx:LinkButton id="closeButton" label="X" click="{this.parent.removeChild(this)}"/>
+      </mx:HBox>
+    </mx:ApplicationControlBar>
+    <mx:HBox width="100%" height="100%" horizontalGap="0" verticalAlign="top">
+
+      <mx:ApplicationControlBar width="100%" height="100%"
+         verticalAlign="top">
+
+        <ilog:TaskChart id="taskChart" width="100%" height="100%" 
+          left="3" right="3"
+          creationComplete="init()"
+          taskLabelFunction="getTaskLabel"
+          >
+          <ilog:dataGrid>
+            <ilog:GanttDataGrid id="dataGrid" 
+              dropShadowEnabled="false"
+              editable="true"
+              verticalScrollPolicy="on"
+              itemEditEnd="dataGrid_itemEditEndHandler(event);"
+              change="dataGrid_changeHandler(event);"
+              rowHeight="24"
+              >
+              <ilog:columns>
+                <mx:AdvancedDataGridColumn
+                  dataField="name"
+                  headerText="@Resource(bundle='taskchartsample', key='taskchartsample.column.Name')"
+                  editable="false"
+                  dataTipField="name"
+                  showDataTips="true"
+                  width="200">
+                </mx:AdvancedDataGridColumn>
+                <mx:AdvancedDataGridColumn
+                  dataField="id"
+                  headerText="@Resource(bundle='taskchartsample', key='taskchartsample.column.ID')"
+                  editable="false"
+                  width="40">
+                </mx:AdvancedDataGridColumn>
+                <mx:AdvancedDataGridColumn
+                  dataField="startTime"
+                  itemEditor="mx.controls.DateField"
+                  editorDataField="selectedDate"
+                  headerText="@Resource(bundle='taskchartsample', key='taskchartsample.column.Start')"
+                  width="60">
+                  <mx:formatter>
+                    <mx:DateFormatter formatString="@Resource(bundle='taskchartsample', key='taskchartsample.dateformat.task.datagrid')" />
+                  </mx:formatter>
+                </mx:AdvancedDataGridColumn>
+                <mx:AdvancedDataGridColumn
+                  dataField="endTime"
+                  itemEditor="mx.controls.DateField"
+                  editorDataField="selectedDate"
+                  headerText="@Resource(bundle='taskchartsample', key='taskchartsample.column.End')"
+                  width="60">
+                  <mx:formatter>
+                    <mx:DateFormatter formatString="@Resource(bundle='taskchartsample', key='taskchartsample.dateformat.task.datagrid')" />
+                  </mx:formatter>
+                </mx:AdvancedDataGridColumn>
+              </ilog:columns>
+            </ilog:GanttDataGrid>
+          </ilog:dataGrid>
+
+          <ilog:ganttSheet>
+            <ilog:GanttSheet id="ganttSheet"
+              commitItemFunction="commitItem"
+              minVisibleTime="{new Date(1995,0,0)}"
+              maxVisibleTime="{new Date(2020,0,0)}"
+              zoomFactor="{TimeUnit.WEEK.milliseconds / 40}"
+              dataTipFunction="getToolTip"
+              editingTipFunction="getToolTip"
+              visibleTimeRangeChange="ganttSheet_visibleTimeRangeChangeHandler(event);"
+              itemClick="ganttSheet_itemClickHandler(event);"
+              itemEditMove="ganttSheet_itemEditMoveHandler(event);"
+              itemEditResize="ganttSheet_itemEditResizeHandler(event);"
+              workingTimes="{[{rangeStart: '8:00', rangeEnd: '17:00'}]}"
+              change="ganttSheet_changeHandler(event);"
+              />
+              <!--
+              minZoomFactor="{TimeUnit.HOUR.milliseconds / 20}"
+              maxZoomFactor="{TimeUnit.YEAR.milliseconds / 20}"
+               -->
+          </ilog:ganttSheet>
+        </ilog:TaskChart>
+
+        <mx:VBox height="100%" width="200">
+          <chart:ItemPanel
+            id="itemPanel"
+            height="310" width="100%"
+            taskChart="{taskChart}"
+            task="{selectedItem as Task}"
+            constraint="{selectedItem as Constraint}"
+          />
+          <!--
+          <mx:Panel id="helpPanel" title="@Resource(bundle='taskchartsample', key='taskchartsample.title.Help')" 
+                    width="100%" height="100%" minHeight="0" paddingBottom="0" paddingRight="0">
+            <mx:TextArea width="100%" height="100%" minHeight="0" editable="false" 
+                         selectable="false" focusEnabled="false" borderStyle="none" 
+                         htmlText="@Resource(bundle='taskchartsample', key='taskchartsample.help')"/>                   
+          </mx:Panel>
+          -->
+       </mx:VBox>       
+      </mx:ApplicationControlBar>
+    </mx:HBox>
+  </mx:VBox>
+  
+</mx:Module>

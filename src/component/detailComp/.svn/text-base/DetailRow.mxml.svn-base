@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" width="50%"  >
+<mx:Script>
+	<![CDATA[
+		[Bindable]
+		private var leftLabelText:String;
+		//set value of label
+		public function set setll(_ll:String):void{
+			leftLabelText=_ll;
+		}
+		public function get getll():String{
+			return leftLabelText;
+		}
+		[Bindable]
+		private var leftTextText:String;
+		//set value of text
+		public function set setlt(_lt:String):void{
+			leftTextText=_lt;
+		}
+	]]>
+</mx:Script>
+				<mx:Label id="leftlabel" text="{leftLabelText+':'}"   fontWeight="bold"/>
+				<mx:Text  id="lefttext" text="{leftTextText}" maxWidth="300" width="100%" />
+</mx:HBox>

@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="{initTree();}"   width="100%" height="100%"   xmlns:com="com.*" xmlns:mycomponents="org.utmost.mycomponents.*">
+	<mx:Script>
+		<![CDATA[
+			import mx.events.ValidationResultEvent;
+			import flash.trace.Trace;
+			import org.utmost.variable.TreeVar;
+			import org.utmost.service.AutoService;
+			import org.utmost.variable.OperState;
+			import org.utmost.util.AutoUtil;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import mx.collections.ArrayCollection;
+			import component.sys.ShowPictureConp;
+			import org.utmost.effect.PopUpEffect;
+			import mx.core.Application;
+			import mx.core.IFlexDisplayObject;
+			import mx.core.UIComponent;
+			import mx.controls.Alert;
+			import mx.managers.DragManager;
+			import mx.controls.Tree;
+			import mx.controls.listClasses.ListBase;
+			import mx.events.CloseEvent;
+			import mx.events.ListEvent;
+			import mx.events.DragEvent;
+			import org.utmost.util.ComponentUtil;
+			import mx.managers.PopUpManager;
+			[Bindable]
+			private var treeData:ArrayCollection;
+			private var tableName:String="U_PORTAL_FUNC";
+			private var defaultSelectedIndex:int;
+			
+			private var nowState:String; //操作状态标志
+			
+			[Bindable]
+			public var selectedNode:Object;
+			
+			private var validate:Boolean;
+			
+			private function initTree():void{
+				
+				resultInfo.text = "";
+				
+				var ut:UtmostService = new UtmostService("RightService",function(e:ResultEvent):void{
+					var dataArr:ArrayCollection = ArrayCollection(e.result);
+					
+					var rootObj:Object = new Object();
+					rootObj["rolename"] = "Root";
+					rootObj["uuid"] = "0";
+					rootObj["children"] = dataArr;
+					
+					treeData = new ArrayCollection();
+					
+					treeData.addItem(rootObj);
+					
+					callLater(function():void {
+						ComponentUtil.ocAllTree(tree);//全部打开/关闭tree节点
+						tree.selectedIndex=defaultSelectedIndex;//设置Tree到上次选择状态
+						//AutoUtil.clearValue(form);
+					});
+				});
+				ut.ro.queryPortalRoles();
+			}
+			
+			//鼠标在树的节点上按下
+			public function treeChanged(event:Event):void {
+				
+				selectedNode=event.currentTarget.selectedItem;
+				
+				if(selectedNode==null)return;
+				
+				if(selectedNode.uuid == 0){
+					rightBox.visible = false;
+					return;
+				}else{
+					rightBox.visible = true;
+				}
+				
+				resultInfo.text = "";
+				
+				nowState=OperState.Update;
+//				functypeItem.enabled=false;
+				btn_save.enabled=false;
+				btn_del.enabled=true;
+				rolename.text=selectedNode.rolename;
+//				rolename.toolTip = selectedNode.rolename;
+				rolecode.text=selectedNode.rolecode;
+//				rolecode.toolTip = selectedNode.rolecode;
+				roledesc.text=selectedNode.roledesc;
+//				roledesc.toolTip = selectedNode.roledesc;
+				state.selectedValue = selectedNode.state;
+				if(selectedNode.state!="0" && selectedNode.state!="1"){
+					state1.selected = false;
+					state2.selected = false;
+				}
+			}
+			//添加目录树的新节点
+			private function save(event:ValidationResultEvent):void{
+				rolename.setStyle("backgroundColor", "#FFFFFF");
+			
+				if(selectedNode == null){
+					resultInfo.text = "Please select an item.";
+				}
+				
+				var roleObj:Object = new Object();
+				
+				if(nowState == "create"){
+					roleObj.pid = selectedNode == null ? "0" : selectedNode.uuid;
+				}else if(nowState == "update"){
+					roleObj.pid = selectedNode.pid;
+					roleObj.uuid = selectedNode.uuid;
+				}
+				roleObj.rolecode = rolecode.text;
+				roleObj.rolename = rolename.text;
+				roleObj.roledesc = roledesc.text;
+				if(state.selectedValue != null){
+					roleObj.state = state.selectedValue.toString();
+				}
+				var ut_save:UtmostService = new UtmostService("RightService",function(e:ResultEvent):void{
+					if(e.result == 0){
+						initTree();
+						resultInfo.text = "Success!";
+					}else{
+						resultInfo.text = "Error!";
+					}
+				})
+				ut_save.ro.savePortalRole(roleObj);
+				
+				btn_save.enabled = false;
+				
+				setTreeIndex();
+			}
+			//删除Tree的某个节点及其下面所有节点的方法，递归寻找到当前要删除的节点的集合
+			private function del():void {
+				
+				if(selectedNode==null)return;
+				
+				defaultSelectedIndex=tree.selectedIndex-1;
+				btn_save.enabled=false;
+				
+				var alert:Alert = Alert.show('Sure to delete?', 'Information', Alert.YES | Alert.NO,null,function(e:CloseEvent):void {
+					switch(e.detail) {
+						case Alert.YES:
+						var ut_del:UtmostService=new UtmostService("TreeService",function(event:ResultEvent):void {	
+							initTree();
+						});
+						ut_del.ro.deleteTree(TreeVar.getDelObject("U_PORTAL_ROLE",tree.selectedItem.uuid.toString()));
+						break;
+						case Alert.NO:
+						break;	
+					}
+				});
+				
+			}
+			private function setTreeIndex():void {
+				defaultSelectedIndex=tree.selectedIndex;
+			}
+			//点击“+”按钮
+			private function clearReadyToAddNode():void{
+				if(tree.selectedItem!=null){
+					rightBox.visible = true;
+					nowState=OperState.Create;
+					setTreeIndex();
+					AutoUtil.clearValue(form);
+					btn_del.enabled=false;
+					btn_save.enabled=true;
+					resultInfo.text = "";
+				}else{
+					Alert.show("Please select an item.");
+				}
+			}
+			
+			
+			private function handleValid(event:ValidationResultEvent):void{
+                    rolename.setStyle("backgroundColor", "#ebced7");
+			}
+		]]>
+	</mx:Script>
+	
+	<mx:Metadata>
+        [ResourceBundle("auth")]
+    </mx:Metadata>
+	
+	<mx:StringValidator  required="true"
+        source="{rolename}" property="text"  
+        trigger="{btn_save}"
+        triggerEvent="click"
+      	maxLength="100"
+        valid="save(event)" invalid="handleValid(event)"/>
+	
+	<mx:Array id="ds_state">
+		<mx:Object label="Enable" value="true" />
+		<mx:Object label="Disable" value="false" />
+	</mx:Array>
+	<mx:Array id="ds_ismain">
+		<mx:Object label="标准法规" id="a" />
+		<mx:Object label="法律法规" id="b" />
+		<mx:Object label="认证" id="c" />
+		<mx:Object label="Information pool" id="d" />
+	</mx:Array>
+	<mx:Sequence id="shake" target="{my_hbox}" duration="100" repeatCount="2">
+        <mx:Move xBy="15"/>
+        <mx:Move xBy="-15"/>
+    </mx:Sequence>
+    <mx:TabNavigator width="100%" height="100%">
+		<mx:VBox width="100%"  label="{resourceManager.getString('auth','userGroups')}" height="100%" >
+			<mx:HBox width="100%" id="my_hbox" height="100%">
+				<mx:VBox width="50%" height="100%" paddingBottom="30" paddingTop="30" horizontalAlign="right">
+				<com:SpringLoadedTree id="tree" width="350" height="100%"
+						backgroundAlpha="0.29"  
+						dataProvider="{treeData}"
+						mouseDown="treeChanged(event)"
+						labelField="rolename" wordWrap="true"
+					  	variableRowHeight="true"
+						/>
+			</mx:VBox>
+			<mx:VBox width="50%" height="100%" paddingTop="60">
+				<mx:Button id="add_button" label="+" click="clearReadyToAddNode()" fontFamily="Arial" fontSize="14" paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0" fontWeight="bold"/>
+				<mx:VBox id="rightBox" visible="false" width="100%">
+					<mx:Form id="form" width="100%" paddingLeft="50">
+						<mx:FormItem required="true" label="{resourceManager.getString('auth','groupname')}" toolTip="0-100 chars">
+							<mx:TextInput id="rolename" change="{btn_save.enabled=true}" width="160" maxChars="50"/>
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('auth','groupcode')}" toolTip="User Group Code">
+							<mx:TextInput id="rolecode" change="{btn_save.enabled=true}" width="160" maxChars="50"/>
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('auth','groupdesc')}"  toolTip="User Group Description">
+							<mx:TextArea change="{btn_save.enabled=true}"  id="roledesc"/>
+						</mx:FormItem>
+						<mx:FormItem label="State"  visible="false" includeInLayout="false" toolTip="User Group State">
+							<mx:HBox width="100%">
+								<mx:RadioButtonGroup id="state" itemClick="{btn_save.enabled=true}" />
+								<mx:RadioButton id="state1" group="{state}" selected="true" label="Enable" value="1"/>
+								<mx:RadioButton id="state2" group="{state}" label="Disable" value="0"/>
+							</mx:HBox>
+						</mx:FormItem >
+						<mx:FormItem>
+							<mx:Label id="resultInfo" color="#A21E4D" text=""/>
+						</mx:FormItem>
+					</mx:Form>
+					<mx:HBox width="100%" horizontalAlign="center" verticalAlign="middle" horizontalGap="35" >
+						<mx:Spacer width="20%"/>
+						<mycomponents:Components_LinkButton iconType="right"  id="btn_save" enabled="false"  label="{resourceManager.getString('auth','save')}" />
+						<mycomponents:Components_LinkButton iconType="right" id="btn_del" label="{resourceManager.getString('auth','delete')}"  click="{del();}" enabled="false"/>
+					</mx:HBox>
+				</mx:VBox>	
+			</mx:VBox>
+		</mx:HBox>
+		</mx:VBox>
+	</mx:TabNavigator>
+</mx:Module>

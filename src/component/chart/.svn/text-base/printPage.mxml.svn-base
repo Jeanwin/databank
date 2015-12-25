@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow showCloseButton="true" close="{PopUpManager.removePopUp(this)}" xmlns:mx="http://www.adobe.com/2006/mxml"    height="500"   width="900" xmlns:hi="http://hi.csdn.net/To9m" xmlns:mycomponents="org.utmost.mycomponents.*">
+<mx:Script>
+	<![CDATA[
+		import mx.controls.dataGridClasses.DataGridColumn;
+		import mx.managers.PopUpManager;
+		import mx.controls.Alert;
+		import mx.collections.ArrayCollection;
+		import mx.core.Application;
+		[Bindable]
+		private var language = Application.application.language;
+		private var printArr:ArrayCollection=new ArrayCollection();
+		public function set printJob(dataArr:ArrayCollection):void{
+				printArr	=dataArr;
+		}
+		/**
+			 * Set data for column No.
+			 * */
+			private function showNo(item:Object,column:DataGridColumn):String{
+				if(item.type!=null && item.type=="year"){
+					return "";
+				}
+				var noStr:String = new String();
+				if(item["standard_attribute1"]!=null){
+					noStr += item["standard_attribute1"];
+				}
+				if(item["standard_attribute2"]!=null){
+					noStr += item["standard_attribute2"];
+				}
+				if(item["standard_attribute3"]!=null){
+					noStr += item["standard_attribute3"]+" ";
+				}
+				if(item["no_"]!=null){
+					noStr += item["no_"]+"-";
+				}
+				if(item["version_"]!=null){
+					noStr += item["version_"];
+				}
+				return noStr;
+			}
+		private function flushGanttGird(ac:ArrayCollection):void{
+		   		
+		   		var colArr:Array = new Array();	
+		   		//No_
+		   		var dc_no:DataGridColumn = new DataGridColumn();
+				dc_no.dataField = "no_";
+				dc_no.headerText = resourceManager.getString('dataGrid','no');
+				//render item as label
+				dc_no.itemRenderer = new ClassFactory(mx.controls.Label);
+				dc_no.labelFunction = showNo;
+				colArr.push(dc_no);
+				
+				//title_en
+				if (language == "en_US"){
+			   		var dc_title_en:DataGridColumn = new DataGridColumn();
+					dc_title_en.dataField = "title_en";
+					dc_title_en.headerText = resourceManager.getString('dataGrid','title_en');
+					dc_title_en.itemRenderer = new ClassFactory(mx.controls.Label);
+					colArr.push(dc_title_en);
+				}
+				
+				//title_ch
+				if (language == "zh_CN"){
+			   		var dc_title_ch:DataGridColumn = new DataGridColumn();
+					dc_title_ch.dataField = "title_ch";
+					dc_title_ch.headerText = resourceManager.getString('dataGrid','title_ch');
+					dc_title_ch.itemRenderer = new ClassFactory(mx.controls.Label);
+					colArr.push(dc_title_ch);
+				}
+				
+				//status
+				var dc_status:DataGridColumn = new DataGridColumn();
+				dc_status.dataField = "status";
+				dc_status.headerText = resourceManager.getString('dataGrid','status');
+				dc_status.itemRenderer = new ClassFactory(mx.controls.Label);
+				colArr.push(dc_status);
+				
+				//Estimated Date of Implementation for New Type
+				var execute_date_str:DataGridColumn = new DataGridColumn();
+				execute_date_str.dataField = "execute_date_str";
+				execute_date_str.headerText = resourceManager.getString('dataGrid','executeDate1');
+				execute_date_str.itemRenderer = new ClassFactory(mx.controls.Label);
+				colArr.push(execute_date_str);
+				
+				//Estimated Date of Implementation for In-Production 
+				var online_auto_execute_date_str:DataGridColumn = new DataGridColumn();
+				online_auto_execute_date_str.dataField = "online_auto_execute_date_str";
+				online_auto_execute_date_str.headerText = resourceManager.getString('dataGrid','executeDate2');
+				online_auto_execute_date_str.itemRenderer = new ClassFactory(mx.controls.Label);
+				colArr.push(online_auto_execute_date_str);
+							
+				//甘特图列
+				var ganttArr:Array = new Array();
+				
+				var dc_gantt:DataGridColumn = new DataGridColumn();
+				dc_gantt.dataField = "gantts";
+				dc_gantt.resizable=false;
+				dc_gantt.width=2520;
+				dc_gantt.headerText = resourceManager.getString('dataGrid','ganttChart');
+				dc_gantt.itemRenderer = new ClassFactory(component.chart.ganttBox);
+				colArr.push(dc_gantt);
+				
+				printdataGrid.columns=colArr;
+				printdataGrid.dataProvider = printArr;
+				prtbt.enabled=true;
+		   	}
+		private function showPreview():void{
+				pj.clearPrintObject();
+				pj.addPrintObject(printdataGrid);
+//				pj.preview();
+				pj.print();
+			}
+	]]>
+</mx:Script>
+<hi:SuperPrintJob id="pj" container="{this.parentApplication}" scaleType="FlexPrintJobScaleType.MATCH_WIDTH" 
+	  pageWidth="1191" pageHeight="842" previewPanelRatio="1" printAsBitmap="true"/>
+	  <!--默认是A4纸张横排，previewPanelRatio：预览窗口显示大小，默认是0.7（实际的70%） printAsBitmap：true-向量，false-位图
+		scaleType:	FlexPrintJobScaleType.SHOW_ALL
+							FlexPrintJobScaleType.FILL_PAGE
+							FlexPrintJobScaleType.NONE
+							FlexPrintJobScaleType.MATCH_HEIGHT
+							FlexPrintJobScaleType.MATCH_WIDTH
+							在SuperPrintJob中默认值是FlexPrintJobScaleType.MATCH_WIDTH。
+	   -->
+	<mx:DataGrid id="printdataGrid" width="3000"  creationComplete="{flushGanttGird(printArr);}"     height="600"   draggableColumns="false" dragEnabled="false" dragMoveEnabled="false" dropEnabled="false" sortableColumns="false"   >
+		</mx:DataGrid>
+		<mx:ControlBar horizontalAlign="center">
+			<mycomponents:Components_LinkButton iconType="right" label="{resourceManager.getString('dataGrid','print')}"  id="prtbt" enabled="false" click="{showPreview();}" />
+		</mx:ControlBar>
+</mx:TitleWindow>

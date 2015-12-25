@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8"?>  
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" minHeight="300" implements="module.ModuleInterface"  horizontalScrollPolicy="off"   creationComplete="{init();}"  layout="vertical" width="100%" height="100%" xmlns:com="com.*" xmlns:local="*" xmlns:component="component.*" xmlns:mycomponents="org.utmost.mycomponents.*">  
+   <mx:Style   source="/skins/whiteblack3/style_font.css"/>
+   <mx:Metadata>
+		[ResourceBundle("menubar")]
+		[ResourceBundle("manageView")]
+	</mx:Metadata>
+   
+   <mx:Script>
+   	<![CDATA[
+   		import flexlib.containers.VAccordion;
+   		import mx.binding.utils.ChangeWatcher;
+   		import com.right.UserRight;
+   		import mx.rpc.events.ResultEvent;
+   		import org.utmost.service.UtmostService;
+   		import mx.collections.ArrayCollection;
+   		import module.otherinfo.LogoInfoModule;
+   		import mx.events.ResizeEvent;
+   		import mx.core.Application; 
+   		import mx.controls.Alert;
+   		import org.utmost.util.ComponentUtil;
+   		import mx.events.ModuleEvent;
+   		import mx.events.ModuleEvent;  
+        import mx.modules.ModuleManager;  
+        import mx.modules.IModuleInfo;
+       	    public function set $treeSelectNode(_node:Object):void {
+				trace("$modulecode:"+_node);
+			}
+			//for tree node data
+			[Bindable]
+			private var treeData:ArrayCollection;
+			public function set $moduletree(_tree:ArrayCollection):void {
+				trace("$moduletree:"+_tree);
+				treeData=_tree;
+			}
+			public function get $moduletree():ArrayCollection{
+				return treeData;
+			}
+			//for menu data
+			[Bindable]
+			private var menuData:ArrayCollection;
+			public function set $menuData(_menu:ArrayCollection):void {
+				trace("$menuData:"+_menu);
+				menuData=_menu;
+				
+			}
+			public function set $selectNodeFuncUUID(_funcuuid:String):void {
+				trace("_funcuuid:"+_funcuuid);
+			}
+			
+   			public function init():void{
+   				//set menu bar visible
+   				ComponentUtil.setVisible(menubar,true);
+   				//set system tree visible
+   				ComponentUtil.setVisible(systree,true);
+   				myLoadModule("module/otherinfo/LogoInfoOnLogonModule.swf");
+   				if(!ChangeWatcher.canWatch(Application.application, "language"))
+   					Alert.show("language not bound");
+   				if(!ChangeWatcher.canWatch(this, "item"))
+   					Alert.show("item not bound");
+   				
+   				ChangeWatcher.watch(Application.application, "language", getTitleContent);
+   				ChangeWatcher.watch(this, "item", getTitleContent);
+   				ChangeWatcher.watch(this, "sysPanelTitleKey", getTitleContent);
+   				sysPanelTitleKey = "syspanel.title.empty";
+   				UserRight.father = this;
+   			}
+   			private var _moduleInfo:IModuleInfo; 
+   			public function showNotice():void{
+   					_moduleInfo = ModuleManager.getModule( 'module/notice.swf' );
+	   				_moduleInfo.addEventListener( ModuleEvent.READY,moduleLoadHandler );  
+	                _moduleInfo.load(); 
+   			}
+   			
+   			private function moduleLoadHandler( evt:ModuleEvent ):void{  
+            	 var notice:DisplayObject = _moduleInfo.factory.create() as DisplayObject;
+            		sysPanel.height = 300;
+            		notice.height = 170;
+            		notice.addEventListener("NoticeCloseEvent",function (e:Event):void{
+            			notice=null;
+            			_moduleInfo=null;
+            		});
+            		vb.addChildAt(notice,1);
+            }
+   			
+   			public function returnTomain():void{
+   				var ut:UtmostService=new UtmostService("portalFuncService",function(e:ResultEvent):void{
+						treeData=new ArrayCollection();
+						treeData=ArrayCollection(e.result);
+						ComponentUtil.setVisible(menubar,true);
+		   				ComponentUtil.setVisible(systree,true);
+		   				myLoadModule("module/otherinfo/LogoInfoOnLogonModule.swf");
+		   				sysPanelTitleKey = "syspanel.title.empty";
+				});
+				ut.ro.reBuildTreeByUserID(UserRight.getUserUUID(),"1");
+   			}
+   			
+   			private var funcuuid:String = null;
+   			private var newDocumentUUID:String = null;
+   			public function returnTomainWithFuncuuid(funcuuidStr:String,documentUUID:String):void{
+   				returnTomain();
+   				funcuuid = funcuuidStr;
+   				newDocumentUUID = documentUUID;
+   			}
+	        //after create a document, find the right tree node
+	        private function onTime(event:TimerEvent):void{
+	        	for each(var item:Object in systree.getTree().dataProvider){
+	            	systree.getTree().expandChildrenOf(item,true);
+	            	var result:Boolean = false;
+	            	if(item.children!=null){
+	            		result = findTreeNode(item.children);
+	            	}else{
+	            		if(item.funcuuid!=null&&item.funcuuid.toString()== funcuuid){
+	            			result = true;
+	            		}
+	            	}
+	            	   if(!result){
+	            	   	 systree.getTree().expandChildrenOf(item,false);
+	            	   }
+	            }
+	            var index:int = systree.getTree().getItemIndex(systree.getTree().selectedItem);
+	             systree.getTree().scrollToIndex(index);
+	        	 var event1:MouseEvent = new MouseEvent(MouseEvent.CLICK);
+	             systree.getTree().dispatchEvent(event1);
+	             funcuuid = null;
+	        }
+	        private function systreeCreationComlete():void{
+	        	systree.addEventListener("ClickLinksEvent",function ():void{
+	        		myLoadModule("module/link/LinkModule.swf");
+   					ComponentUtil.setVisible(systree,false);
+   					sysPanelTitleKey = "syspanel.title.links";
+	        	});
+	          
+	        }
+	        public var  obj:Object;
+	        //Category show model
+   			public var showstate:String="simple";
+   			//Module object for child
+   			public var child:ModuleInterface;
+   			//current node
+   			[Bindable]
+   			public var item:Object;
+   			
+   			public var validateList:ArrayCollection;
+   			
+   			public var itemclassUUID:String;
+   			//flag for changing data in interface
+   			public var nowState:Boolean=false;
+   			//find the corresponding tree node
+   			private function findTreeNode(nodes:Object):Boolean{
+   				var result:Boolean = false;
+	   				for each(var item:Object in nodes){
+	   					if(item.funcuuid!=null&&item.funcuuid.toString()== funcuuid){
+	   						systree.getTree().selectedItem = item;
+	   						systree.getTree().expandItem(systree.getTree().selectedItem,true);
+	   						result = true;
+	   						break;
+	   					}else{
+	   						if(item.children!=null){
+	   							result = findTreeNode(item.children);
+	   						}
+	   					}
+	   					if(result){
+	   						return true;
+	   					}
+	   				}
+   				return result;
+   			}
+   			
+   			//after the user creates a document, the page is redirected into the main page, the document node type 
+   			//is automatically open in the tree 
+   			public function selectTreeNode():void{
+   			  if(funcuuid!=null){
+   			  	var timer:Timer = new Timer(600,1);
+	        	timer.addEventListener(TimerEvent.TIMER,onTime);
+	        	timer.start();
+                }
+                
+              }
+
+			private function treeItemClick(e:MouseEvent):void
+			{
+			     item=systree.getTree().selectedItem;
+				if(item==null)return;
+				itemclassUUID=item.classuuid;
+				trace(".......manage root uuid:" + item.classuuid);
+				//state:	0：expired；1：in use； 2：properties；3:show info;4:gantt
+				var bool:Boolean=false;
+				if(item.state=="1"){
+					bool=myLoadModule("module/NoticeContent.swf");
+				}
+				if(item.state=="2"){
+					bool=myLoadModule("module/otherinfo/LogoInfoModule.swf");
+				}
+				if(item.state=="3"){
+					bool=myLoadModule("module/simpleDataGirdBack.swf");
+				} 
+				if(item.state=="4"){
+					bool=myLoadModule("module/ganttDataGird.swf");
+				}
+				if(bool==false){
+					//if still in current page,manipulate data in interface
+					if(child!=null){
+						nowState=true;
+						obj=new Object();
+						obj.showstate=showstate;
+						obj.nodeuuid=item.funcuuid;
+						obj.rootuuid=item.classuuid;
+						obj.nodetype=item.nodetype;
+						obj.language=Application.application.language;
+						child.$selectNodeFuncUUID=itemclassUUID;
+						child.$treeSelectNode=obj;
+					}
+				}
+				
+			}
+			
+			public function myLoadModule(newUrl:String):Boolean{
+				//if(newUrl!=manageModule.url){
+					if(manageModule.url!=""){
+						manageModule.unloadModule();
+						manageModule.loadModule(newUrl);
+					}else{
+						manageModule.loadModule(newUrl);
+					}
+					pbar.visible=true; 
+					return true;
+				/* }else{
+					 pbar.visible=false;
+					return false;
+				} */
+			}
+			//Load module complete
+			private function readyModule(event:ModuleEvent):void{
+				 pbar.visible=false;
+				var mobj:ModuleLoader=event.target as ModuleLoader;
+	        	 child=mobj.child as ModuleInterface;
+	        	 if(this.newDocumentUUID!=null){
+		        	 if(child is simpleDataGirdBack&&newDocumentUUID!=null){
+		        	 	var tempChild:simpleDataGirdBack = child as simpleDataGirdBack;
+		        	 	tempChild.$documentUUID = this.newDocumentUUID;
+		        	 	newDocumentUUID = null;
+		        	 }
+		        	  if(child is ganttDataGird&&newDocumentUUID!=null){
+		        	 	var tempChild2:ganttDataGird = child as ganttDataGird;
+		        	 	tempChild2.$documentUUID = this.newDocumentUUID;
+		        	 	newDocumentUUID = null;
+		        	 }
+	        	 }
+	        	 trace("child:"+child);
+		        		 if(child!=null){
+			        	 	child.$selectNodeFuncUUID=itemclassUUID;
+			        	 	if(manageModule != null && manageModule.url == "module/AdvanceDataGrid.swf"){
+			        	 		child.$menuData = validateList;
+			        	 	}
+			        	 }
+		        	    if(child!=null&&item!=null){
+		        	    	trace("item.classuuid:ReadyModule"+item.classuuid);
+							obj=new Object();
+							obj.showstate=showstate;
+							obj.nodeuuid=item.funcuuid;
+							obj.rootuuid=item.classuuid;
+							obj.nodetype=item.nodetype;
+							obj.language=Application.application.language;
+							child.$treeSelectNode=obj;
+		        	}
+		        	selectTreeNode();
+			}
+			[Embed('/img/buttonicon/m1img.png')]
+      		private const upLinkButton:Class;
+      		
+      		[Embed('/img/buttonicon/m2img.png')]
+      		private const bottomLinkButton:Class;
+	        [Bindable] 
+			private var layoutState:String="M1";
+			private function setLayout():void {
+				if(menubar.visible==true) {
+					ComponentUtil.setVisible(menubar,false);
+					myfullscreem.setStyle("icon",bottomLinkButton);
+					layoutState="M2";
+				}else {
+					ComponentUtil.setVisible(menubar,true);
+					myfullscreem.setStyle("icon",upLinkButton);
+					layoutState="M1";
+				}
+			}
+			
+			private function closeBanner(bool:Boolean=false):void{
+				menubar.clearStyle("backgroundImage");
+				in_menubar.mbar2.dataProvider=menuData;
+			}
+			
+			
+			//save syspanel.title key
+			[Bindable]
+			public var sysPanelTitleKey:String;
+			private function getTitleContent(event:Event):void{
+				if(systree.visible == true){
+					if(item != null){
+						var tileFieldName:String = resourceManager.getString("manageView", "syspanel.title.systree.selected.item.field"); 
+						sysPanel.title = item[tileFieldName];
+					}else{
+						sysPanel.title = resourceManager.getString("manageView", sysPanelTitleKey);
+					}
+				}else
+					sysPanel.title = resourceManager.getString("manageView", sysPanelTitleKey);
+			}
+   	]]>
+   </mx:Script>
+   <mx:VBox width="100%" height="100%" horizontalAlign="center">
+   	<mx:VBox width="100%"   height="100%">  
+        <mx:VBox  horizontalAlign="center" paddingLeft="2" height="100%" width="99%">
+        	<mx:VBox id="menubar"  backgroundImage="/img/213.jpg" backgroundSize="100%" width="100%" height="40" horizontalGap="20" verticalGap="0">
+				<mx:Canvas width="100%" height="100%">
+					<component:SystemMenuBar setfather="{this}" id="in_menubar"   dataProvider="{menuData}"  typeFlag="back" width="100%" paddingTop="1" height="40"/>	 
+				</mx:Canvas>
+			</mx:VBox>
+	        <mx:HDividedBox horizontalGap="8" id="hdbox" width="100%" height="100%">
+				<component:PanelTree styleName="leftTree" id="systree" creationComplete="{systreeCreationComlete()}"  
+					title="{resourceManager.getString('menubar','currentuser')+UserRight.getloginUserInfo().username}"  
+					dataProvider="{treeData}" clickTree="treeItemClick"  width="220" height="100%"  
+					resizeEffect="Resize" labelField="{resourceManager.getString('manageView', 'doc.category.tree.label.field')}"/>
+				<mx:VDividedBox id="vb" width="100%" height="100%">
+					<mx:Panel id="sysPanel" width="100%" height="100%" layout="vertical">
+						<mx:ModuleLoader id="manageModule" width="100%" height="100%" resizeEffect="Resize" ready="readyModule(event)" borderStyle="none" borderSides="0" borderThickness="0">
+						</mx:ModuleLoader>
+						<mx:ControlBar paddingTop="0" paddingBottom="0">
+						<mx:HBox width="100%" height="20" horizontalAlign="center" verticalAlign="middle">
+							<mx:ProgressBar id="pbar" source="manageModule" width="100%" labelPlacement="center" height="18"/>
+							<mx:Label text="{resourceManager.getString('manageView', 'application.version')}" color="#A8ADB3"  fontStyle="italic"/>
+							<mx:Spacer width="10" />
+							<mx:Label text="{Application.application.memoryCount}" color="#A8ADB3"  fontStyle="italic"/>		
+							<!--microCharts:MicroLineChart width="60" height="15"  dataProvider="{Application.application.memoryCountDP}"/-->
+							<mx:Spacer width="10" />
+							<mx:LinkButton id="myfullscreem" label="{layoutState}" fontSize="9" color="#A21E4D"  fontWeight="bold"  icon="{upLinkButton}"  click="setLayout()" height="18"   paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0"/>
+						</mx:HBox>
+						</mx:ControlBar>
+					</mx:Panel>
+				</mx:VDividedBox>
+			</mx:HDividedBox>
+        </mx:VBox>           
+    </mx:VBox>
+   </mx:VBox>
+</mx:Module>  
+

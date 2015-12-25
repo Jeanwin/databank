@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" width="100%" height="100%"
+	  xmlns:mycomponents="org.utmost.mycomponents.*" creationComplete="init()">
+	<mx:Script>
+		<![CDATA[
+			import mx.events.ListEvent;
+			import mx.events.DataGridEvent;
+			import mx.collections.ArrayCollection;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.core.IFlexDisplayObject;
+			import mx.core.Application;
+			import mx.managers.PopUpManager;
+			import org.utmost.util.ShortcutKeyUtil;
+			
+			/**
+			 * 初始化
+			 * */
+			private function init():void{
+				ShortcutKeyUtil.setFocusAndSubmit(this,searchUsers);
+				var utmost:UtmostService = new UtmostService("UserManageUtil",function(e:ResultEvent):void{
+					var users:ArrayCollection = e.result as ArrayCollection;
+					userGrid.dataProvider = users;
+				});
+		     	utmost.ro.queryUsers();
+		     	
+		     	if(userGroupGrid!=null){
+		     		initUserGroupData();
+		     	}
+			}
+			
+			private function initUserGroupData():void{
+				var ut_group:UtmostService = new UtmostService("UserManageUtil",function(e:ResultEvent):void{
+					var users:ArrayCollection = e.result as ArrayCollection;
+					userGroupGrid.dataProvider = users;
+				});
+		     	ut_group.ro.queryUserRoles();
+			}
+			
+			/**
+			 * 根据关键字查询用户列表
+			 * */
+			private function searchUsers():void{
+				var utmost:UtmostService = new UtmostService("UserManageUtil",function(e:ResultEvent):void{
+					var users:ArrayCollection = e.result as ArrayCollection;
+					userGrid.dataProvider = users;
+				});
+		     	utmost.ro.queryUsersByName(nameKey.text);
+			}
+			
+			/**
+			 * 根据关键字查询用户列及所属用户组列表
+			 * */
+			private function searchUsersGroup():void{
+				var utmost:UtmostService = new UtmostService("UserManageUtil",function(e:ResultEvent):void{
+					var users:ArrayCollection = e.result as ArrayCollection;
+					userGroupGrid.dataProvider = users;
+				});
+		     	utmost.ro.queryUserRoles(nameKeyGroup.text);
+			}
+			
+			private function updateUser(e:ListEvent):void {
+				trace(e.itemRenderer.data+"|"+e.itemRenderer.data.useruuid+":"+e.itemRenderer.data.username);
+				
+				var obj:Object=PopUpManager.createPopUp(Application.application as DisplayObject,AuthUserChangeComponent,true);
+				obj.user = e.itemRenderer.data;
+				var dobj:IFlexDisplayObject = obj as IFlexDisplayObject;
+				dobj.addEventListener(Event.REMOVED, function(e:Event):void{
+					init();
+				});
+				PopUpManager.centerPopUp(dobj);
+			}
+			
+			private function createUser():void {
+				var obj:Object=PopUpManager.createPopUp(Application.application as DisplayObject,AuthUserCreateComponent,true);
+				var dobj:IFlexDisplayObject = obj as IFlexDisplayObject;
+				dobj.addEventListener(Event.REMOVED, function(e:Event):void{
+					init();
+				});
+				PopUpManager.centerPopUp(dobj);
+			}
+			private function deleteUser():void{
+				
+				if(userGrid.selectedIndex==-1){
+					Alert.show(resourceManager.getString("errormsg","noselect"));
+					return;
+				}if(!userGrid.selectedItem.hasOwnProperty("useruuid")){
+					Alert.show(resourceManager.getString("errormsg","noselect"));
+					return;
+				}
+				
+				Alert.yesLabel=resourceManager.getString('errormsg','yes');
+				Alert.noLabel=resourceManager.getString('errormsg','no');
+				Alert.show(resourceManager.getString('auth','suredel'),"",3,null,function (e:CloseEvent):void{
+					if(e.detail==Alert.YES){
+						var ut_del:UtmostService = new UtmostService("UserManageUtil",function(e:ResultEvent):void{
+							if(e.result == 0){
+								init();
+							}else{
+								Alert.show("Error!");
+							}
+						});
+		     			ut_del.ro.deletePortalUser(userGrid.selectedItem.useruuid);
+		   			}
+		  	    });
+			}
+		]]>
+	</mx:Script>
+	<mx:Metadata>
+        [ResourceBundle("auth")]
+        [ResourceBundle("errormsg")]
+    </mx:Metadata>
+	<mx:TabNavigator width="100%" height="100%">
+		<mx:VBox label="{resourceManager.getString('auth','userlabel')}" width="100%" height="100%" verticalGap="3">
+			<mx:HBox width="100%" paddingLeft="60" verticalAlign="middle" paddingRight="6">
+				<mx:Label text="{resourceManager.getString('auth','serch')}"/>
+				<mx:TextInput id="nameKey"/>
+				<mycomponents:Components_LinkButton iconType="right" click="searchUsers()" label="{resourceManager.getString('auth','serch')}"  />
+				
+				<mx:Spacer width="100%"/>
+				
+				<mycomponents:Components_LinkButton iconType="right"  label="{resourceManager.getString('auth','adduser')}"   click="{createUser()}" paddingLeft="0" paddingRight="0"/>
+				<!--<mycomponents:Components_LinkButton iconType="right"  label="{resourceManager.getString('auth','delete')}" click="{deleteUser();}"     paddingLeft="0" paddingRight="0"/>
+				-->
+			</mx:HBox>
+			<mx:AdvancedDataGrid id="userGrid" designViewDataType="flat" width="100%" height="100%" doubleClickEnabled="true" itemDoubleClick="updateUser(event)" selectionMode="multipleRows" >
+				<mx:columns>
+					<mx:AdvancedDataGridColumnGroup headerText="{resourceManager.getString('auth','userCode')}" dataField="usercode" itemRenderer="mx.controls.Label"/>
+					<mx:AdvancedDataGridColumnGroup headerText="{resourceManager.getString('auth','userName')}" dataField="username" itemRenderer="mx.controls.Label"/>
+					<mx:AdvancedDataGridColumnGroup headerText="{resourceManager.getString('auth','loginName')}" dataField="loginname" itemRenderer="mx.controls.Label"/>
+					<mx:AdvancedDataGridColumnGroup headerText="{resourceManager.getString('auth','email')}" dataField="email" itemRenderer="mx.controls.Label"/>
+					<mx:AdvancedDataGridColumnGroup headerText="{resourceManager.getString('auth','phone')}" dataField="telephone" itemRenderer="mx.controls.Label"/>
+					<mx:AdvancedDataGridColumnGroup headerText="{resourceManager.getString('auth','company')}" dataField="company" itemRenderer="mx.controls.Label"/>
+					<mx:AdvancedDataGridColumnGroup headerText="{resourceManager.getString('auth','department')}" dataField="department" itemRenderer="mx.controls.Label"/>
+					<mx:AdvancedDataGridColumnGroup headerText="{resourceManager.getString('auth','state')}" dataField="state" itemRenderer="component.auth.UserState" textAlign="center"/>
+				</mx:columns>
+			</mx:AdvancedDataGrid>
+		</mx:VBox>
+		<mx:VBox creationComplete="initUserGroupData()" label="{resourceManager.getString('auth','userGroups')}" width="100%" height="100%" verticalGap="3">
+		
+			<mx:HBox width="100%" paddingLeft="60" verticalAlign="middle" paddingRight="6">
+				<mx:Label text="{resourceManager.getString('auth','serch')}"/>
+				<mx:TextInput id="nameKeyGroup"/>
+				<mycomponents:Components_LinkButton iconType="right" click="searchUsersGroup()" label="{resourceManager.getString('auth','serch')}"  />
+				<mx:Spacer width="100%"/>
+			</mx:HBox>
+			<mx:AdvancedDataGrid id="userGroupGrid" designViewDataType="flat" width="100%" height="100%"   selectionMode="multipleRows" >
+				<mx:columns>
+					<mx:AdvancedDataGridColumnGroup headerText="{resourceManager.getString('auth','userName')}" width="25" dataField="username"/>
+					<mx:AdvancedDataGridColumnGroup headerText="{resourceManager.getString('auth','userGroups')}" width="75" dataField="rolename"/>
+				</mx:columns>
+			</mx:AdvancedDataGrid>
+		</mx:VBox>
+	</mx:TabNavigator>
+	<mx:XMLList id="DGboxXMLList">
+		<menuitem label="操作">
+			<menuitem label="详细" labelCode="details" icon="icon_details"  click="popMen"/>
+			<menuitem label="修改" labelCode="details" icon="icon_details"  click="popMen"/>
+			<menuitem label="删除" labelCode="details" icon="icon_details"  click="popMen"/>
+			<menuitem label="重置密码" labelCode="details" icon="icon_details"  click="popMen"/>									             
+		</menuitem>
+	</mx:XMLList>
+</mx:Module>

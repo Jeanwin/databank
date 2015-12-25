@@ -1,0 +1,2025 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="init()"   layout="absolute" width="100%" height="100%" xmlns:mycomponents="org.utmost.mycomponents.*" xmlns:upload="component.upload.*">
+	<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Metadata>
+       [ResourceBundle("errormsg")]
+       [ResourceBundle("manageView")]
+	   [ResourceBundle("dataGrid")]
+    </mx:Metadata>	
+<mx:Script> 
+<![CDATA[
+	import mx.utils.StringUtil;
+	import module.manage;
+	import mx.core.Application;
+	import mx.binding.utils.ChangeWatcher;
+	import component.stageModifyBox;
+	import component.uploading;
+	import mx.events.CloseEvent;
+	import org.utmost.service.StaticChannelSet;
+	import com.StaticFunUUID;
+	import com.FilesUpload;
+	import org.utmost.service.AutoService;
+	import com.right.UserRight; 
+	import mx.controls.ComboBox;
+	import fr.kapit.data.utils.HashMap;
+	import mx.rpc.events.ResultEvent;
+	import com.ganttBean.Gantt;
+	import com.right.UserRight;
+	import mx.controls.List;
+	import org.utmost.service.UtmostService;
+	import component.upload.categories.homologation;
+	import component.upload.categories.policy;
+	import component.upload.categories.information;
+	import component.upload.FileUploadUtil;
+	import component.upload.FileUploadComponent;
+	import org.utmost.util.CreateInforInputPage;
+	import mx.collections.ArrayCollection;
+	import mx.effects.Blur;
+	import org.utmost.util.ComponentUtil;
+	import mx.controls.Alert;
+	import mx.managers.PopUpManager;
+	import mx.core.SoundAsset;
+	import com.MultiFileUpload; 
+	import flash.net.FileReference;
+	import mx.events.ValidationResultEvent;  
+	import org.utmost.mycomponents.Components_DateField;
+	import org.utmost.mycomponents.Components_TextInput;
+	import mx.validators.Validator;
+	
+	internal var file1:FileReference;
+	private var file2:FileReference;
+	private var file3:FileReference;
+	private var file4:FileReference;
+	private var file5:FileReference;
+	private var file6:FileReference;
+	private var file7:FileReferenceList;
+	private var file8:FileReference;
+	private var flag:int = 0;
+	private var treeuuid:String="";
+	
+	//Info list(need to submit)
+	private var ac:ArrayCollection;
+	
+	private var filesUpload:FilesUpload;
+	
+	private var othersStr:String = "Others";
+	
+	private var policyFiles:policy;
+	private var homoFiles:homologation;
+	private var infoFiles:information;
+	
+	private var allFiles:Array;	//Dynamic form all attachment SWF and attachment PDF
+	
+	private var allDocs:Array;	//Dynamic form all attachment DOC
+	
+	private var fileColumns:ArrayCollection; //Attachment segment and attachment name list
+	
+	private var type:String;	//Form type
+	
+	private var refFileNames:ArrayCollection = new ArrayCollection;
+	
+	private var staticValidatorArr:Array;	//Static form verification list
+	
+	private var loadingBox:uploading;	//loading window
+	
+	private var commonDataUUID:String = null;
+	[Bindable]
+	private var isGantt:Boolean = true;//is gantt form or not
+	[Bindable]
+	private var standard_attribute1_others_choose:Boolean = false;
+	
+	[Bindable]
+	private var governor_code_others_choose:Boolean = false;
+	
+	private function prevChild():void {
+		if(accordion.selectedIndex == 2) {
+			v2.verticalScrollPosition = 0;
+		}
+		accordion.selectedIndex--;
+	} 
+	private var treenodeuuid:String="";
+	private function nextChild():void { 
+		if(accordion.selectedIndex == 0) {
+			v2.verticalScrollPosition = 0;
+			treeuuid="";
+		}
+		accordion.selectedIndex++; 
+		var treeuuid:String=myTree.selectedItem.funcuuid;
+		
+	}
+	
+	/**
+	 * Get the type of modifying info
+	 * */
+	private function getType(funcState:String, classuuid:String):String{
+		
+		var typeStr:String = new String();
+		
+		if(classuuid == StaticFunUUID.standardUUID){	//Static form
+			typeStr = "staticForm";
+		}else if(classuuid == StaticFunUUID.GANTT_CLASS_UUID){	//Dynamic form
+			typeStr = "ganttForm";
+		}else{
+			typeStr = "dynForm";
+		}
+		
+		return typeStr;
+	}
+	
+	private function treeDataChangeHandle(event:Event):void{
+		
+		type = getType(myTree.selectedItem.state, myTree.selectedItem.classuuid);
+		
+		if(myTree.selectedIndex!=-1){
+			if(myTree.selectedItem.nodetype=="3" && (myTree.selectedItem.state == "3" || myTree.selectedItem.state == "4")){
+				//get the full path from the root node to the selected item
+				var treeSelectNodePath:String = myTree.selectedItem[resourceManager.getString("manageView", "doc.category.tree.label.field")];
+				var parentNode:Object = myTree.getParentItem(myTree.selectedItem);
+				while(parentNode!=null){
+				   treeSelectNodePath = parentNode[resourceManager.getString("manageView", "doc.category.tree.label.field")]+" >> "+treeSelectNodePath;
+				   parentNode = myTree.getParentItem(parentNode);
+				}
+				v2.label = treeSelectNodePath;
+				pageone_button.enabled=true;
+			}else{
+				v2.label=resourceManager.getString("errormsg","selectlocation");
+				pageone_button.enabled=false;
+			}
+			
+			if(type=="staticForm" || type=="ganttForm"){
+				initStaticValidator();	//Initial static form verification
+				flag = 1;
+				if(v2_live!=null){
+					start_date_v.required=false;
+					end_date_v.required=false;
+					v2_live.visible = false;
+					v2_live.includeInLayout = false;
+					v2_die.visible = true;
+					v2_die.includeInLayout = true;
+				}
+				if(type=="ganttForm"){
+					if(plan1!=null){
+						start_date_v.required=true;
+						end_date_v.required=true;
+						plan1.visible=true;
+						plan1.includeInLayout=true;
+						planform.visible=true;
+						planform.includeInLayout=true;
+					}
+					isGantt = true;
+				}else{
+					if(plan1!=null){
+						plan1.visible=false;
+						plan1.includeInLayout=false;
+						start_date_v.required=false;
+						end_date_v.required=false;
+						planform.visible=false;
+						planform.includeInLayout=false;
+					}
+					isGantt = false;
+				}
+				
+			}else{
+				flag = 0;
+				if(v2_live!=null){
+					initCreateinfobbox();
+					v2_live.visible = true;
+					v2_live.includeInLayout = true;
+					v2_die.visible = false;
+					v2_die.includeInLayout = false;
+				}
+			}
+		}
+	}
+		//Call this method when not publish page born in static page
+		public function createDraf():void{
+			if(type=="ganttForm"){
+				plan1.visible=true;
+				plan1.includeInLayout=true;
+				start_date_v.required=true;
+				end_date_v.required=true;
+				planform.visible=true;
+				planform.includeInLayout=true;
+			}
+		}
+	
+	 	public function displayvbox1(event:Event):void{
+        	if(this.vbox1.visible==false){
+        		this.vbox1.visible=true;
+        		this.vbox1.includeInLayout=true;
+        	}else if(this.vbox1.visible==true){
+        		this.vbox1.visible=false;
+        		this.vbox1.includeInLayout=false;
+        	}
+        }
+        private function init():void{
+        	getGovenorCode();
+        	getTechnicalCommitteesCode();
+        	inittree();
+        	remindInfo = resourceManager.getString('manageView', 'doc.msg.governorCode.other');
+        	//if the page is not gantt page, set the height of ganttTimePlan 0
+        	if(!isGantt){
+        		ganttTimePlan.height=0;
+        	}
+        	ChangeWatcher.watch(Application.application, "language", refreshImportantLabel);
+        }
+        
+        public function docsChange():void{
+        	if(doc_.allUploadFiles.length>0){
+        		doc_title.text = "Doc";
+        	}else{
+        		doc_title.text = "";
+        	}
+        }
+        
+        //Get value of drop down list govenorCode in static page
+        private function getGovenorCode():void{
+        	var utmost:UtmostService=new UtmostService("InformationPublishService",createGovenorCode);
+        	utmost.ro.queryGovenorCode();
+        }
+        //Bind G1 to drop down list
+        [Bindable]
+        private	var G1:ArrayCollection=new ArrayCollection();
+        private function createGovenorCode(e:ResultEvent):void{
+        	var Govenor1:ArrayCollection=e.result as ArrayCollection;
+        	
+        	for(var i:int=0;i<Govenor1.length;i++){
+        		var o:Object=Govenor1.getItemAt(i);
+        		o.label=o["govenor_code"]!=null ? o["govenor_code"] : "";
+        		o.data=o["uuid"];
+        		G1.addItem(o);
+        	}
+        	
+         }
+         //Get value of drop down list TechnicalCommitteesCode in static page
+        private function getTechnicalCommitteesCode():void{
+        	var utmost:UtmostService=new UtmostService("InformationPublishService",createTechnicalCommitteesCode);
+        	utmost.ro.queryTechnicalCommitteesCode();
+		}
+		//Bind t to drop down list
+		[Bindable]
+		private var t:ArrayCollection=new ArrayCollection();
+        private function createTechnicalCommitteesCode(e:ResultEvent):void{
+        	var Technical1:ArrayCollection=e.result as ArrayCollection;
+
+        	for(var i:int=0;i<Technical1.length;i++){
+        		var o:Object=Technical1.getItemAt(i);
+        		o.label=o["technical_committees_code"]!=null ? o["technical_committees_code"] : "";
+        		o.data=o["uuid"];
+        		t.addItem(o);
+        	}
+        }
+        
+		//Initial data added of dynamic page
+		private function initCreateinfobbox():void{
+			var utmost:UtmostService=new UtmostService("InformationPublishService",Createinfobbox);
+			var treepiduuid:String=myTree.selectedItem.classuuid;
+			treenodeuuid=treepiduuid;
+			utmost.ro.queryClassField(treepiduuid);
+			
+		}
+		//Initial tree
+		public function inittree():void{
+	        	var ut:UtmostService=new UtmostService("portalFuncService",function(e:ResultEvent):void{
+						var tree:ArrayCollection=new ArrayCollection();
+						tree=ArrayCollection(e.result);
+						myTree.dataProvider=tree;
+	        	});
+					//return structure the directory tree, paras 1:user uuid, 2:operation,(1:the directory tree, 2:navigator)
+			ut.ro.reBuildTreeByOperation(UserRight.getUserUUID(),"1");
+				
+		}
+		private function Createinfobbox(e:ResultEvent):void{
+			var arr1:ArrayCollection=e.result as ArrayCollection;
+			var arr:ArrayCollection=new ArrayCollection();
+			for(var i:int=0;i<arr1.length;i++){
+					var obj:Object=arr1.getItemAt(i);
+					if(obj["field_type"]=="1"){
+						obj.FIELD_TYPE="TextInput";
+						obj.REGEX=obj["regex"];
+						obj.tooltip=obj["tooltip"];
+					}else if(obj["field_type"]=="2"){
+						obj.FIELD_TYPE="ComboBox";
+						obj.FIELD_VALUE=obj["field_value"];
+						obj.tooltip=obj["tooltip"];
+						
+					}else if(obj["field_type"]=="3"){
+						obj.FIELD_TYPE="DateField";
+						obj.REGEX=obj["regex"];
+						obj.tooltip=obj["tooltip"];
+					}
+					obj.FIELD_NAME=obj["show_name_en"];
+					obj.ID=(obj["field_name"] as String).toLowerCase();
+					trace("&&&&&&&::::"+obj.ID);
+					arr.addItem(obj);
+			}
+			if(createinfovbox!=null &&createinfovbox.getChildren()!=null &&createinfovbox.getChildren().length>0){
+						createinfovbox.removeAllChildren();	
+			}
+				createinfovbox.addChild(CreateInforInputPage.createPage(arr));
+				if(treenodeuuid==StaticFunUUID.HOMOLOGATION_FUNC_UUID){
+					homoFiles=new homologation();
+					allFiles = homoFiles.arrFiles;
+			   	    createinfovbox.addChild(homoFiles);
+			   	    fileColumns = homoFiles.columnsArr;	//Attachment segment TITILE
+			   	}else if(treenodeuuid==StaticFunUUID.INFORMATION_FUNC_UUID){
+					infoFiles=new information();
+					allFiles = infoFiles.arrFiles;
+			   	    createinfovbox.addChild(infoFiles);
+			   	    fileColumns = infoFiles.columnsArr;	//Attachment segment TITILE
+			   	}else{
+					policyFiles=new policy();
+					allFiles = policyFiles.arrFiles;
+					createinfovbox.addChild(policyFiles);
+					fileColumns = policyFiles.columnsArr;	//Attachment segment TITILE
+			   	}
+				
+				
+			}
+			[Bindable]
+			public var obj:Object;
+			public function setObj(o:Object):void{
+				obj = o;
+			}
+
+			/**
+			 * Submit dynamic form
+			 * */
+			internal function handleValid1(eventObj:MouseEvent):void{
+				loadingBox = null;	//Initial loading window
+				
+				pageotwo_button.enabled = false;
+				allFiles = new Array();
+				allDocs = new Array();
+				//Verification form
+				if(!CreateInforInputPage.validate()){
+					pageotwo_button.enabled = true;
+					return;
+				}
+				
+				//Piece together all attachment
+				if(policyFiles!=null && policyFiles.arrFiles!=null){
+					allFiles = policyFiles.arrFiles;
+					allDocs = policyFiles.mydocs._arrUploadFiles;
+				}
+				if(homoFiles!=null && homoFiles.arrFiles!=null){
+					allFiles = homoFiles.arrFiles;
+					allDocs = homoFiles.mydocs._arrUploadFiles;
+				}
+				if(infoFiles!=null && infoFiles.arrFiles!=null){
+					allFiles = infoFiles.arrFiles;
+					allDocs = infoFiles.mydocs._arrUploadFiles;
+				}
+				
+				var af:ArrayCollection = new ArrayCollection();
+				for each(var o1:Object in allDocs){
+					var obj:Object=new Object();
+					obj["kind"]="doc";
+					obj["name"]=o1.name;
+					af.addItem(obj);
+				}
+				for each(var o2:Object in allFiles){
+					var obj:Object=new Object();
+					var kindStr:String = String(o2.name).substring(String(o2.name).lastIndexOf("."),String(o2.name).length);
+					if(kindStr.toLowerCase() == ".swf"){
+						obj["kind"]=o2.kind+"_swf";
+					}else{
+						obj["kind"]=o2.kind;
+					}
+					obj["name"]=o2.name;
+					af.addItem(obj);
+				}
+				
+				if((allFiles!=null && allFiles.length!=0) || (allDocs!=null && allDocs.length!=0)){
+					//Convert attachment name
+					var ut_tools:UtmostService=new UtmostService("CommonTools",function(e:ResultEvent):void{
+						var refFiles:ArrayCollection = ArrayCollection(e.result);	//After coversion
+						var ufs:Array = new Array();
+						ufs = ufs.concat(allFiles);
+						ufs = ufs.concat(allDocs);
+						var uploadFilesList:ArrayCollection = new ArrayCollection();	//Submit a file list
+						var fileNames:ArrayCollection = new ArrayCollection();	//Submit file name
+						
+						var docStr:String = new String();	//doc attachment
+						
+						for each(var fo:Object in ufs){
+							
+							var fStr:String = fo.name;
+							var fKind:String = fStr.substring(fStr.lastIndexOf("."), fStr.length);
+							
+							if(fKind.toLowerCase() == ".swf"){
+								fo.kind = fo.kind + "_swf";
+							}
+							
+							var columnObj:Object = new Object();	//segment and value of attachment
+							
+							var fileRef:FileReference;
+							var isDoc:Boolean = false;
+							if(fo.hasOwnProperty("file") && !fo.hasOwnProperty("fr")){
+								fileRef = fo.file;
+								isDoc = true;
+							}else{
+								fileRef = fo.fr;
+							}
+							uploadFilesList.addItem(fileRef);
+							var fnStr:String = new String();
+							for each(var refObj:Object in refFiles){
+								if(isDoc){
+									if(refObj.name == fo.name){
+										fnStr = refObj["doc"];
+										docStr += fnStr + "/";
+									}
+								}else{
+									if(refObj.kind == fo.kind){
+										fnStr = refObj[fo.kind];
+										var fileObj:Object = new Object();
+										fileObj["id"] = fo.kind;
+										fileObj["text"] = fnStr;
+										refFileNames.addItem(fileObj);
+									}
+								}
+							}
+							fileNames.addItem(fnStr);
+						}
+						
+						var docObj:Object=new Object();
+						docObj["id"] = "doc_";
+						docObj["text"] = docStr;
+						refFileNames.addItem(docObj);
+						
+						var _uploadURL:URLRequest = new URLRequest;
+				        _uploadURL.url = StaticChannelSet.getWebRoot() + "/upload.form?method=upload";
+				        _uploadURL.method = "GET";
+				        _uploadURL.contentType = "multipart/form-data";
+				        
+				        loadingBox = uploading(PopUpManager.createPopUp(parentApplication as DisplayObject,uploading,true));
+				        loadingBox.callbackFunction = showChooseUploadStepWindow;
+				        filesUpload = new FilesUpload(uploadFilesList, fileNames, _uploadURL, dynFormUploadComplete, function():void{
+				        	if(loadingBox!=null){
+								loadingBox.finishBtn.visible = true;
+							}
+							pageotwo_button.enabled = true;
+							Alert.show(resourceManager.getString('errormsg','uploadFailt'));
+				        }, loadingBox);
+						
+						PopUpManager.centerPopUp(loadingBox);
+						
+						filesUpload.upload();
+				        
+					});
+					ut_tools.ro.parseFileName(af,UserRight.getUserUUID(),myTree.selectedItem.funcuuid);
+				}else{
+					var colArr:ArrayCollection = new ArrayCollection();
+				
+					//Attachment title
+					for each(var titleInputObj:Object in fileColumns){
+						var ti:TextInput = titleInputObj as TextInput;
+						var oo:Object = new Object();
+						oo["id"] = ti.id;
+						oo["text"] = ti.text;
+						colArr.addItem(oo);
+					}
+					
+					var funcObj:Object = new Object();
+					funcObj["id"] = "func_uuid";
+					funcObj["text"] = myTree.selectedItem.funcuuid;
+					colArr.addItem(funcObj);
+					CreateInforInputPage._completeHandler = dynCreateCompleteHandle;
+					CreateInforInputPage.submitForm(colArr);
+				}
+			}
+		
+			/**
+			 * Call this method after dynamic form upload file success
+			 * */
+			public function dynFormUploadComplete():void{
+				
+				var colArr:ArrayCollection = new ArrayCollection();
+				
+				//attachment title
+				for each(var titleInputObj:Object in fileColumns){
+					var ti:TextInput = titleInputObj as TextInput;
+					var oo:Object = new Object();
+					oo["id"] = ti.id;
+					oo["text"] = ti.text;
+					colArr.addItem(oo);
+				}
+				
+				for each(var oo:Object in refFileNames){
+					colArr.addItem(oo);
+				}
+				
+				var funcObj:Object = new Object();
+				funcObj["id"] = "func_uuid";
+				funcObj["text"] = myTree.selectedItem.funcuuid;
+				colArr.addItem(funcObj);
+				
+				var modifyAuthorObj:Object = new Object();
+				modifyAuthorObj["id"] = "last_modify_author";
+				
+				if(UserRight.getUserUUID() !="777"){
+					modifyAuthorObj["text"]=UserRight.getloginUserInfo().username;
+				}else{
+					modifyAuthorObj["text"]="superman";
+				}
+						
+				colArr.addItem(modifyAuthorObj);
+				
+				CreateInforInputPage._completeHandler = dynCreateCompleteHandle;
+				CreateInforInputPage.submitForm(colArr);
+			}
+			
+			public function dynCreateCompleteHandle(e:ResultEvent):void{
+				if(e.result!=null){
+					commonDataUUID = e.result.toString();
+					if(loadingBox!=null){
+						loadingBox.finishBtn.visible = true;
+					}else{
+						/*var yesLabel:String = Alert.yesLabel;
+						var noLabel:String = Alert.noLabel;
+						Alert.yesLabel = resourceManager.getString('errormsg','return');
+		                Alert.noLabel = resourceManager.getString('errormsg','continue');
+		                Alert.buttonWidth = 100;
+		                Alert.show(resourceManager.getString('errormsg','completeAsk'), "Message", 3, this, alertClickHandler);
+						Alert.yesLabel = yesLabel;
+		                Alert.noLabel = noLabel;*/
+		                showChooseUploadStepWindow();
+					}
+					pageotwo_button.enabled = true;
+				}else{
+					pageotwo_button.enabled = true;	//Set button can use although fail
+					if(loadingBox!=null){
+						loadingBox.finishBtn.visible = true;
+					}
+					Alert.show(resourceManager.getString('errormsg','actionFailt'));
+				}
+			}
+			
+			//Set dynamic page or static page need to display
+			public function visibleSet():void{
+				if(flag == 1){
+					v2_live.visible = false;
+					v2_live.includeInLayout = false;
+					v2_die.visible = true;
+					v2_die.includeInLayout = true;
+				}else{
+					v2_live.visible = true;
+					v2_live.includeInLayout = true;
+					if(createinfovbox.getChildren().length==0){
+					initCreateinfobbox();
+					}
+					v2_die.visible = false;
+					v2_die.includeInLayout = false;
+				}
+			}
+			
+			/**
+			 * criteria submit(hard page)
+			 * */
+			internal function handleValid2(eventObj:MouseEvent):void{
+				
+				pageotwo_button_die.enabled = false;
+					
+				var validErrorArr:Array = staticFormValidator();
+				pageotwo_button_die.enabled = true;	
+				if(validErrorArr.length == 0){
+					if(type=="staticForm"&&download_gb_en.getChildren().length==0){
+						Alert.show("standard_EN is required", resourceManager.getString('errormsg','errtip'), Alert.OK);
+						return;
+					}else if (type=="staticForm"&&download_gb_ch.getChildren().length==0){
+						Alert.show("standard_CH is required", resourceManager.getString('errormsg','errtip'), Alert.OK);
+						return;
+					}
+					this.submitupload();
+				}else{
+					pageotwo_button_die.enabled = true;
+					Alert.show(validErrorArr.join("\n\n"), resourceManager.getString('errormsg','errtip'), Alert.OK);
+				}
+			}
+			
+			private function addOtherFiles():void{
+				others_.addNewFileLine();
+			}
+			
+			private var util:FileUploadUtil=new FileUploadUtil();
+			private function addFiles(vbox:VBox):void{
+				util.addFiles(vbox);
+			}
+			//Piece together object, save it to the b_commondata
+			private function submitupload():void{
+				
+				loadingBox = null;	
+				
+				allDocs=new Array();
+				allFiles=new Array();
+				ac=new ArrayCollection();
+				//Docs array contains doc list(user select these in page), fields: name, size, file
+				var docs:Array=	doc_.allUploadFiles;
+				//files array contains list of swf,pdf,flv(user select these in page), fields: name, size,file,kind(is which segment), type(type of attachment)
+				var files:Array=util.arrRealyUploadFile;
+				//other field
+				var otherFilesArr:Array = others_.uploadFileArr;
+				//save all attachment name to arr, transfer arr to java code for getting name list
+				if((docs!=null && docs.length>0)||(files!=null && files.length>0)||(otherFilesArr!=null&&otherFilesArr.length>0)){
+					trace("............upload document has attachment"); 
+					var arr:ArrayCollection=new ArrayCollection();
+					for each(var o1:Object in docs){
+						var obj:Object=new Object();
+						obj["kind"]="doc";
+						obj["name"]=o1.name;
+						
+						arr.addItem(obj);
+					}
+					for each(var o2:Object in files){
+						var obj:Object=new Object();
+						obj["kind"]=o2.kind;
+						obj["name"]=o2.name;
+						arr.addItem(obj);
+					}
+					var commonTools:UtmostService = new UtmostService("CommonTools",function(e:ResultEvent):void{
+						var resultarray:ArrayCollection=e.result;
+						others_.replaceFileName(resultarray);
+					
+					
+								var utmost:UtmostService=new UtmostService("CommonTools",function(e:ResultEvent):void{
+									var obj:Object = new Object();
+									var resultarray:ArrayCollection=e.result;
+									var docupload:String="";
+									var arr2:ArrayCollection=new ArrayCollection();
+									for(var i:int=0;i<resultarray.length;i++){
+										var str1:Object=resultarray.getItemAt(i);
+										if(str1.kind=="doc"){
+											docupload=docupload+str1["doc"]+"/";
+											obj["doc_"]=docupload;
+										}else{
+											var filename:String=str1[str1.kind];
+											var filekind:String=str1.kind;
+											if(filename.substring(filename.lastIndexOf("."),filename.length)==".swf"){
+												obj[filekind+"_swf"]=filename;
+											}if(filename.substring(filename.lastIndexOf("."),filename.length)==".pdf"){
+												obj[filekind]=filename;
+											}
+										}
+										
+									}
+						
+						obj["func_uuid"]=myTree.selectedItem.funcuuid;
+						obj["effect_status"]=effect_status.text;
+						obj["status"]=status.text;
+					    obj["title_en"]=title_en.text;
+						obj["title_ch"]=title_ch.text;
+						obj["issuance_date_str"]=issuance_date_str.text;
+						obj["execute_date_str"]=execute_date_str.text;
+						obj["pre_execute_date_str"]=pre_execute_date_str.text;
+						obj["remark_"]=remark_.text;
+						obj["standard_attribute1"]=standard_attribute1.text;
+						if(standard_attribute1.text==othersStr){
+						   obj["standard_attribute1"]=standard_attribute1_others.text;
+						   obj["standard_attribute1_other"]="1";
+						}else{
+						   obj["standard_attribute1_other"]="0";
+					    }
+						obj["standard_attribute2"]=standard_attribute2.text;
+						obj["standard_attribute3"]=standard_attribute3.text;
+						obj["no_"]=no_.text;
+						obj["version_"]=version_.text;
+						obj["application_degree"]=application_degree.text;
+						if(gorvernor_code_uuid.selectedItem["data"]==null){
+							obj["gorvernor_code_uuid"]="0";
+						}else{
+						     
+							obj["gorvernor_code_uuid"]=gorvernor_code_uuid.selectedItem["data"];
+							if(gorvernor_code_uuid.value==15){
+							   obj["gorvernor_code_uuid_others"]=governor_code_others.text;
+							}
+						}
+						if(technical_committees_code_uuid.selectedItem["data"]==null){
+							obj["technical_committees_code_uuid"]="0";
+						}else{
+							obj["technical_committees_code_uuid"]=technical_committees_code_uuid.selectedItem["data"];
+						}
+						obj["drafting_committee"]=drafting_committee.text;
+						obj["plan_no"]=plan_no.text;
+						obj["online_auto_execute_date_str"]=online_auto_execute_date_str.text;
+						obj["doc_title"]=doc_title.text;
+						
+						var str:String="";
+						if(applicability1.selected){
+							str=applicability1.label+"/";
+						}
+						if(applicability2.selected){
+							str=str+applicability2.label+"/";
+						}
+						if(applicability3.selected){
+							str=str+applicability3.label+"/";
+						}
+						if(applicability4.selected){
+							str=str+applicability4.label+"/";
+						}
+						if(applicability5.selected){
+							str=str+applicability5.label+"/";
+						}
+						if(applicability6.selected){
+							str=str+applicability6.label+"/";
+						}
+						if(applicability7.selected){
+							str=str+applicability7.label+"/";
+						}
+						if(applicability8.selected){
+							str=str+applicability8.label+"/";
+						}
+						if(applicability9.selected){
+							str=str+applicability9.label+"/";
+						}
+						if(applicability10.selected){
+							str=str+applicability10.label;
+						}
+						obj["applicability"]=str;
+						var powerType:String="";
+						if(power_type_1.selected){
+							powerType=power_type_1.label+"/";
+						}
+						if(power_type_2.selected){
+							powerType=powerType+power_type_2.label+"/";
+						}
+						if(power_type_2_1.selected){
+							powerType=powerType+power_type_2_1.label+"/";
+						}
+						if(power_type_3.selected){
+							powerType=powerType+power_type_3.label+"/";
+						}
+						if(power_type_4.selected){
+							powerType=powerType+power_type_4.label+"/";
+						}
+						if(power_type_5.selected){
+							powerType=powerType+power_type_5.label+"/";
+						}
+						if(power_type_6.selected){
+							powerType=powerType+power_type_6.label+"/";
+						}
+						if(power_type_7.selected){
+							powerType=powerType+power_type_7.label+"/";
+						}
+						if(power_type_8.selected){
+							if(others_key.text !=null&&StringUtil.trim(others_key.text)!=""){
+								powerType=powerType+power_type_8.label+":"+ StringUtil.trim(others_key.text) +"/";
+							}
+						}
+					    obj["power_type"]=powerType;
+						obj["replaced_standard"]=replaced_standard.text;
+						obj["isparts"]=isparts.selectedValue;
+						obj["ismandatory"]=ismandatory.selectedValue;
+						obj["isccc"]=isccc.selectedValue;
+						obj["isbulletin"]=isbulletin.selectedValue;
+						obj["revision_est"]=revision_est.text;
+						obj["key_words"]=key_words.text; 
+						if(type == "ganttForm"){
+							obj["isGantt"]="true";
+							obj["start_date"]=start_date.text;
+							obj["end_date"]=end_date.text;
+							obj["importance"]=comboBox.selectedItem.label;
+							obj["state"] = "0";
+						}else{
+							obj["state"] = "1";
+						}
+						if(UserRight.getUserUUID() !="777"){
+							obj["last_modify_author"]=UserRight.getloginUserInfo().username;
+						}else{
+							obj["last_modify_author"]="superman";
+						}
+						var date1:Date=new Date();
+						var month:Number = date1.getMonth() + 1;
+						var day:Number = date1.getDate();
+						obj["last_modify_date_str"]=(month>9?month:"0"+month) +"/"+(day>9?day:"0"+day)+"/"+date1.getFullYear();
+						
+						obj["last_modify_date"]=date1.getTime();
+						
+						obj["is_national_emi"]=is_national_emi.selectedValue;
+						obj["is_local_emi"]=is_local_emi.selectedValue;
+						obj["contact_person"]=contact_person.text; 
+						
+						var modifyFile:Array = util.modifyFile;
+						
+						if(modifyFile != null){
+							for(var j:int=0; j<modifyFile.length; j++){
+								var o:Object = modifyFile[j];
+								obj[o.kind] = o.name;
+							}
+						}
+							//get file names and real files for other field
+						var otherFileNamesArr:Array = others_.fileNameArr;
+						var otherFilesArr:Array = others_.uploadFileArr;
+						var otherFileInputName:String = "";
+						var otherFileName:String = "";
+						if(otherFileNamesArr != null&&otherFileNamesArr.length!=0){
+							for(var m:int=0;m<otherFileNamesArr.length;m++){
+								var isNull:Boolean = false;
+								var id:String = otherFileNamesArr[m].tempid;
+								for(var n:int=0;n<otherFilesArr.length;n++){
+									if(otherFilesArr[n].tempid == id){
+										isNull = true;
+										var fileNameInputField:TextInput = (otherFileNamesArr[m].fileNameContainer as TextInput);
+										otherFileInputName = otherFileInputName+fileNameInputField.text+"/";
+										otherFileName = otherFileName+otherFilesArr[n].name+"/";
+									}
+								}
+								if(!isNull){
+									Alert.show("Please upload the file if you add a new file line in Others field");
+									others_.setStyle('backgroundColor','#EBCED7');
+									pageotwo_button_die.enabled = true;
+									return;
+								}
+							}
+						}
+						//Alert.show(otherFileInputName);
+						obj["doc_title"] = otherFileInputName;
+						obj["doc_"] = otherFileName;
+						ac.addItem(obj);
+					    
+						
+						var _uploadURL:URLRequest = new URLRequest;
+				        _uploadURL.url = StaticChannelSet.getWebRoot() + "/upload.form?method=upload";
+				        _uploadURL.method = "GET";
+				        _uploadURL.contentType = "multipart/form-data";
+						
+						var files:ArrayCollection = new ArrayCollection();
+						 
+						var fileNames:ArrayCollection = new ArrayCollection();
+						trace("......FileUploadUtil:" + util._arrRealyUploadFile + "...FileUploadUtil length:" + util._arrRealyUploadFile.length);
+						if(util._arrRealyUploadFile!=null){
+							for(var j:int=0; j<util._arrRealyUploadFile.length; j++){
+								var o:Object = util._arrRealyUploadFile[j];
+								files.addItem(o.fr as FileReference);
+								if(o.type == ".pdf"){
+									fileNames.addItem(obj[o.kind]);
+								}else{
+									fileNames.addItem(obj[o.kind+"_swf"]);
+								}
+							}
+						}
+						//util._arrRealyUploadFile = null;
+						if(docs!=null){
+							for(var k:int=0; k<docs.length; k++){
+								var doc:Object = docs[k].file;
+								if(doc!=null){
+									files.addItem(doc as FileReference);
+									for each(var refObj:Object in resultarray){
+										if(docs[k].name == refObj.name){
+											fileNames.addItem(refObj.doc);
+										}
+									}
+								}
+							}
+						}
+						
+						if(otherFilesArr!=null){
+							for(var p:int=0;p<otherFilesArr.length;p++){
+								var file:Object = otherFilesArr[p].fr;
+								if(file!=null){
+									files.addItem(file as FileReference);
+									fileNames.addItem(otherFilesArr[p].name);
+								}
+							}
+						}
+						/////////////
+						//var upload:uploading = new uploading();
+						loadingBox = uploading(PopUpManager.createPopUp(parentApplication as DisplayObject,uploading,true));
+						loadingBox.callbackFunction = showChooseUploadStepWindow;
+						
+						filesUpload = new FilesUpload(files, fileNames, _uploadURL, uploadCompleteHandle, uploadErrorHandle, loadingBox);
+						
+						PopUpManager.centerPopUp(loadingBox);
+						filesUpload.upload();
+					});
+					  utmost.ro.parseFileName(arr,UserRight.getUserUUID(),myTree.selectedItem.funcuuid);
+					});
+				    commonTools.ro.parseOtherFileName(others_.getNewUploadFiles(),UserRight.getUserUUID());
+				}else{
+					var obj:Object = new Object();
+					
+					obj["func_uuid"]=myTree.selectedItem.funcuuid;
+					obj["effect_status"]=effect_status.text;
+					obj["status"]=status.text;
+					obj["title_en"]=title_en.text;
+				    obj["title_ch"]=title_ch.text;
+					obj["issuance_date_str"]=issuance_date_str.text;
+					obj["execute_date_str"]=execute_date_str.text;
+					obj["pre_execute_date_str"]=pre_execute_date_str.text;
+					obj["remark_"]=remark_.text;
+					obj["standard_attribute1"]=standard_attribute1.text;
+					if(standard_attribute1.text=="Others"){
+						   obj["standard_attribute1"]=standard_attribute1_others.text;
+						   obj["standard_attribute1_other"]="1";
+					}else{
+						 obj["standard_attribute1_other"]="0";
+					}
+					obj["standard_attribute2"]=standard_attribute2.text;
+					obj["standard_attribute3"]=standard_attribute3.text;
+					obj["no_"]=no_.text;
+					obj["version_"]=version_.text;
+					obj["application_degree"]=application_degree.text;
+					if(gorvernor_code_uuid.selectedItem["data"]==null){
+						obj["gorvernor_code_uuid"]="0";
+					}else{
+						obj["gorvernor_code_uuid"]=gorvernor_code_uuid.selectedItem["data"];
+					    if(gorvernor_code_uuid.value==15){
+							 obj["gorvernor_code_uuid_others"]=governor_code_others.text;
+					    }
+					}
+					if(technical_committees_code_uuid.selectedItem["data"]==null){
+						obj["technical_committees_code_uuid"]="0";
+					}else{
+						obj["technical_committees_code_uuid"]=technical_committees_code_uuid.selectedItem["data"];
+					}
+					obj["drafting_committee"]=drafting_committee.text;
+					obj["plan_no"]=plan_no.text;
+					obj["online_auto_execute_date_str"]=online_auto_execute_date_str.text;
+					obj["doc_title"]=doc_title.text;
+					
+					var str:String="";
+					if(applicability1.selected){
+						str=applicability1.label+"/";
+					}
+					if(applicability2.selected){
+						str=str+applicability2.label+"/";
+					}
+					if(applicability3.selected){
+						str=str+applicability3.label+"/";
+					}
+					if(applicability4.selected){
+						str=str+applicability4.label+"/";
+					}
+					if(applicability5.selected){
+						str=str+applicability5.label+"/";
+					}
+					if(applicability6.selected){
+						str=str+applicability6.label+"/";
+					}
+					if(applicability7.selected){
+						str=str+applicability7.label+"/";
+					}
+					if(applicability8.selected){
+						str=str+applicability8.label+"/";
+					}
+					if(applicability9.selected){
+						str=str+applicability9.label+"/";
+					}
+					if(applicability10.selected){
+						str=str+applicability10.label;
+					}
+					obj["applicability"]=str;
+					var powerType:String="";
+						if(power_type_1.selected){
+							powerType=power_type_1.label+"/";
+						}
+						if(power_type_2.selected){
+							powerType=powerType+power_type_2.label+"/";
+						}
+						if(power_type_2_1.selected){
+							powerType=powerType+power_type_2_1.label+"/";
+						}
+						if(power_type_3.selected){
+							powerType=powerType+power_type_3.label+"/";
+						}
+						if(power_type_4.selected){
+							powerType=powerType+power_type_4.label+"/";
+						}
+						if(power_type_5.selected){
+							powerType=powerType+power_type_5.label+"/";
+						}
+						if(power_type_6.selected){
+							powerType=powerType+power_type_6.label+"/";
+						}
+						if(power_type_7.selected){
+							powerType=powerType+power_type_7.label+"/";
+						}
+						if(power_type_8.selected){
+							//others_key
+							if(others_key.text !=null&&StringUtil.trim(others_key.text)!=""){
+								powerType=powerType+power_type_8.label+":"+ StringUtil.trim(others_key.text) +"/";
+							}
+						}
+					obj["power_type"]=powerType;
+					obj["replaced_standard"]=replaced_standard.text;
+					obj["revision_est"]=revision_est.text;
+					obj["isparts"]=isparts.selectedValue;
+					obj["ismandatory"]=ismandatory.selectedValue;
+					obj["isccc"]=isccc.selectedValue;
+					obj["isbulletin"]=isbulletin.selectedValue;
+					obj["key_words"]=key_words.text; 
+					if(type == "ganttForm"){
+						obj["isGantt"]="true";
+						obj["start_date"]=start_date.text;
+						obj["end_date"]=end_date.text;
+						obj["importance"]=comboBox.selectedItem.label;
+						obj["state"] = "0";
+					}else{
+						obj["state"] = "1";
+					}
+					
+					if(UserRight.getUserUUID() !="777"){
+						obj["last_modify_author"]=UserRight.getloginUserInfo().username;
+					}else{
+						obj["last_modify_author"]="superman";
+					}
+					
+					var date1:Date=new Date();
+					obj["last_modify_date_str"]= (date1.getMonth() + 1) +"/"+date1.getDate()+"/"+date1.getFullYear();
+					
+					obj["last_modify_date"]=date1.getTime();
+					
+					obj["is_national_emi"]=is_national_emi.selectedValue;
+					obj["is_local_emi"]=is_local_emi.selectedValue;
+					obj["contact_person"]=contact_person.text;
+					ac.addItem(obj);
+					
+					uploadCompleteHandle();	//No attachment submit
+				}
+			}
+			
+			//after user clicks the save button, the alert will pop up
+			private function showChooseUploadStepWindow():void{
+				Alert.buttonWidth = 100;
+				Alert.yesLabel = resourceManager.getString('errormsg','view');
+				Alert.noLabel = resourceManager.getString('errormsg','return');
+				Alert.cancelLabel = resourceManager.getString('errormsg','continue');
+				Alert.show(resourceManager.getString('errormsg','doc.content.popup'), "Message", 11, this, alertStepClickHandler);
+			}
+			
+			//initialize all fields for the page
+			private function clearFields():void{
+				if(type == "staticForm"||type == "ganttForm"){
+					standard_attribute1.selectedItem = "DB";
+					controlOthers();
+					standard_attribute2.text = null;
+					standard_attribute3.selectedItem = "";
+					no_.text = null;
+					version_.text = null;
+					effect_status.selectedItem = "Effective";
+					title_en.text = null;
+					title_ch.text = null;
+					util.removeFiles(download_gb_en);
+					util.removeFiles(download_gb_ch);
+					util.removeFiles(download_ece_r);
+					util.removeFiles(download_eec);
+					util.removeFiles(download_fmvss);
+					others_.clearFileUpload();
+					replaced_standard.text = null;
+					issuance_date_str.text = null;
+					pre_execute_date_str.text = null;
+					execute_date_str.text = null;
+					online_auto_execute_date_str.text = null;
+					start_date.text = null;
+					end_date.text = null;
+					applicability1.selected = false;
+					applicability2.selected = false;
+					applicability3.selected = false;
+					applicability4.selected = false;
+					applicability5.selected = false;
+					applicability6.selected = false;
+					applicability7.selected = false;
+					applicability8.selected = false;
+					applicability9.selected = false;
+					applicability10.selected = false;
+					///
+					power_type_1.selected = false;
+					power_type_2.selected = false;
+					power_type_2_1.selected=false;
+					power_type_3.selected = false;
+					power_type_4.selected = false;
+					power_type_5.selected = false;
+					power_type_6.selected = false;
+					power_type_7.selected = false;
+					power_type_8.selected = false;
+					others_key.text="";
+					///
+					revision_est.text = "Revised";
+					status.text = "";
+					ismandatory.getRadioButtonAt(0).selected = false;
+					ismandatory.getRadioButtonAt(1).selected = false;
+					isccc.getRadioButtonAt(0).selected = false;
+					isccc.getRadioButtonAt(1).selected = false;
+					isbulletin.getRadioButtonAt(0).selected = false;
+					isbulletin.getRadioButtonAt(1).selected = false;
+					is_national_emi.getRadioButtonAt(0).selected = false;
+					is_national_emi.getRadioButtonAt(1).selected = false;
+					is_local_emi.getRadioButtonAt(0).selected = false;
+					is_local_emi.getRadioButtonAt(1).selected = false;
+					isparts.getRadioButtonAt(0).selected = false;
+					isparts.getRadioButtonAt(1).selected = false;
+					application_degree.text = "";
+					gorvernor_code_uuid.text = "";
+					ft_governor_code_others.visible=false;
+            		ft_governor_code_others.required=false;
+            		ft_governor_code_others.includeInLayout=false;
+            		governor_code_others_choose = false;
+            		governor_code_others.text=null;
+					technical_committees_code_uuid.text = "";
+					drafting_committee.text = null;
+					plan_no.text = null;
+					key_words.text = null;
+					remark_.text = null;
+					contact_person.text = "Chen, Xiaolu";
+					commonDataUUID = null;
+				}else{
+					CreateInforInputPage.cleanPageContent();
+				}
+			}
+			
+			//define the actions when clicking the different buttons
+			private function alertStepClickHandler(event:CloseEvent):void{
+				if(event.detail == Alert.YES){
+					UserRight.father.returnTomainWithFuncuuid(myTree.selectedItem.funcuuid,commonDataUUID);
+					commonDataUUID = null;
+				}else if(event.detail==Alert.NO){
+					clearFields();
+                	accordion.selectedIndex = 0;
+    			}else if(event.detail==Alert.CANCEL){
+    				clearFields();
+                	v2_die.verticalScrollPosition = 0;
+                	if(v2!=null){
+                		v2.verticalScrollPosition = 0;
+                	}
+                }
+			}
+			
+			private function uploadCompleteHandle():void{
+				trace("uploadCompleteHandle start...");
+				var utmost_upload:UtmostService=new UtmostService("InformationPublishService",addCommondate_starderd);
+				utmost_upload.ro.addCommonDataWithUUID(ac);
+			}
+			
+			private function uploadErrorHandle():void{
+				if(loadingBox!=null){
+					loadingBox.finishBtn.visible = true;
+				}
+				pageotwo_button_die.enabled = true;
+				Alert.show(resourceManager.getString('errormsg','uploadFailt'));
+			}
+			
+			//save to b_commondata,then get result
+			private function addCommondate_starderd(e:ResultEvent):void{
+				if(e.result!=null){
+					commonDataUUID = e.result.toString();
+					if(loadingBox!=null){
+						loadingBox.finishBtn.visible = true;
+					}else{
+						/*var yesLabel:String = Alert.yesLabel;
+						var noLabel:String = Alert.noLabel;
+						Alert.yesLabel = resourceManager.getString('errormsg','return');
+		                Alert.noLabel = resourceManager.getString('errormsg','continue');
+		                Alert.buttonWidth = 100;
+		                Alert.show(resourceManager.getString('errormsg','completeAsk'), "Message", 3, this, alertClickHandler);
+						Alert.yesLabel = yesLabel;
+		                Alert.noLabel = noLabel;*/
+		                showChooseUploadStepWindow();
+					}
+					pageotwo_button_die.enabled = true;
+				}else{
+					if(loadingBox!=null){
+						loadingBox.finishBtn.visible = true;
+					}
+					pageotwo_button_die.enabled = true;
+					Alert.show(resourceManager.getString('errormsg','actionFailt'));
+				}
+			}
+			
+			/**
+			 * ask user
+			 * */
+			private function alertClickHandler(event:CloseEvent):void{
+				if(event.detail==Alert.YES){
+                	accordion.selectedIndex = 0;
+    			}else if(event.detail==Alert.NO){
+                	v2_die.verticalScrollPosition = 0;
+                	if(v2!=null){
+                		v2.verticalScrollPosition = 0;
+                	}
+                }
+			}
+			
+			/**
+			 * Static form verification(return info list(not is ok)), if size is 0, represent ok
+			 * */
+			private function staticFormValidator():Array{
+				var errorArr:Array = new Array();
+				
+				var validatorErrorArray:Array = Validator.validateAll(staticValidatorArr);
+	            var isValidForm:Boolean = validatorErrorArray.length == 0; 
+	            if (isValidForm) { 
+	            	
+	            } else { 
+	                var err:ValidationResultEvent; 
+	                for each (err in validatorErrorArray) { 
+	                	var errorItem:String = err.currentTarget.source.parent.parent.label;
+	                    errorArr.push(errorItem+ "" + err.message); 
+	                } 
+	            } 
+	
+				return errorArr;
+				
+			}
+			
+			/**
+			 * Initial static form list of verification
+			 * */
+			private function initStaticValidator():void{
+				staticValidatorArr = new Array();
+				staticValidatorArr.push(title_en_v);
+				staticValidatorArr.push(title_ch_v);
+				//staticValidatorArr.push(standard_attribute2_v);
+				//staticValidatorArr.push(standard_attribute3_v);
+				staticValidatorArr.push(no__v);
+				staticValidatorArr.push(version__v);
+				staticValidatorArr.push(drafting_committee_v);
+				staticValidatorArr.push(plan_no_v);
+				staticValidatorArr.push(replaced_standard_v);
+				
+				staticValidatorArr.push(doc_v);
+				
+				if(type == "ganttForm"){
+					staticValidatorArr.push(start_date_v);
+					staticValidatorArr.push(end_date_v);
+				}
+				staticValidatorArr.push(standard_attribute1_others_v);
+				staticValidatorArr.push(governor_code_others_v);
+			}
+			//Traffic lights
+		    [Bindable]
+            [Embed(source="/img/light/green_light.png")]
+            public var green:Class;
+
+            [Bindable]
+            [Embed(source="/img/light/red_light.png")]
+            public var red:Class;
+
+            [Bindable]
+            [Embed(source="/img/light/yellow_light.png")]
+            public var yellow:Class;
+            private function comboboxChange():void{
+            	comboBox.setStyle("iconColor",comboBox.selectedItem.color);
+            }
+            
+            private function refreshImportantLabel(event:Event):void{
+            	var tmpObj:Object = comboBox.selectedItem;
+            	comboBox.selectedItem = null;
+            	comboBox.selectedItem = tmpObj;
+            }
+            
+            private function initcombobox():void {
+            	comboBox.labelField = "desc";
+                comboBox.dropdown.iconField = "icon";
+                comboBox.setStyle("iconColor","#00FF00F");
+            }
+            [Bindable]
+            private var remindInfo:String = "";
+           
+
+           private function governorCodeChange():void{
+            	if(gorvernor_code_uuid.value == 15){
+            		ft_governor_code_others.visible=true;
+            		ft_governor_code_others.required=true;
+            		ft_governor_code_others.includeInLayout=true;
+            		governor_code_others_choose = true;
+            	}else{
+            		ft_governor_code_others.visible=false;
+            		ft_governor_code_others.required=false;
+            		ft_governor_code_others.includeInLayout=false;
+            		governor_code_others_choose = false;
+            		governor_code_others.text=null;
+            	} 
+            }
+            
+            
+         private function controlOthers():void{
+            	if(standard_attribute1.value== "Others"){
+            		ft_standard_attribute1_others.visible=true;
+            		ft_standard_attribute1_others.includeInLayout=true;
+            		ft_standard_attribute1_others.required=true;
+            		standard_attribute1_others_choose = true;
+            		//ft_standard_attribute1_others.height=25;
+            	}else{
+            		ft_standard_attribute1_others.visible=false;
+            		ft_standard_attribute1_others.required=false;
+            		ft_standard_attribute1_others.includeInLayout=false;
+            		standard_attribute1_others_choose = false;
+            		//ft_standard_attribute1_others.height=0;
+            		standard_attribute1_others.text=null;
+            	} 
+            }
+            private function powerTypeOtherChange():void{
+            	if(!power_type_8.selected){
+            		others_key.text = "";
+            	}
+            }
+		]]> 
+	</mx:Script> 
+	 <!--Verify static page-->
+	<!--mx:StringValidator id="title_english_v" source="{title_english}" property="text" 
+					        tooLongError="{resourceManager.getString('errormsg','longlong')+'2000'+resourceManager.getString('errormsg','chars')}" 
+					         maxLength="2000"
+					         required="false"
+					     	 valid="this.title_english.setStyle('backgroundColor','#FFFFFF');"
+					         invalid="this.title_english.setStyle('backgroundColor','#EBCED7');"
+					         /-->
+     <mx:StringValidator id="title_en_v" source="{title_en}" property="text" 
+					        tooLongError="{resourceManager.getString('errormsg','longlong')+'2000'+resourceManager.getString('errormsg','chars')}" 
+					         maxLength="2000"
+					         required="true"  
+					     	 valid="this.title_en.setStyle('backgroundColor','#FFFFFF');"
+					        invalid="this.title_en.setStyle('backgroundColor','#EBCED7');"
+					        />   
+      <!--mx:StringValidator id="title_chinese_v" source="{title_chinese}" property="text" 
+					        tooLongError="{resourceManager.getString('errormsg','longlong')+'2000'+resourceManager.getString('errormsg','chars')}" 
+					         maxLength="2000"
+					          required="false"
+					     	 valid="this.title_chinese.setStyle('backgroundColor','#FFFFFF');"
+					        invalid="this.title_chinese.setStyle('backgroundColor','#EBCED7');"/-->  
+      <mx:StringValidator id="title_ch_v" source="{title_ch}" property="text" 
+					        tooLongError="{resourceManager.getString('errormsg','longlong')+'2000'+resourceManager.getString('errormsg','chars')}" 
+					         maxLength="2000"
+					          required="true"
+					     	 valid="this.title_ch.setStyle('backgroundColor','#FFFFFF');"
+					        invalid="this.title_ch.setStyle('backgroundColor','#EBCED7');"/>    
+	  <!--mx:StringValidator id="adopt_national_standard_no_v" source="{adopt_national_standard_no}" property="text" 
+					        tooLongError="{resourceManager.getString('errormsg','longlong')+'80'+resourceManager.getString('errormsg','chars')} " 
+					         maxLength="80"
+					          required="false"
+					     	 valid="this.adopt_national_standard_no.setStyle('backgroundColor','#FFFFFF');"
+					        invalid="this.adopt_national_standard_no.setStyle('backgroundColor','#EBCED7');"/   			
+    	<mx:NumberValidator id="standard_attribute2_v" source="{standard_attribute2}" property="text"
+    						exceedsMaxError=""
+    						lowerThanMinError="{resourceManager.getString('errormsg','zeronine')}"
+					        minValue="0" maxValue="100"
+					     	 valid="this.standard_attribute2.setStyle('backgroundColor','#FFFFFF');"
+					     	  invalid="this.standard_attribute2.setStyle('backgroundColor','#EBCED7');"/>--> 
+		 <mx:StringValidator id="no__v" source="{no_}" property="text" 
+				          required="true" 
+				     	  valid="this.no_.setStyle('backgroundColor','#FFFFFF');"
+				          invalid="this.no_.setStyle('backgroundColor','#EBCED7');"/>
+	     <mx:StringValidator id="standard_attribute1_others_v" source="{standard_attribute1_others}" property="text"
+	                      required="{standard_attribute1_others_choose}" valid="this.standard_attribute1_others.setStyle('backgroundColor','#FFFFFF');"
+				          invalid="this.standard_attribute1_others.setStyle('backgroundColor','#EBCED7');"/>
+	     <mx:StringValidator id="governor_code_others_v" source="{governor_code_others}" property="text"
+	                      required="{governor_code_others_choose}" valid="this.governor_code_others.setStyle('backgroundColor','#FFFFFF');"
+				          invalid="this.governor_code_others.setStyle('backgroundColor','#EBCED7');"/>
+		 <mx:StringValidator id="version__v" source="{version_}" property="text"
+				          required="true"
+				     	 valid="this.version_.setStyle('backgroundColor','#FFFFFF');"
+				     	  invalid="this.version_.setStyle('backgroundColor','#EBCED7');"
+							/>
+		 <mx:StringValidator id="drafting_committee_v" source="{drafting_committee}" property="text" 
+				        tooLongError="{resourceManager.getString('errormsg','longlong')+'100'+{resourceManager.getString('errormsg','chars')} " 
+				         maxLength="100"
+				          required="false"
+				     	 valid="this.drafting_committee.setStyle('backgroundColor','#FFFFFF');"
+				          invalid="this.drafting_committee.setStyle('backgroundColor','#EBCED7');"/>
+		<mx:StringValidator id="plan_no_v" source="{plan_no}" property="text" 
+				        tooLongError="{resourceManager.getString('errormsg','longlong')+'30'+{resourceManager.getString('errormsg','chars')} " 
+				         maxLength="30"
+				          required="false"
+				     	 valid="this.plan_no.setStyle('backgroundColor','#FFFFFF');"
+				         invalid="this.plan_no.setStyle('backgroundColor','#EBCED7');"/>	
+		<mx:StringValidator id="replaced_standard_v" source="{replaced_standard}" property="text" 
+				        tooLongError="{resourceManager.getString('errormsg','longlong')+'50'+{resourceManager.getString('errormsg','chars')} " 
+				         maxLength="50"
+				          required="false"
+				     	 valid="this.replaced_standard.setStyle('backgroundColor','#FFFFFF');"
+				         invalid="this.replaced_standard.setStyle('backgroundColor','#EBCED7');"/>		
+		<mx:StringValidator id="start_date_v" source="{start_date}" property="text" 
+						 required="{isGantt}"
+			         minLength="10"
+			     	 valid="this.start_date.setStyle('backgroundColor','#FFFFFF');"
+			         invalid="this.start_date.setStyle('backgroundColor','#EBCED7');"/>		
+	  	<mx:StringValidator id="end_date_v" source="{end_date}" property="text" 
+					   required="{isGantt}"
+			         minLength="10"
+			     	 valid="this.end_date.setStyle('backgroundColor','#FFFFFF');"
+			         invalid="this.end_date.setStyle('backgroundColor','#EBCED7');"/>
+			         
+		<!--Verify static attachment TITLE-->
+		<!--mx:StringValidator id="download_en_v" source="{download_gb_en_title}" property="text" 
+			    tooLongError="{resourceManager.getString('errormsg','longlong')+'200'+resourceManager.getString('errormsg','chars')}" 
+			    maxLength="200"
+			    required="false"  
+			 	valid="this.download_gb_en_title.setStyle('backgroundColor','#FFFFFF');"
+			    invalid="this.download_gb_en_title.setStyle('backgroundColor','#EBCED7');"
+			    />
+		<mx:StringValidator id="download_ch_v" source="{download_gb_ch_title}" property="text" 
+			    tooLongError="{resourceManager.getString('errormsg','longlong')+'200'+resourceManager.getString('errormsg','chars')}" 
+			    maxLength="200"
+			    required="false"  
+			 	valid="this.download_gb_ch_title.setStyle('backgroundColor','#FFFFFF');"
+			    invalid="this.download_gb_ch_title.setStyle('backgroundColor','#EBCED7');"
+			    /-->
+		<!--mx:StringValidator id="download_ece_r_v" source="{download_ece_r_title}" property="text" 
+			    tooLongError="{resourceManager.getString('errormsg','longlong')+'200'+resourceManager.getString('errormsg','chars')}" 
+			    maxLength="200"
+			    required="false"  
+			 	valid="this.download_ece_r_title.setStyle('backgroundColor','#FFFFFF');"
+			    invalid="this.download_ece_r_title.setStyle('backgroundColor','#EBCED7');"
+			    /-->
+		<!--mx:StringValidator id="download_eec_v" source="{download_eec_title}" property="text" 
+			    tooLongError="{resourceManager.getString('errormsg','longlong')+'200'+resourceManager.getString('errormsg','chars')}" 
+			    maxLength="200"
+			    required="false"  
+			 	valid="this.download_eec_title.setStyle('backgroundColor','#FFFFFF');"
+			    invalid="this.download_eec_title.setStyle('backgroundColor','#EBCED7');"
+			    /-->
+		<!--mx:StringValidator id="download_others_v" source="{download_others_title}" property="text" 
+			    tooLongError="{resourceManager.getString('errormsg','longlong')+'200'+resourceManager.getString('errormsg','chars')}" 
+			    maxLength="200"
+			    required="false"  
+			 	valid="this.download_others_title.setStyle('backgroundColor','#FFFFFF');"
+			    invalid="this.download_others_title.setStyle('backgroundColor','#EBCED7');"
+			    /-->
+		<mx:StringValidator id="doc_v" source="{doc_title}" property="text" 
+			    tooLongError="{resourceManager.getString('errormsg','longlong')+'200'+resourceManager.getString('errormsg','chars')}" 
+			    maxLength="200"
+			    required="false"  
+			 	valid="this.doc_title.setStyle('backgroundColor','#FFFFFF');"
+			    invalid="this.doc_title.setStyle('backgroundColor','#EBCED7');"
+			    />	
+		<!--others_key -->   
+		<mx:StringValidator id="other_key_v" source="{others_key}" property="text" 
+			    tooLongError="{resourceManager.getString('errormsg','longlong')+'400'+resourceManager.getString('errormsg','chars')}" 
+			    maxLength="400"
+			    required="false"  
+			 	valid="this.others_key.setStyle('backgroundColor','#FFFFFF');"
+			    invalid="this.others_key.setStyle('backgroundColor','#EBCED7');"
+			    />		
+		<!--Verify static attachment TITLE-->  
+		
+	<mx:Accordion id="accordion"   fontSize="12"
+		headerRenderer="org.utmost.OverRideAccordionHeader" 
+		width="100%" height="100%"> 
+		<mx:VBox id="v1" label="{resourceManager.getString('errormsg','infoinput')}" width="100%" fontSize="12" height="100%" horizontalAlign="center" verticalAlign="middle"> 
+			<mx:VBox width="100%" height="100%"> 
+				<mx:Tree styleName="newDoc" id="myTree" width="100%" doubleClickEnabled="true" 
+					doubleClick="{ComponentUtil.ocSelectTree(event)}"  
+					change="{treeDataChangeHandle(event);}" height="100%" 
+					showRoot="true" 
+					labelField="{resourceManager.getString('manageView', 'doc.category.tree.label.field')}"  />
+			</mx:VBox> 
+			<mx:ControlBar horizontalAlign="right" width="90%"> 
+				<mx:HBox width="50%"  horizontalAlign="center" >
+				</mx:HBox> 
+				<mx:HBox width="50%"  horizontalAlign="center" >
+					<mycomponents:Components_LinkButton iconType="bottom" label="{resourceManager.getString('errormsg','next')}" id="pageone_button" width="100"  enabled="false" click="nextChild();" />
+				</mx:HBox> 
+			</mx:ControlBar> 
+			
+		</mx:VBox> 
+		<mx:VBox id="v2" creationComplete="visibleSet()"  verticalGap="15" horizontalAlign="center" verticalAlign="middle" width="100%"> 
+			<mx:VBox id="v2_live" visible="true" includeInLayout="true">
+			<mx:Spacer width="90%" height="10" />
+				<mx:VBox id="createinfovbox" horizontalAlign="center">
+					
+				</mx:VBox>
+				<mx:ControlBar width="90%" horizontalAlign="right"> 
+					<mycomponents:Components_LinkButton iconType="up" width="100"   label="{resourceManager.getString('errormsg','prev')}" click="prevChild();" /> 
+					<mx:Spacer width="100%" /> 
+					 
+					<mycomponents:Components_LinkButton iconType="bottom" width="100"   label="{resourceManager.getString('errormsg','save')}" id="pageotwo_button"  click="{handleValid1(event);}" /> 
+				</mx:ControlBar>
+		</mx:VBox>
+
+
+<!--mydie-->
+<mx:VBox id="v2_die" visible="true" includeInLayout="true"  creationComplete="createDraf();">
+	<mx:Spacer width="90%" height="20" />
+		<mx:Form id="form1" width="90%" height="100%"   fontSize="12"   >
+			<mx:VBox height="30%" width="90%"  horizontalAlign="right" >
+			
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.standardPro1')}" required="true" fontWeight="bold"  height="25">
+				<mx:HBox>
+					<mx:ComboBox width="200" id="standard_attribute1" change="controlOthers()">
+						<mx:Array>
+							<mx:String>DB</mx:String>
+							<mx:String>GA</mx:String>
+							<mx:String>GB</mx:String> 
+							<mx:String>HG</mx:String>
+							<mx:String>HJ</mx:String>
+							<mx:String>JB</mx:String>
+							<mx:String>JG</mx:String> 
+							<mx:String>JT</mx:String>
+							<mx:String>NB</mx:String>
+							<mx:String>QC</mx:String>
+							<mx:String>SZJG</mx:String>
+							<mx:String>Others</mx:String>
+						</mx:Array>
+					</mx:ComboBox>
+					<mx:Label width="150"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem id="ft_standard_attribute1_others" toolTip="{resourceManager.getString('manageView', 'doc.msg.standardPro.other')}" label="{resourceManager.getString('manageView', 'doc.content.others')}"  fontWeight="bold"  height="25" includeInLayout="false"  visible="false">
+				<mx:HBox>
+					<mx:TextInput id="standard_attribute1_others" width="200" maxChars="10"/>
+					<mx:Label width="150"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem toolTip="0-100 chars" label="{resourceManager.getString('manageView', 'doc.content.standardPro2')}"  fontWeight="bold"  height="25">
+				<mx:HBox>
+					<mx:TextInput id="standard_attribute2"  width="200"/>
+					<mx:Label width="150" id="die_lab6" text="{resourceManager.getString('manageView', 'doc.content.warning.inputLess100')}" enabled="false"  visible="false" color="#EBCED7"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.standardPro3')}" required="true" fontWeight="bold"  height="25">
+			<mx:HBox>
+					<mx:ComboBox id="standard_attribute3" width="200">
+						<mx:Array>
+							<mx:String></mx:String>
+							<mx:String>/T</mx:String>
+							<mx:String>/Z</mx:String>
+						</mx:Array>
+					</mx:ComboBox>
+					<mx:Label width="150"/>
+			</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem id="noBox" toolTip="Examples: 12345.6, 123XX " label="{resourceManager.getString('manageView', 'doc.content.no')}"  required="true" fontWeight="bold"  height="25">
+			<mx:HBox>
+					<mx:TextInput id="no_" width="200" restrict="X0-9."/>
+					<mx:Label width="150" id="die_lab7" text="{resourceManager.getString('manageView', 'doc.content.warning.inputLess99999')}" enabled="false" visible="false" color="#EBCED7"/>
+			</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem id="versionBox" toolTip="Examples: 2015, 201X" label="{resourceManager.getString('manageView', 'doc.content.version')}" required="true" fontWeight="bold"  height="25">
+			<mx:HBox>
+				<mx:TextInput id="version_" width="200" restrict="X0-9."/>
+				<mx:Label width="150" id="die_lab8" text="请输入0-9的4位数字" enabled="false" visible="false" color="#EBCED7"/>	
+			</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem label="{resourceManager.getString('manageView', 'doc.content.status')}" fontWeight="bold" required="{!isGantt}" height="25">
+			<mx:HBox>
+				<mx:ComboBox id="effect_status" width="200" selectedIndex="0">
+					<mx:Array >
+						<mx:String></mx:String>
+						<mx:String>Effective</mx:String>
+						<mx:String>Abolished</mx:String>
+					</mx:Array>
+				</mx:ComboBox>
+				<mx:Label width="150" visible="false"/>
+			</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem toolTip="0-2000 chars" label="{resourceManager.getString('manageView', 'doc.content.standardTitleEn')}" required="true" fontWeight="bold"  height="25">
+				<mx:HBox>
+					<mx:TextInput id="title_en"  width="200" />
+					<mx:Label width="150" id="die_lab1" text="{resourceManager.getString('manageView', 'doc.content.warning.inputLess2000Words')}" enabled="false"  visible="false"  color="#EBCED7" />
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem toolTip="0-2000 chars" label="{resourceManager.getString('manageView', 'doc.content.standardTitleCn')}" required="true" fontWeight="bold"  height="25">
+				<mx:HBox>
+					<mx:TextInput id="title_ch"  width="200" />
+					<mx:Label width="150" id="die_lab3" text="{resourceManager.getString('manageView', 'doc.content.warning.inputLess2000Words')}" enabled="false"  visible="false" color="#EBCED7"/>
+				</mx:HBox>	
+			</mx:FormItem>
+			<mx:Spacer width="90%" height="5" />
+			<mx:Label width="600" text="{isGantt?resourceManager.getString('manageView', 'doc.content.draftAttachment.title'):resourceManager.getString('manageView', 'doc.content.issuedAttachment.title')}" enabled="false"  visible="true"  color="#EBCED7" />
+			<mx:VBox id="vbox0" visible="true" includeInLayout="true"  horizontalAlign="right" borderStyle="solid"   x="308" y="90">
+			   <mx:Spacer height="5" />
+			   <mx:HBox>
+			   <mx:Label width="100"/>
+			   	<mx:FormItem id="en_title_form" toolTip="0-200 chars" label="{resourceManager.getString('manageView', 'doc.content.standardEn')}" fontWeight="bold"  minHeight="25" x="0" required="{!isGantt}">
+					<mx:HBox x="0" horizontalAlign="left">
+						<!--mx:TextInput id="download_gb_en_title" text="{download_gb_en.getChildren().length>0?'EN':''}" height="25" width="100"/-->
+						<mx:Button id="gben" toolTip="Add file(s)" click="addFiles(download_gb_en)" icon="@Embed('/component/upload/assets/add.png')" width="26"/>
+						<mx:Canvas  minHeight="25" id="list1">
+							<mx:VBox horizontalScrollPolicy="off" verticalScrollPolicy="off" minHeight="25"   width="276"  id="download_gb_en" borderStyle="solid">
+							</mx:VBox>
+						</mx:Canvas>
+						<mx:Label width="50"/>
+					</mx:HBox>
+				</mx:FormItem>
+			   </mx:HBox>
+			   <mx:HBox>
+			    <mx:Label width="100"/>
+				<mx:FormItem id="ch_title_form" toolTip="0-200 chars" label="{resourceManager.getString('manageView', 'doc.content.standardCn')}" fontWeight="bold" x="0" required="{!isGantt}">
+					<mx:HBox x="0" horizontalAlign="left">
+						<!--mx:TextInput id="download_gb_ch_title" text="{download_gb_ch.getChildren().length>0?'CH':''}" height="25" width="100"/-->
+						<mx:Button id="gbch" toolTip="Add file(s)" click="addFiles(download_gb_ch)" icon="@Embed('/component/upload/assets/add.png')" width="26"/>
+						<mx:Canvas  minHeight="25" id="list2">
+							<mx:VBox horizontalScrollPolicy="off" verticalScrollPolicy="off" minHeight="25"   width="276"  id="download_gb_ch" borderStyle="solid">
+							</mx:VBox>
+						</mx:Canvas>
+						<mx:Label width="50"/>
+					</mx:HBox>
+				</mx:FormItem>
+				</mx:HBox>
+				<mx:Spacer width="90%" height="5" />
+			</mx:VBox>
+			<mx:Spacer width="90%" height="5" />
+			<mx:Label width="600" text="{resourceManager.getString('manageView', 'doc.content.referenceAttachment')}" enabled="false"  visible="true"  color="#EBCED7" />
+			<mx:VBox id="vbox1" visible="true" includeInLayout="true"  horizontalAlign="right" borderStyle="solid"   x="308" y="90">
+				<mx:Spacer width="90%" height="5" />
+				<mx:HBox>
+				 <mx:Label width="150"/>
+				 <mx:FormItem id="ece_r_title_form" toolTip="0-200 chars" label="ECE-R:" fontWeight="bold"  minHeight="25" x="0">
+						<mx:HBox x="0" horizontalAlign="left">
+						<!--mx:TextInput id="download_ece_r_title" text="{download_ece_r.getChildren().length>0?'ECE-R':''}" height="25" width="100"/-->
+						<mx:Button id="ecer" toolTip="Add file(s)" click="addFiles(download_ece_r)" icon="@Embed('/component/upload/assets/add.png')" width="26"/>
+						<mx:Canvas  minHeight="25" id="list3">
+							<mx:VBox horizontalScrollPolicy="off" verticalScrollPolicy="off" minHeight="25" width="276"  id="download_ece_r" borderStyle="solid">
+							</mx:VBox>
+						</mx:Canvas>
+						<mx:Label width="50"/>
+						</mx:HBox>
+				</mx:FormItem>
+				</mx:HBox>
+				<mx:HBox>
+				 <mx:Label width="100"/>
+				<mx:FormItem id="eec_title_form" toolTip="0-200 chars" label="EEC:" fontWeight="bold"  minHeight="25" x="0">
+						<mx:HBox x="0" horizontalAlign="left">
+						<!--mx:TextInput id="download_eec_title" text="{download_eec.getChildren().length>0?'EEC':''}" height="25" width="100"/-->
+						<mx:Button id="eec" toolTip="Add file(s)" click="addFiles(download_eec)" icon="@Embed('/component/upload/assets/add.png')" width="26"/>
+						<mx:Canvas minHeight="25" id="list4">
+							<mx:VBox horizontalScrollPolicy="off" verticalScrollPolicy="off" minHeight="25" width="276"  id="download_eec" borderStyle="solid">
+							</mx:VBox>
+							<mx:VBox horizontalScrollPolicy="off" verticalScrollPolicy="off" minHeight="0" width="0"  id="download_eec_orig" visible="false" enabled="false">
+							</mx:VBox>
+						</mx:Canvas>
+						<mx:Label width="50"/>
+						</mx:HBox>
+				</mx:FormItem>
+				</mx:HBox>
+				<mx:HBox>
+				 <mx:Label width="100"/>
+				<mx:FormItem id="fmvss_title_form" toolTip="0-200 chars" label="FMVSS:" fontWeight="bold"  minHeight="25" x="0">
+						<mx:HBox x="0" horizontalAlign="left">
+							<mx:Button id="fmvss" toolTip="Add file(s)" click="addFiles(download_fmvss)" icon="@Embed('/component/upload/assets/add.png')" width="26"/>
+							<mx:Canvas minHeight="25" id="list_fmvss">
+								<mx:VBox horizontalScrollPolicy="off" verticalScrollPolicy="off" minHeight="25" width="276"  id="download_fmvss" borderStyle="solid">
+								</mx:VBox>
+							</mx:Canvas>
+							<mx:Label width="50"/>
+						</mx:HBox>
+				  </mx:FormItem>
+				</mx:HBox>
+				<mx:HBox height="25">
+				  <mx:Label width="108"/>
+				  	<mx:FormItem id="others_title_form" toolTip="0-200 chars" label="{resourceManager.getString('manageView', 'doc.content.others')}" fontWeight="bold" minHeight="25" x="0" >
+						<!--mx:TextInput id="download_others_title" text="{download_others.getChildren().length>0?'Others':''}" height="25" width="100"/-->
+					    <mx:Button id="otherButton" toolTip="Add file(s)" click="addOtherFiles()" icon="@Embed('/component/upload/assets/addOthers.png')" width="26"/>
+				     </mx:FormItem>
+				     <mx:Label id="otherInfo" width="335" enabled="true" visible="false" color="#EBCED7"/>
+				</mx:HBox>
+				<upload:MultiFileUploadComponent id="others_" minHeight="0"/>
+				<mx:FormItem id="doc_title_form" toolTip="0-200 chars" label="Word Accessories" fontWeight="bold" visible="false" height="0">
+					<mx:HBox x="0" horizontalAlign="left">
+						<mx:TextInput id="doc_title" height="0" width="0"/>
+						<upload:FileUploadComponent id="doc_" creationComplete="{doc_.changeFunc = docsChange;}" maxFiles="6" minHeight="0"/>
+					</mx:HBox>
+				</mx:FormItem>
+			  </mx:VBox>
+			
+			<mx:FormItem toolTip="0-500 chars"  height="25" label="{resourceManager.getString('manageView', 'doc.content.replaceStandard')}" fontWeight="bold"  >
+				<mx:HBox>
+					<mx:TextInput   id="replaced_standard"    width="200"/>
+					<mx:Label width="150" id="die_lab12" text="{resourceManager.getString('manageView', 'doc.content.warning.inputLess50Words')}"  visible="false"   enabled="false" color="#EBCED7"/>	
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem label="{isGantt?resourceManager.getString('manageView', 'doc.content.estimatePublishDate'):resourceManager.getString('manageView', 'doc.content.publishDate')}" fontWeight="bold"    height="25">
+				<mx:HBox>
+					<mx:DateField formatString="YYYY-MM-DD" width="218" id="issuance_date_str" yearNavigationEnabled="true"/>
+					<mx:Button id="publishDateEmpty" toolTip="Empty" click="issuance_date_str.text=''" icon="@Embed('/component/upload/assets/delete.png')" width="29"/>
+					<mx:Label width="96"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{isGantt?resourceManager.getString('manageView', 'doc.content.estEffectiveDate'):resourceManager.getString('manageView', 'doc.content.effectiveDate')}" fontWeight="bold"    height="25">
+				<mx:HBox>
+					<mx:DateField formatString="YYYY-MM-DD" width="218" id="pre_execute_date_str" yearNavigationEnabled="true"/>
+					<mx:Button id="effectiveDateEmpty" toolTip="Empty" click="pre_execute_date_str.text=''" icon="@Embed('/component/upload/assets/delete.png')" width="29"/>
+					<mx:Label width="96"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{isGantt?resourceManager.getString('manageView', 'doc.content.estimateNewTypeDate'):resourceManager.getString('manageView', 'doc.content.newTypeDate')}" fontWeight="bold"    height="25">
+				<mx:HBox>
+					<mx:DateField formatString="YYYY-MM-DD" width="218" id="execute_date_str" yearNavigationEnabled="true"/>
+					<mx:Button id="estimationDateEmpty" toolTip="Empty" click="execute_date_str.text=''" icon="@Embed('/component/upload/assets/delete.png')" width="29"/>
+					<mx:Label width="96"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{isGantt?resourceManager.getString('manageView', 'doc.content.estimateInProdDate'):resourceManager.getString('manageView', 'doc.content.inProdDate')}" fontWeight="bold"    height="25">
+				<mx:HBox>
+					<mx:DateField formatString="YYYY-MM-DD" width="218" id="online_auto_execute_date_str" yearNavigationEnabled="true" />
+					<mx:Button id="esProdDateEmpty" toolTip="Empty" click="online_auto_execute_date_str.text=''" icon="@Embed('/component/upload/assets/delete.png')" width="29"/>
+					<mx:Label width="96"/>
+				</mx:HBox>
+			</mx:FormItem>	
+			
+			<mx:HBox id="ganttTimePlan">
+				<mx:Label id="plan1" visible="false" includeInLayout="false" text="{resourceManager.getString('manageView', 'doc.content.ganttTime')}" fontWeight="bold"/>
+				<mx:Label width="50"  />
+				<mx:VBox id="planform" visible="false" includeInLayout="false" horizontalAlign="right">
+				<mx:FormItem  required="true" label="{resourceManager.getString('manageView', 'doc.content.startDate')}" fontWeight="bold"   >
+						<mx:HBox>
+							<mx:DateField formatString="YYYY-MM-DD" id="start_date" width="218" yearNavigationEnabled="true" />
+							<mx:Button id="startDateEmpty" toolTip="Empty" click="start_date.text=''" icon="@Embed('/component/upload/assets/delete.png')" width="29"/>
+					        <mx:Label width="96"/>
+						</mx:HBox>
+				</mx:FormItem>
+				<mx:FormItem required="true" label="{resourceManager.getString('manageView', 'doc.content.endDate')}" fontWeight="bold"   >
+						<mx:HBox>
+							<mx:DateField formatString="YYYY-MM-DD" id="end_date" width="218"  yearNavigationEnabled="true" />
+							<mx:Button id="endDateEmpty" toolTip="Empty" click="end_date.text=''" icon="@Embed('/component/upload/assets/delete.png')" width="29"/>
+					        <mx:Label width="96"/>
+						</mx:HBox>					
+				</mx:FormItem>
+				<mx:FormItem required="true" label="Importance:" fontWeight="bold" height="0" visible="false">
+						<mx:HBox>
+							<mx:ComboBox id="comboBox" textAlign="center" creationComplete="{initcombobox()}" change="{comboboxChange()}"  rowCount="3"   width="200"  >
+					        <mx:dataProvider>
+					            <mx:ArrayCollection>
+				           		    <mx:Object label="Green" icon="green" color="#00FF00" 
+				           		    	desc="{resourceManager.getString('dataGrid','importance.green')}"/>
+					                <mx:Object label="Yellow" icon="yellow" color="#FFFF00"
+					                	desc="{resourceManager.getString('dataGrid','importance.yellow')}"/>
+					                <mx:Object label="Red" icon="red" color="#FF0000"
+					                	desc="{resourceManager.getString('dataGrid','importance.red')}"/>
+					            </mx:ArrayCollection>
+					        </mx:dataProvider>
+					    </mx:ComboBox>
+					    <mx:Label width="150" visible="false"/>
+				    </mx:HBox>
+				</mx:FormItem>
+			</mx:VBox>
+			</mx:HBox>
+			<mx:Spacer height="5" />
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.scope')}" fontWeight="bold"  height="120">
+			 <mx:HBox>
+				<mx:VBox width="250" borderStyle="solid" visible="true" includeInLayout="true">
+				    <mx:Spacer height="2" />
+					<mx:HBox height="25">
+					    <mx:Label width="10"/>
+						<mx:CheckBox id="applicability1"   label="M1"/>
+						<mx:CheckBox  id="applicability2" label="M2"/>
+						<mx:CheckBox  id="applicability3" label="M3"/>
+					</mx:HBox>
+					<mx:HBox height="25">
+					    <mx:Label width="10"/>
+						<mx:CheckBox  id="applicability4" label="N1"/>
+						<mx:CheckBox  id="applicability5" label="N2"/>
+						<mx:CheckBox  id="applicability6" label="N3"/>
+					</mx:HBox>
+					<mx:HBox height="25">
+					    <mx:Label width="10"/>
+						<mx:CheckBox  id="applicability7" label="O1"/>
+						<mx:CheckBox  id="applicability8" label="O2"/>
+						<mx:CheckBox  id="applicability9" label="O3"/>
+						<mx:CheckBox  id="applicability10" label="O4"/>
+					</mx:HBox>
+					<mx:Spacer height="2"/>
+				  </mx:VBox>
+				  <mx:Label width="150"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.powerType')}" fontWeight="bold"  height="165">
+			 <mx:HBox>
+				<mx:VBox width="300" height="165" borderStyle="solid" visible="true" includeInLayout="true">
+				    <mx:Spacer height="2" />
+					<mx:HBox height="25">
+					    <mx:Label width="10"/>
+						<mx:CheckBox width="90" id="power_type_1" label="Gasoline"/>
+						<mx:CheckBox width="90" id="power_type_2" label="Diesel"/>
+						<mx:CheckBox id="power_type_2_1" label="EV"/>
+					</mx:HBox>
+					<mx:HBox height="25">
+					    <mx:Label width="10"/>
+						<mx:CheckBox width="130" id="power_type_3" label="HEV(incl. PHEV)"/>
+						<mx:CheckBox id="power_type_4" label="BEV"/>
+					</mx:HBox>
+					<mx:HBox height="25">
+					    <mx:Label width="10"/>
+						<mx:CheckBox width="90" id="power_type_5" label="FCEV"/>
+						<mx:CheckBox width="90" id="power_type_6" label="LPG"/>
+						<mx:CheckBox id="power_type_7" label="CNG"/>
+					</mx:HBox>
+					<mx:HBox height="50">
+					    <mx:Label width="10"/>
+						<mx:CheckBox id="power_type_8" label="Others" change="powerTypeOtherChange()"/>
+						<mx:TextArea  width="200" id="others_key" fontSize="10" toolTip="{remindInfo}" maxChars="400"/>
+					</mx:HBox>
+					<mx:Spacer height="2" />
+				  </mx:VBox>
+				  <mx:Label width="150"/>	
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:Spacer height="5" />
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.revised')}"  fontWeight="bold"  height="25">
+			    <mx:HBox>
+					<mx:ComboBox id="revision_est" width="200">
+						<mx:Array>
+							<mx:String>Revised</mx:String>
+							<mx:String>Established</mx:String>
+						</mx:Array>
+					</mx:ComboBox>
+					<mx:Label width="150"/>
+			    </mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.curStatus')}"  fontWeight="bold"  height="25">
+			    <mx:HBox>
+					<mx:ComboBox id="status" width="200">
+						<mx:Array>
+						    <mx:String></mx:String>
+							<mx:String>Under Planning</mx:String>
+							<mx:String>Plan issued</mx:String>
+							<mx:String>Comment</mx:String>
+							<mx:String>Examination</mx:String>
+							<mx:String>Ask for approval</mx:String>
+							<mx:String>WTO/TBT</mx:String>
+							<mx:String>Published</mx:String> 
+							<mx:String>Implemented</mx:String>
+							<mx:String>Abolished</mx:String>
+						</mx:Array>
+					</mx:ComboBox>
+					<mx:Label width="150"/>
+			    </mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.mandatory')}" fontWeight="bold"   height="25"  horizontalAlign="center">
+				<mx:HBox>
+					<mx:HBox width="200"  verticalAlign="middle">
+								<mx:RadioButtonGroup id="ismandatory" />
+								<mx:RadioButton label="{resourceManager.getString('manageView', 'management.category.delete.confirm.yes')}"  value="1" groupName="ismandatory" />
+								<mx:RadioButton label="{resourceManager.getString('manageView', 'management.category.delete.confirm.no')}" value="0" groupName="ismandatory" />
+					</mx:HBox>
+					<mx:Label width="150"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.cccCatalog')}" fontWeight="bold"   height="25"  horizontalAlign="center">
+				<mx:HBox>
+					<mx:HBox width="200"  verticalAlign="middle">
+						<mx:RadioButtonGroup id="isccc" />
+						<mx:RadioButton label="{resourceManager.getString('manageView', 'management.category.delete.confirm.yes')}"  value="1" groupName="isccc" />
+						<mx:RadioButton label="{resourceManager.getString('manageView', 'management.category.delete.confirm.no')}" value="0" groupName="isccc" />
+					</mx:HBox>
+					<mx:Label width="150"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.miitCatalog')}" fontWeight="bold" height="25">
+				<mx:HBox>
+					<mx:HBox width="200"  verticalAlign="middle" >
+							<mx:RadioButtonGroup id="isbulletin" />
+							<mx:RadioButton label="{resourceManager.getString('manageView', 'management.category.delete.confirm.yes')}" value="1"  groupName="isbulletin" />
+							<mx:RadioButton label="{resourceManager.getString('manageView', 'management.category.delete.confirm.no')}" value="0" groupName="isbulletin" />
+					</mx:HBox>
+					<mx:Label width="150"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.nationEmission')}" fontWeight="bold"   height="25"  horizontalAlign="center">
+				<mx:HBox>
+					<mx:HBox width="200"  verticalAlign="middle">
+						<mx:RadioButtonGroup id="is_national_emi" />
+						<mx:RadioButton label="{resourceManager.getString('manageView', 'management.category.delete.confirm.yes')}"  value="1" groupName="is_national_emi" />
+						<mx:RadioButton label="{resourceManager.getString('manageView', 'management.category.delete.confirm.no')}" value="0" groupName="is_national_emi" />
+					</mx:HBox>
+					<mx:Label width="150"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.localEmission')}" fontWeight="bold"   height="25"  horizontalAlign="center">
+				<mx:HBox>
+					<mx:HBox width="200"  verticalAlign="middle">
+						<mx:RadioButtonGroup id="is_local_emi" />
+						<mx:RadioButton label="{resourceManager.getString('manageView', 'management.category.delete.confirm.yes')}"  value="1" groupName="is_local_emi" />
+						<mx:RadioButton label="{resourceManager.getString('manageView', 'management.category.delete.confirm.no')}" value="0" groupName="is_local_emi" />
+					</mx:HBox>
+					<mx:Label width="150"/>
+				</mx:HBox>
+			    </mx:FormItem>
+				<mx:FormItem height="25" label="{resourceManager.getString('manageView', 'doc.content.partsTitle')}" fontWeight="bold"  horizontalAlign="center"  >
+				<mx:HBox>
+				<mx:HBox width="200"  verticalAlign="middle">
+						<mx:RadioButtonGroup id="isparts" />
+						<mx:RadioButton label="{resourceManager.getString('manageView', 'doc.content.vehicle')}"  groupName="isparts" />
+						<mx:RadioButton label="{resourceManager.getString('manageView', 'doc.content.parts')}" groupName="isparts" />
+				</mx:HBox>
+					<mx:Label width="150"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.appAgree')}" fontWeight="bold"  height="25">
+				<mx:HBox>
+					<mx:ComboBox width="200" id="application_degree">
+							<mx:Array >
+								<mx:String></mx:String>
+								<mx:String>IDT</mx:String>
+								<mx:String>MOD</mx:String>
+								<mx:String>NEQ</mx:String>
+							</mx:Array>
+					</mx:ComboBox>
+					<mx:Label width="150"/>	
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.governor')}" fontWeight="bold"  height="25">
+				<mx:HBox>
+					<mx:ComboBox id="gorvernor_code_uuid"  dataProvider="{G1}" width="200" change="governorCodeChange();">
+					</mx:ComboBox>	
+					<mx:Label width="150"/>	
+				</mx:HBox>
+			</mx:FormItem>
+
+			<mx:FormItem id="ft_governor_code_others" toolTip="{remindInfo}" label="{resourceManager.getString('manageView', 'doc.content.others')}" fontWeight="bold" height="25" visible="false" includeInLayout="false">
+				<mx:HBox>
+					<mx:TextInput  id="governor_code_others" width="200" maxChars="400" />
+					<mx:Label width="150"/>	
+				</mx:HBox>
+			</mx:FormItem>
+			
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.committee')}" fontWeight="bold"    height="25">
+				<mx:HBox>
+				<mx:ComboBox  id="technical_committees_code_uuid" dataProvider="{t}" width="200">
+				</mx:ComboBox>	
+				<mx:Label width="150"/>	
+			</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem toolTip="0-100 chars" label="{resourceManager.getString('manageView', 'doc.content.draftCommittee')}" fontWeight="bold"    height="25">
+				<mx:HBox>
+					<mx:TextInput  id="drafting_committee"    width="200" />
+					<mx:Label width="150" id="die_lab10" text="{resourceManager.getString('manageView', 'doc.content.warning.inputLess100Words')}"  enabled="false" visible="false" color="#EBCED7"/>	
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem toolTip="0-100 chars" label="{resourceManager.getString('manageView', 'doc.content.planNo')}" fontWeight="bold"    height="25">
+				<mx:HBox>
+					<mx:TextInput id="plan_no"   width="200" />
+					<mx:Label width="150" id="die_lab11" text="{resourceManager.getString('manageView', 'doc.content.warning.inputLess30Words')}"  enabled="false"  visible="false"  color="#EBCED7"/>	
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem height="25" toolTip="0-1000 chars" label="{resourceManager.getString('manageView', 'doc.content.keyword')}" fontWeight="bold"  >
+				<mx:HBox>
+					<mx:TextInput id="key_words" width="200"/>
+					<mx:Label width="150" id="die_lab13"    visible="false"   enabled="false" color="#EBCED7"/>	
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem toolTip="0-900 chars" label="{resourceManager.getString('manageView', 'doc.content.remark')}" fontWeight="bold"  horizontalAlign="center" >
+			 	<mx:HBox>
+			 		<mx:TextArea  width="200" id="remark_" />
+					<mx:Label width="150"/>
+			 	</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{resourceManager.getString('manageView', 'doc.content.contact')}" fontWeight="bold"  height="25">
+				<mx:HBox>
+					<mx:ComboBox width="200" id="contact_person">
+						<mx:Array >
+						      <mx:String></mx:String>
+							  <mx:String>Chen, Xiaolu</mx:String>
+							  <mx:String>Du, Wanxuan</mx:String>
+							  <mx:String>Fu, Yinliang</mx:String>
+							  <mx:String>Liao, Yue</mx:String>
+							  <mx:String>Zhao, Wen</mx:String>
+						</mx:Array>
+					</mx:ComboBox>
+					<mx:Label width="150"/>	
+				</mx:HBox>
+			</mx:FormItem>
+			<!--||||||||||||||||||||||||||-->
+			
+			
+			<!--mx:FormItem  toolTip="0-2000 chars" label="Title_EN:" fontWeight="bold"  height="25">
+				<mx:HBox>
+					<mx:TextInput id="title_en"  width="200" />
+					<mx:Label width="150" id="die_lab2" text="不能超过2000字" enabled="false"  visible="false"  color="#EBCED7" />
+				</mx:HBox>
+			</mx:FormItem>
+			
+			<mx:FormItem toolTip="0-2000 chars" label="Title_CH:" fontWeight="bold"  height="25">
+				<mx:HBox>
+					<mx:TextInput id="title_ch"   width="200" />
+					<mx:Label width="150" id="die_lab5" text="不能超过2000字"  enabled="false"  visible="false"  color="#EBCED7"/>
+				</mx:HBox>
+			</mx:FormItem-->
+			<!--<mx:FormItem  label="Suppose to Be Finished Year:" fontWeight="bold"    height="25">
+				<mx:HBox>
+					<mx:DateField width="218" id="sudate_die" yearNavigationEnabled="true" change="{issuance_date_str.text=pre_execute_date_str.text=execute_date_str.text=online_auto_execute_date_str.text=sudate_die.text}" />
+					<mx:Label width="132"/>
+				</mx:HBox>
+			</mx:FormItem>-->
+			<!--mx:FormItem toolTip="0-80 chars" label="Adopted International Standard No.:" fontWeight="bold"  >
+				<mx:HBox width="100%" >
+						<mx:TextArea id="adopt_national_standard_no" width="200" height="25" verticalScrollPolicy="auto" />
+						<mycomponents:Components_LinkButton iconType="right" click="displayvbox1(event)" label="{resourceManager.getString('errormsg','addfile')}" />
+						<mx:Spacer width="30" />
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem  label="summary:" fontWeight="bold"  minHeight="25">
+				<mx:HBox>
+					<mx:Canvas  minHeight="25" id="sum">
+						<mx:VBox horizontalScrollPolicy="off" verticalScrollPolicy="off" minHeight="25" width="200" id="summary"   borderStyle="solid">
+						</mx:VBox>
+					</mx:Canvas>
+					<mx:Button id="sum_button" toolTip="Add file(s)" click="addFiles(summary)" icon="@Embed('/component/upload/assets/add.png')" width="26"/>
+					<mx:Label width="116"/>	
+				</mx:HBox>
+			</mx:FormItem-->
+			</mx:VBox>
+		</mx:Form>
+			
+			<mx:ControlBar width="100%"   > 
+				<mx:HBox width="50%"  horizontalAlign="center" >
+					<mycomponents:Components_LinkButton iconType="up"  label="{resourceManager.getString('errormsg','prev')}" width="100" fontSize="14" click="prevChild()" /> 
+				</mx:HBox> 
+				<mx:HBox width="50%"  horizontalAlign="center" >
+					<mycomponents:Components_LinkButton iconType="right" label="{resourceManager.getString('errormsg','save')}" width="100" fontSize="14" id="pageotwo_button_die" click="handleValid2(event);" /> 
+				</mx:HBox> 
+			</mx:ControlBar>
+		</mx:VBox>			
+	</mx:VBox>
+	<!--input die end-->
+			
+</mx:Accordion> 
+</mx:Module>

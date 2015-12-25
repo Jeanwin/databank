@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow title="{windowTitle}" fontSize="14" xmlns:mx="http://www.adobe.com/2006/mxml" 
+	layout="vertical" width="680" height="320" showCloseButton="true"
+	close="closeMe()" themeColor="#009DFF">
+	<mx:Metadata>
+		[ResourceBundle("forumView")]
+	</mx:Metadata>
+	<mx:Script>
+		<![CDATA[
+			import module.datainput.MyValidate;
+			import com.right.UserRight;
+			import mx.controls.Alert;
+			import com.hp.events.CommonEvent;
+			import mx.core.UIComponent;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import mx.managers.PopUpManager;
+			
+			private var _parentContainer:UIComponent = null;
+			
+			[Bindable]
+			private var _item:Object = null;
+			
+			[Bindable]
+			private var _isTopic:Boolean = false;
+			
+			[Bindable]
+			private var windowTitle:String = "";
+			
+			[Bindable]
+			private var itemTitleLabel:String = "";
+			
+			[Bindable]
+			private var itemContentLabel:String = "Content";
+			
+			[Bindable]
+			private var saveButtonLabel:String = "";
+			
+			[Bindable]
+			private var cancelButtonLabel:String = "";
+			
+			public function set item(_item:Object):void{
+				this._item = _item;
+				refreshLabel();
+			}
+			
+			public function set isTopic(_isTopic:Boolean):void{
+				this._isTopic = _isTopic;
+				refreshLabel();
+			}
+			
+			public function set parentContainer(_parentContainer:UIComponent):void{
+				this._parentContainer = _parentContainer;
+			}
+			
+			private function refreshLabel():void{
+				if(_item == null || _isTopic == null)
+					return;
+				if(_isTopic){
+					if(_item.hasOwnProperty("uuid")){
+						windowTitle = resourceManager.getString("forumView", "topic.update.window.title");
+						itemTitleLabel = resourceManager.getString("forumView", "topic.new.title.label");
+						itemContentLabel = resourceManager.getString("forumView", "topic.new.content.label");
+						saveButtonLabel = resourceManager.getString("forumView", "topic.update.save.button.label");
+						cancelButtonLabel = resourceManager.getString("forumView", "topic.update.cancel.button.label");
+					}else{
+						windowTitle = resourceManager.getString("forumView", "topic.new.window.title");
+						itemTitleLabel = resourceManager.getString("forumView", "topic.new.title.label");
+						itemContentLabel = resourceManager.getString("forumView", "topic.new.content.label");
+						saveButtonLabel = resourceManager.getString("forumView", "topic.new.save.button.label");
+						cancelButtonLabel = resourceManager.getString("forumView", "topic.new.cancel.button.label");
+					}
+				}else{
+					if(_item.hasOwnProperty("uuid")){
+						windowTitle = resourceManager.getString("forumView", "reply.update.window.title");
+						itemTitleLabel = resourceManager.getString("forumView", "reply.new.title.label");
+						itemContentLabel = resourceManager.getString("forumView", "reply.new.content.label");
+						saveButtonLabel = resourceManager.getString("forumView", "reply.update.save.button.label");
+						cancelButtonLabel = resourceManager.getString("forumView", "reply.update.cancel.button.label");
+					}else{
+						windowTitle = resourceManager.getString("forumView", "reply.new.window.title");
+						itemTitleLabel = resourceManager.getString("forumView", "reply.new.title.label");
+						itemContentLabel = resourceManager.getString("forumView", "reply.new.content.label");
+						saveButtonLabel = resourceManager.getString("forumView", "reply.new.save.button.label");
+						cancelButtonLabel = resourceManager.getString("forumView", "reply.new.cancel.button.label");
+					}
+				}
+				
+			}
+			
+			private function saveItem():void{
+				if(_isTopic){
+					if(titleTi.length == 0){
+						MyValidate.validateTextInput(titleTi, 
+							resourceManager.getString("forumView", "topic.title.can.not.empty"), 
+							false);
+						return;
+					}else{
+						MyValidate.validateTextInput(titleTi, "", true);
+					}
+					
+					if(contentTi.length == 0){
+						MyValidate.validateTextInput(contentTi,
+							resourceManager.getString("forumView", "content.can.not.empty"), 
+							false);
+						return;
+					}else{
+						MyValidate.validateTextInput(contentTi, "", true);
+					}
+					
+					var topic:Object = {
+						uuid:_item.uuid,
+						pid:_item.pid,
+						title:titleTi.text,
+						content:contentTi.text
+					};
+					var utmost:UtmostService = new UtmostService("ForumService",
+						function(event:ResultEvent):void{
+							var postChangedEvent:CommonEvent = new CommonEvent(CommonEvent.POST_CHANGED_EVENT, true);
+							postChangedEvent.topicUuid = event.result as String;
+							_parentContainer.dispatchEvent(postChangedEvent);
+							Alert.show(resourceManager.getString("forumView", "post.save.success.prompt"));
+							closeMe();
+						}
+					);
+					utmost.ro.saveOrUpdateTopic(topic, UserRight.getUserUUID());
+				}else{
+					if(contentTi.length == 0){
+						MyValidate.validateTextInput(contentTi,
+							resourceManager.getString("forumView", "content.can.not.empty"), 
+							false);
+						return;
+					}else{
+						MyValidate.validateTextInput(contentTi, "", true);
+					}
+					
+					var reply:Object = {
+						uuid:_item.uuid,
+						pid:_item.pid,
+						content:contentTi.text
+					};
+					var utmost:UtmostService = new UtmostService("ForumService",
+						function(event:ResultEvent):void{
+							var postChangedEvent:CommonEvent = new CommonEvent(CommonEvent.POST_CHANGED_EVENT, true);
+							_parentContainer.dispatchEvent(postChangedEvent);
+							Alert.show(resourceManager.getString("forumView", "post.save.success.prompt"));
+							closeMe();
+						}
+					);
+					utmost.ro.saveOrUpdateReply(reply, UserRight.getUserUUID());
+				}
+			}
+			
+			private function closeMe():void
+			{
+				PopUpManager.removePopUp(this);
+			}
+		]]>
+	</mx:Script>
+	<mx:Form width="100%" height="100%">
+		<mx:FormItem label="{itemTitleLabel}">
+			<mx:TextInput id="titleTi" editable="{_isTopic}" width="320" text="{_item.title}"
+				toolTip="{resourceManager.getString('forumView', 'topic.title.can.not.empty')}"/>
+		</mx:FormItem>
+		<mx:FormItem width="100%" height="100%" label="{itemContentLabel}">
+			<mx:TextArea id="contentTi" maxChars="256" text="{_item.content}" 
+				width="100%" height="100%" toolTip="{resourceManager.getString('forumView', 'content.can.not.empty')}"/>
+		</mx:FormItem>
+	</mx:Form>
+	<mx:HBox width="100%" horizontalAlign="center">
+		<mx:Button label="{saveButtonLabel}" click="saveItem()" themeColor="#009DFF" fillColors="[#E8F3FD, #E8F3FD]"/>
+		<mx:Spacer width="30"/>
+		<mx:Button label="{cancelButtonLabel}" click="closeMe()" themeColor="#009DFF" fillColors="[#E8F3FD, #E8F3FD]"/>
+	</mx:HBox>
+	<mx:Spacer height="15"/>
+</mx:TitleWindow>

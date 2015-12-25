@@ -1,0 +1,59 @@
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/was_catonline/!svn/ver/1363/sourcecode/trunk/databank4/src/module/auth
+END
+AuthUserGroupModule.mxml
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/svn/was_catonline/!svn/ver/1118/sourcecode/trunk/databank4/src/module/auth/AuthUserGroupModule.mxml
+END
+AuthGroupModule.mxml
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/was_catonline/!svn/ver/47/sourcecode/trunk/databank4/src/module/auth/AuthGroupModule.mxml
+END
+AuthUserDownLoadInfo.mxml
+K 25
+svn:wc:ra_dav:version-url
+V 100
+/svn/was_catonline/!svn/ver/574/sourcecode/trunk/databank4/src/module/auth/AuthUserDownLoadInfo.mxml
+END
+AuthUserModule.mxml
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svn/was_catonline/!svn/ver/1363/sourcecode/trunk/databank4/src/module/auth/AuthUserModule.mxml
+END
+AuthUserCreateComponent.mxml
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svn/was_catonline/!svn/ver/1334/sourcecode/trunk/databank4/src/module/auth/AuthUserCreateComponent.mxml
+END
+AuthUsersMonitorMudule.mxml
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/svn/was_catonline/!svn/ver/114/sourcecode/trunk/databank4/src/module/auth/AuthUsersMonitorMudule.mxml
+END
+AuthUserChangeComponent.mxml
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svn/was_catonline/!svn/ver/1351/sourcecode/trunk/databank4/src/module/auth/AuthUserChangeComponent.mxml
+END
+AuthGroupFunc.mxml
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/was_catonline/!svn/ver/47/sourcecode/trunk/databank4/src/module/auth/AuthGroupFunc.mxml
+END
+AuthGroupPermissions.mxml
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/svn/was_catonline/!svn/ver/1127/sourcecode/trunk/databank4/src/module/auth/AuthGroupPermissions.mxml
+END

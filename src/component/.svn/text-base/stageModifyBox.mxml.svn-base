@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow title="Set Gantt" showCloseButton="true" close="{PopUpManager.removePopUp(this);}" 
+	xmlns:mx="http://www.adobe.com/2006/mxml" width="432" height="450" 
+	xmlns:display="flash.display.*" xmlns:mycomponents="org.utmost.mycomponents.*"
+	creationComplete="init();">
+		<mx:Metadata>
+			[ResourceBundle("dataGrid")]
+		</mx:Metadata>
+        <mx:Script>
+        	<![CDATA[
+        		import module.ganttDataGird;
+        		import mx.rpc.events.ResultEvent;
+        		import org.utmost.service.UtmostService;
+        		import mx.formatters.*;
+        		import mx.controls.Alert;
+        		import mx.collections.ArrayCollection;
+        		import org.utmost.effect.PopUpEffect;
+        		import mx.managers.PopUpManager;
+        		
+        		[Bindable]
+	            public var cards:ArrayCollection = new ArrayCollection();
+	            
+	            public var gantts:ArrayCollection;
+	            
+	            public var gantt:Object;
+	            
+	            public var stages:Object;
+	            
+	            public var stageList:ArrayCollection;
+	            
+	            private var df:DateFormatter=new DateFormatter();
+	            
+	            private static const millisecondsPerDay:int = 1000 * 60 * 60 * 24;
+	            
+	            /**
+	             * Initial method
+	             * */
+	            private function init():void{
+	            	cards = new ArrayCollection(
+	                [ {label:resourceManager.getString('dataGrid','prePreparation'), data:"1"}, 
+	                  {label:resourceManager.getString('dataGrid','planning'), data:"2"}, 
+	                  {label:resourceManager.getString('dataGrid','drafting'), data:"3"},
+	                  {label:resourceManager.getString('dataGrid','draftingForComments'), data:"4"},
+	                  {label:resourceManager.getString('dataGrid','draftingForApprovalPhase'), data:"5"},
+	                  {label:resourceManager.getString('dataGrid','approving'), data:"6"},
+	                  {label:resourceManager.getString('dataGrid','publication'), data:"7"} ]);
+	            	df.formatString="YYYY-MM-DD";
+	            	
+	            	if(gantt!=null){
+	            		gantts = gantt.gantts;
+		            	makeStage();
+	            	}
+	            }
+	            
+	            /**
+	             * Process stage
+	             * */
+	            private function makeStage():void{	            	
+	            	stages = new Object();
+	            	stageList = new ArrayCollection([null,null,null,null,null,null,null]);
+	            	for each(var gantt:Object in gantts){
+	            		stages[gantt.phase] = gantt;
+	            		if(gantt.phase>0){
+	            			stageList.setItemAt(gantt,gantt.phase-1);
+	            		}
+	            	}
+	            }
+	            
+	         /**
+			 * Find next phase.
+			 */ 
+			private function getNextStage(stage:Object):Object
+			{
+				var next:Object = null;
+				for(var i:int = stage.phase; i<stageList.length;i++){
+					next = stageList[i];
+					if(next!==null){
+						break;
+					}
+				}
+				return next;
+			}
+	                  
+	        	private function selectedPhase():void{        		
+	        		var selectStage:Object = stages[cbBox.value];	        		
+	        		if(selectStage == null){
+	        			startDate.text = "";
+						endDate.text = "";
+						information.text = null;
+						remark.text = null;
+						return;
+	        		}
+	        		if(selectStage.end_date == "0"){
+						var nextStageObj:Object = getNextStage(selectStage);
+						if(nextStageObj==null){
+							endDate.text = "";
+						}else{
+							//End date is null, default is prev day in next stage start 
+							var eDate:Date = new Date(new Date(nextStageObj.start_date).getTime() - millisecondsPerDay);
+							endDate.text = df.format(eDate);
+						}
+					}
+					else{
+						endDate.text = df.format(selectStage.end_date);
+					}	        		
+	        		startDate.text = df.format(selectStage.start_date);
+					//endDate.text = df.format(selectStage.end_date);
+					information.text = selectStage.information;
+					remark.text = selectStage.remark;
+	        	}
+	        
+		        /**
+		         * Save gantt info
+		         * */     
+	        	private function saveGantt():void{
+	        		
+	        		if(cbBox.selectedItem==null){
+	        			Alert.show(resourceManager.getString("errormsg", "selectone"));
+	        			return;
+	        		}
+	        		
+	        		if(startDate.text==null || startDate.text==""){
+	        			Alert.show(resourceManager.getString("errormsg", "inputStartDate"));
+	        			return;
+	        		}
+	        		
+	        		var sd:Date = DateField.stringToDate(startDate.text,"YYYY-MM-DD");
+	        		var ed:Date = DateField.stringToDate(endDate.text,"YYYY-MM-DD");
+	        		var nd:Date = new Date();
+	        		
+	        		if(ed!=null){
+		        		if(sd.getTime() >= ed.getTime()){
+		        			Alert.show(resourceManager.getString("errormsg", "dateError"));
+		        			return;
+		        		}
+	        		}else{
+	        			if(sd.getTime() >= nd.getTime()){
+		        			Alert.show(resourceManager.getString("errormsg", "dateError"));
+		        			return;
+		        		}
+	        		}
+	        		//prepare data need to save
+	        		var stageObj:Object = new Object();
+	        		if(stages[cbBox.value] != null){
+		    			stageObj["uuid"] = stages[cbBox.value].uuid;
+		        		stageObj["recordid"] = stages[cbBox.value].recordid;
+	        		}
+	        		stageObj["commondata_uuid"] = gantt["commondata_uuid"];
+	        		stageObj["start_date"] = startDate.text;
+	        		stageObj["end_date"] = endDate.text;
+	        		stageObj["phase"] = cbBox.value;
+	        		stageObj["information"] = information.text;
+	        		stageObj["remark"] = remark.text;
+	        		
+	        		var auto:UtmostService = new UtmostService("GanttService",saveComplete);
+					auto.ro.saveGantt(stageObj);
+	        	}
+	        	
+	        	private function saveComplete(e:ResultEvent):void{
+	        		if(e.result == 0){
+	        			Alert.show("Has been modified.");
+	        			close();
+	        		}else{
+	        			Alert.show("ERROR!");
+	        		}
+	        	}
+	        	
+	        	
+	        	private function close():void{
+	        		PopUpManager.removePopUp(this);
+	        	}
+        	
+        	]]>
+        </mx:Script>
+        <mx:Metadata>
+		   [ResourceBundle("errormsg")]
+		</mx:Metadata>
+        <mx:VBox width="100%" height="100%" verticalGap="12">
+                <mx:HBox width="100%">
+                        <mx:Label text="阶段控制" fontSize="12" fontWeight="bold"/>
+                </mx:HBox>
+                <mx:VBox width="100%" height="100%" paddingLeft="9">
+                        <mx:HBox width="100%">
+                                <mx:Label text="选择阶段:"/>
+                                <mx:ComboBox id="cbBox" dataProvider="{cards}" change="selectedPhase()" prompt="Please select..."></mx:ComboBox>
+                        </mx:HBox>
+                        <mx:HBox width="100%">
+                                <mx:Label text="起始日期:"/>
+                                <mx:DateField formatString="YYYY-MM-DD" id="startDate" yearNavigationEnabled="true"/>
+                        </mx:HBox>
+                        <mx:HBox width="100%">
+                                <mx:Label text="终止日期:"/>
+                                <mx:DateField formatString="YYYY-MM-DD" id="endDate" yearNavigationEnabled="true"/>
+                                <mx:Label text="(可选)"/>
+                        </mx:HBox>
+                        <mx:VBox width="100%" paddingLeft="9">
+                                <mx:TextArea width="350" height="40"  borderStyle="none" fontSize="10" fontWeight="normal" text="{resourceManager.getString('errormsg','planPhaseEndDateTip')}" />                                
+                        </mx:VBox>
+                        <mx:VBox width="100%">
+                                <mx:Label text="Information:" fontWeight="normal"/>
+                                <mx:TextArea id="information" width="100%"/>
+                        </mx:VBox>
+                        <mx:VBox width="100%" fontWeight="normal">
+                                <mx:Label text="Remark:" fontWeight="normal"/>
+                                <mx:TextArea id="remark" width="100%"/>
+                        </mx:VBox>
+                </mx:VBox>
+                <mx:HBox width="100%" horizontalAlign="center" horizontalGap="20">
+                        <mycomponents:Components_LinkButton iconType="right" label="Save" click="saveGantt()"/>
+                        <mycomponents:Components_LinkButton iconType="right" label="Return" click="close()"/>
+                </mx:HBox>
+        	
+        </mx:VBox>
+</mx:TitleWindow>

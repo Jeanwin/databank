@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="400" height="300">
+	<mx:Script>
+		<![CDATA[
+			public var _selectedItem:Function = null;
+			public function set selectedItem(fun:Function):void{
+				_selectedItem = fun;
+			}
+			private function callFun(event:Event,data:Object):void{
+				_selectedItem.call(null,event,data);
+			}
+		]]>
+	</mx:Script>
+	<mx:VBox horizontalAlign="center">
+		<mx:CheckBox id="itemchb" selected="{data.mycheckbox}" click="{callFun(event,data);}"/>
+	</mx:VBox>
+</mx:Canvas>

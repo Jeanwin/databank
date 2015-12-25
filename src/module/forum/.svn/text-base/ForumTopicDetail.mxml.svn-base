@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" width="100%" height="100%"
+	creationComplete="init()" themeColor="#009DFF" horizontalAlign="center">
+	<mx:Metadata>
+		[ResourceBundle("forumView")]
+	</mx:Metadata>
+	<mx:Style>
+		.forumButton{
+			fill-colors:#E8F3FD, #E8F3FD;	
+		}
+	</mx:Style>
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.managers.PopUpManager;
+			import component.forum.ForumPostNewAndModify;
+			import mx.events.CloseEvent;
+			import mx.controls.Alert;
+			import com.TrimStr;
+			import com.hp.events.CommonEvent;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import com.right.UserRight;
+			import mx.collections.ArrayCollection;
+			
+			[Bindable]
+			private var _topicUuid:String;
+			
+			[Bindable]
+			private var selfAndParent:Object;
+			
+			[Bindable]
+			private var postList:ArrayCollection;
+			
+			[Bindable]
+			private var topicInfo:Object;
+			
+			[Bindable]
+			private var currentUserUuid:String = UserRight.getUserUUID();
+			
+			public function set topicUuid(_topicUuid:String):void{
+				this._topicUuid = _topicUuid;
+				refreshTopicInfo();
+			}
+			
+			public function get topicUuid():String{
+				return this._topicUuid;
+			}
+			
+			private function init():void{
+				this.addEventListener(CommonEvent.POST_CHANGED_EVENT, 
+					function(event:Event):void{
+						if(event.hasOwnProperty("topicUuid"))
+							_topicUuid = event["topicUuid"];
+						refreshTopicInfo();
+					}
+				);
+			}
+			
+			private function refreshTopicInfo():void{
+				var utmost:UtmostService = new UtmostService("ForumService",
+					function(event:ResultEvent):void{
+						var topicResult:Object = event.result as Object;
+						selfAndParent = topicResult.categoryMap;
+						topicInfo = topicResult.topicInfo;
+						postList = topicResult.replyList;
+						if(postList == null)
+							postList = new ArrayCollection([topicInfo]);
+						else
+							postList.addItemAt(topicInfo, 0);
+						topicDetailContainer.visible = true;
+					}
+				);
+				utmost.ro.getTopicDetailByTopicUuid(this._topicUuid);
+			}
+			
+			private function searchHandler():void{
+				if(postContent.length == 0) return;
+				var searchEvent:CommonEvent = new CommonEvent(CommonEvent.FORUM_SEARCH_EVENT, true);
+				searchEvent.searchText = TrimStr.Trim(postContent.text);
+				this.dispatchEvent(searchEvent);
+			}
+			
+			private function goCategoryList():void{
+				var goCategoryListEvent:CommonEvent = new CommonEvent(CommonEvent.GO_CATEGORY_LIST_EVENT, true);
+				this.dispatchEvent(goCategoryListEvent);
+			}
+			
+			private function goTopicList(categoryUuid:String):void{
+				if(categoryUuid != null && categoryUuid != ""){
+					var goTopicListEvent:CommonEvent = new CommonEvent(CommonEvent.GO_TOPIC_LIST_EVENT, true);
+					goTopicListEvent.categoryUuid = categoryUuid;
+					this.dispatchEvent(goTopicListEvent);
+				}
+			}
+			private function propertyBindTool(obj:Object, property:String):String{
+				var str:String = obj[property] as String;
+				return str;
+			}
+			
+			private function newTopic():void{
+				var item:Object = {pid:topicInfo.pid, title:"", content:""};
+				var editWindow:ForumPostNewAndModify = 
+					PopUpManager.createPopUp(this.parentApplication as DisplayObject, 
+						ForumPostNewAndModify, 
+						true
+					) as ForumPostNewAndModify;
+				editWindow.parentContainer = this;
+				editWindow.item = item;
+				editWindow.isTopic = true;
+				PopUpManager.centerPopUp(editWindow);
+			}
+			
+			private function newReply():void{
+				var item:Object = {
+					pid:topicInfo.uuid,
+					title:resourceManager.getString("forumView", "reply.title.prepend.label") + String(topicInfo.title), 
+					content:""
+				};
+				var editWindow:ForumPostNewAndModify = 
+					PopUpManager.createPopUp(this.parentApplication as DisplayObject, 
+						ForumPostNewAndModify, 
+						true
+					) as ForumPostNewAndModify;
+				editWindow.parentContainer = this;
+				editWindow.item = item;
+				editWindow.isTopic = false;
+				PopUpManager.centerPopUp(editWindow);
+			}
+			
+			private function modifyItem(event:Event):void{
+				var item:Object = event.currentTarget.getRepeaterItem();
+				
+				var editWindow:ForumPostNewAndModify = 
+					PopUpManager.createPopUp(this.parentApplication as DisplayObject, 
+						ForumPostNewAndModify, 
+						true
+					) as ForumPostNewAndModify;
+				editWindow.parentContainer = this;
+				if(item.pid != null && item.pid == topicInfo.pid){
+					editWindow.item = item;
+					editWindow.isTopic = true;
+				}else{
+					item.title = resourceManager.getString("forumView", "reply.title.prepend.label") + String(topicInfo.title);
+					editWindow.item = item;
+					editWindow.isTopic = false;
+				}
+				PopUpManager.centerPopUp(editWindow);
+			}
+			
+			private function deleteItem(event:Event):void{
+				var item:Object = event.currentTarget.getRepeaterItem();
+				Alert.yesLabel = resourceManager.getString("forumView", "confirm.yes");
+				Alert.noLabel = resourceManager.getString("forumView", "confirm.no");
+				
+				if(item.uuid == topicUuid){
+					Alert.show(resourceManager.getString('forumView', 'confirm.topic.delete'), 
+						resourceManager.getString('forumView', 'alert.title'),
+						1|2, this, function(event:CloseEvent){
+							if(event.detail == Alert.YES){
+								var utmost:UtmostService = new UtmostService("ForumService",
+									function(event:ResultEvent):void{
+										goTopicList(item.pid);
+										Alert.show(resourceManager.getString("forumView", "post.save.success.prompt"));
+									}
+								);
+								utmost.ro.deleteTopic(item.uuid, UserRight.getUserUUID());
+							}
+						}
+					);
+				}else{
+					Alert.show(resourceManager.getString('forumView', 'confirm.reply.delete'), 
+						resourceManager.getString('forumView', 'alert.title'),
+						1|2, this, function(event:CloseEvent){
+							if(event.detail == Alert.YES){
+								var utmost:UtmostService = new UtmostService("ForumService",
+									function(event:ResultEvent):void{
+										refreshTopicInfo();
+										Alert.show(resourceManager.getString("forumView", "post.save.success.prompt"));
+									}
+								);
+								utmost.ro.deleteReply(item.uuid, UserRight.getUserUUID());
+							}
+						}
+					);
+				}
+			}
+		]]>
+	</mx:Script>
+	<mx:VBox id="topicDetailContainer" visible="false" width="98%" fontSize="14" verticalGap="0">
+		<mx:Spacer height="3"/>
+		<mx:HBox id="topBox" width="100%" verticalAlign="bottom" fontSize="12">
+			<mx:HBox width="100%" horizontalAlign="left" verticalAlign="middle" paddingTop="5">
+				<mx:Button styleName="forumButton" 
+					label="{resourceManager.getString('forumView', 'button.label.new.topic')}"
+					click="newTopic()"/>
+				<mx:Button styleName="forumButton" 
+					label="{resourceManager.getString('forumView', 'button.label.reply.topic')}"
+					click="newReply()"/>
+			</mx:HBox>
+			<mx:HBox horizontalAlign="right" width="100%">
+				<mx:Label text="{resourceManager.getString('forumView', 'keywords') + ':'}"/>
+				<mx:TextInput id="postContent" />
+				<mx:Button styleName="forumButton" label="{resourceManager.getString('forumView', 'search')}" click="searchHandler()"/>
+			</mx:HBox>
+		</mx:HBox>
+		<mx:Spacer height="3"/>
+		<mx:HBox width="100%" horizontalAlign="left" verticalAlign="middle" fontWeight="bold" fontSize="12"
+			backgroundColor="#366AAB" color="#FFFFFF" verticalScrollPolicy="off" horizontalScrollPolicy="off">
+			<mx:Label text="【" width="10" fontWeight="bold" color="#FFFFFF"/>
+			<mx:LinkButton label="{propertyBindTool(selfAndParent.parent, resourceManager.getString('forumView', 'topic.list.category.name.field'))}" 
+				fontWeight="bold" color="#FFFFFF" click="goCategoryList()"/>
+			<mx:Label text=">> " fontWeight="bold"/>
+			<mx:LinkButton label="{propertyBindTool(selfAndParent.self, resourceManager.getString('forumView', 'topic.list.category.name.field'))}" 
+				fontWeight="bold" color="#FFFFFF" click="goTopicList(selfAndParent.self.uuid)"/>
+			<mx:Label text=">> " fontWeight="bold"/>
+			<mx:Label text="{topicInfo.title + '  ' + resourceManager.getString('forumView', 'topic.info.reply.count.header.text') + ':' + topicInfo.replyCount + ' 】'}" fontWeight="bold"/>
+		</mx:HBox>
+		<mx:VBox verticalGap="5" width="100%" fontSize="14">
+			<mx:Repeater id="postRepeater" dataProvider="{postList}">
+				<mx:HBox width="100%" borderStyle="solid" horizontalGap="0">
+					<mx:VBox width="220" verticalGap="0" fontSize="12" height="100%"
+						horizontalAlign="center" backgroundColor="#E6F1FB">
+						<mx:HBox width="98%" borderSides="bottom" borderStyle="solid" borderColor="#CAD9EA" 
+							horizontalAlign="left">
+							<mx:Label text="{postRepeater.currentItem.username}" />
+						</mx:HBox>
+						<mx:VBox width="98%" height="100%" horizontalAlign="left">
+							<mx:HBox width="100%">
+								<mx:Label text="{resourceManager.getString('forumView', 'post.info.username.label')}"/>
+								<mx:Text width="100%" text="{postRepeater.currentItem.username}"/>
+							</mx:HBox><mx:HBox width="100%">
+								<mx:Label text="{resourceManager.getString('forumView', 'post.info.topic.count.label')}"/>
+								<mx:Text width="100%" text="{postRepeater.currentItem.topicCount}"/>
+							</mx:HBox>
+							<mx:HBox width="100%">
+								<mx:Label text="{resourceManager.getString('forumView', 'post.info.email.label')}"/>
+								<mx:Text width="100%" text="{postRepeater.currentItem.email}"/>
+							</mx:HBox>
+						</mx:VBox>
+					</mx:VBox>
+					<mx:VBox width="100%" horizontalGap="0" horizontalAlign="center">
+						<mx:HBox width="98%" borderSides="bottom" borderStyle="solid" 
+							borderColor="#CAD9EA" fontSize="12">
+							<mx:HBox width="50%" horizontalAlign="left">
+								<mx:Label text="{resourceManager.getString('forumView', 'post.info.post.date.label') + ' ' + postRepeater.currentItem.create_date}"/>
+							</mx:HBox>
+							<mx:HBox width="50%" horizontalAlign="right">
+								<mx:LinkButton visible="{postRepeater.currentItem.author_uuid == currentUserUuid || currentUserUuid == '777'}" 
+									label="{resourceManager.getString('forumView', 'post.info.button.modify.label')}"
+									click="modifyItem(event)"/>
+								<mx:LinkButton visible="{postRepeater.currentItem.author_uuid == currentUserUuid || currentUserUuid == '777'}" 
+									label="{resourceManager.getString('forumView', 'post.info.button.delete.label')}"
+									click="deleteItem(event)"/>
+								<mx:Label text="{'# ' + (postRepeater.currentIndex + 1)}"/>
+							</mx:HBox>
+						</mx:HBox>
+						<mx:VBox width="98%" fontSize="14" paddingBottom="5">
+							<mx:Text minHeight="120" width="100%"
+								text="{postRepeater.currentItem.content}"/>
+						</mx:VBox>
+					</mx:VBox>
+				</mx:HBox>
+			</mx:Repeater>
+		</mx:VBox>
+		<mx:Spacer height="3"/>
+		<mx:HBox horizontalAlign="right" width="100%" fontSize="12">
+				<mx:Button styleName="forumButton" 
+					label="{resourceManager.getString('forumView', 'button.label.new.topic')}"
+					click="newTopic()"/>
+				<mx:Button styleName="forumButton" 
+					label="{resourceManager.getString('forumView', 'button.label.reply.topic')}"
+					click="newReply()"/>
+		</mx:HBox>
+		<mx:Spacer height="5"/>
+	</mx:VBox>
+</mx:Module>

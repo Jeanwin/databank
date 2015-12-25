@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml"
+		 xmlns:flexlib="http://code.google.com/p/flexlib/"
+		 backgroundAlpha="0.0"
+		 verticalGap="0"
+		 horizontalGap="0"
+		 horizontalAlign="center"
+		 verticalAlign="middle"
+		 paddingBottom="0"
+		 paddingLeft="0"
+		 paddingRight="0"
+		 paddingTop="0"
+		 creationComplete="init();">
+	<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Metadata>
+        [ResourceBundle("menubar")]
+        [ResourceBundle("manageView")]
+    </mx:Metadata>
+	<flexlib:VerticalMenuBar id="mbar"
+		direction="right"
+		itemClick="{menuItemClick(event);}"
+		labelField="funcdesc"
+		fontSize="11"
+		height="100%"
+		width="100%"
+		visible="false"
+		includeInLayout="false"/>
+	<mx:MenuBar id="mbar2"
+		labelField="{resourceManager.getString('manageView', 'sysmenu.data.label.field')}"
+		height="100%"
+		itemClick="{menuItemClick(event);}"
+		width="100%"
+		styleName="menuBar"/>
+	<mx:Script>
+		<![CDATA[
+			import mx.binding.utils.ChangeWatcher;
+			import org.utmost.service.AutoService;
+			import com.right.UserRight;
+			import org.utmost.util.ChangeLanguage;
+			import mx.collections.ArrayCollection;
+			import module.manage;
+			import mx.controls.Alert;
+			import org.utmost.util.ComponentUtil;
+			import mx.managers.PopUpManager;
+			import mx.core.IFlexDisplayObject;
+			import mx.core.Application;
+			import mx.events.MenuEvent;
+			import org.utmost.service.UtmostService;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.core.IFlexDisplayObject;
+			import component.downloadList;
+			import mx.managers.PopUpManager;
+
+			private function init():void{
+				ChangeWatcher.watch(mbar2, "labelField", refreshDateProvider);
+			}
+			
+			private function refreshDateProvider(event:Event):void{
+				mbar2.dataProvider = mbar2.dataProvider;
+			}
+
+			//Dataprovider(putting data need to display on menu bar)
+			private var menuBarData:ArrayCollection;
+			//set function to provide data when using this as a widget
+			public function set dataProvider(_dataProvider:ArrayCollection):void
+			{
+				mbar.dataProvider=_dataProvider;
+				menuBarData=_dataProvider;
+				mbar2.dataProvider = _dataProvider;
+			}
+			//Set father object
+			private var father:manage;
+
+			public function set setfather(_father:manage):void
+			{
+				father=_father;
+			}
+
+			public function getHmenu():MenuBar
+			{
+				return mbar2;
+			}
+
+			public function getVmenu():MenuBar
+			{
+				return mbar;
+			}
+			public var typeFlag:String;
+
+			private function showNotice():void
+			{
+				var obj:IFlexDisplayObject=PopUpManager.createPopUp(this.parentApplication as DisplayObject, NoticeComp, true);
+				PopUpManager.centerPopUp(obj);
+			}
+
+			private function showcontact():void
+			{
+				var obj:IFlexDisplayObject=PopUpManager.createPopUp(this.parentApplication as DisplayObject, ContactUs, true);
+				PopUpManager.centerPopUp(obj);
+			}
+
+			//return to main
+			private function portal():void
+			{
+				mbar.dataProvider=null;
+				ComponentUtil.setVisible(Application.application.MACB, true);
+				Application.application.loadModule("module/PortalModule.swf");
+			}
+
+			private function popupChangePassword():void
+			{
+				var obj:IFlexDisplayObject=PopUpManager.createPopUp(this.parentApplication as DisplayObject, AuthChangePasswordComponent, true);
+				PopUpManager.centerPopUp(obj);
+			}
+
+			private function popupPreferences():void
+			{
+				var obj:IFlexDisplayObject=PopUpManager.createPopUp(this.parentApplication as DisplayObject, PreferencesComponent, true);
+				PopUpManager.centerPopUp(obj);
+			}
+			//Call this funtion when item clicked on menu bar
+			private function menuItemClick(event:MenuEvent):void
+			{
+				//Implement different function by different funcpath
+				var data:String=event.item.funcpath;
+				if (data == "changePass")
+				{
+					return;
+				}
+				if (data == "logOut")
+				{
+					var uts:UtmostService=new UtmostService("MonitorService", null, function():void{});
+						uts.ro.recordLogoutInfo(UserRight.getUserUUID());
+						Application.application.logout();
+					return;
+				}
+				if (data == "preferences")
+				{
+					popupPreferences();
+					return;
+				}
+				if (data == "goBackMain")
+				{
+					portal();
+					return;
+				}
+				//Simple search
+				if (data == "search")
+				{
+					var catchKey:inputBox=inputBox(PopUpManager.createPopUp(this.parentApplication as DisplayObject, inputBox, true));
+					catchKey.addEventListener("SearchComponent_true", function(e:Event):void
+						{
+							var keyWord:String=catchKey.keyWord;
+							var andOr = catchKey.andOr.selectedValue;
+							var hasCategory:Boolean = catchKey.hasCategory;
+							if(hasCategory){
+								var validNodes:String = catchKey.validNodes;
+								keyWord = "C::" + validNodes + "::" + keyWord+"::"+andOr;
+							}else{
+								keyWord = "K::" +keyWord+"::"+andOr;
+							}
+							trace(keyWord + ":keyWord");
+							//Transfer keyWord by itemclassUUID
+							father.itemclassUUID=keyWord;
+							if (father.manageModule.url == "module/basicDataGrid.swf")
+							{
+								if (father.child != null)
+								{
+									//Transfer key word by $selectNodeFuncUUID
+									father.child.$selectNodeFuncUUID=keyWord;
+								}
+							}
+							else
+							{
+								//Load basicDataGrid.swf(through here when first access basicDataGrid screen)
+								diyfather("module/basicDataGrid.swf", "syspanel.title.search.result");
+							}
+
+						});
+					catchKey.moduleTree = father.$moduletree;
+					PopUpManager.centerPopUp(catchKey);
+					return;
+				}
+				//advanced search
+				if(data == "advanceSearch"){
+					popSearch(false);
+				}
+				//generate report
+				if(data == "report"){
+					popSearch(true);
+				}
+				
+				if (data == "simpleMode")
+				{
+					father.showstate="simple";
+					if (father.manageModule.url == "module/simpleDataGirdBack.swf")
+					{
+						if (father.child != null && father.obj != null)
+						{
+							father.obj.showstate="simple";
+							father.child.$treeSelectNode=father.obj;
+						}
+					}
+					return;
+				}
+				if (data == "richMode")
+				{
+					father.showstate="rich";
+					if (father.manageModule.url == "module/simpleDataGirdBack.swf")
+					{
+						if (father.child != null && father.obj != null)
+						{
+							father.obj.showstate="rich";
+							father.child.$treeSelectNode=father.obj;
+						}
+					}
+					return;
+				}
+				if (data == "indexreturn")
+				{
+					father.returnTomain();
+					return;
+				}
+				
+				if(data == "forumManagement"){
+					diyfather("module/forum/ForumCategoryManagement.swf", "syspanel.title.config.forum");
+					return;
+				}
+				
+				if(data == "forumAccess"){
+					diyfather("module/forum/ForumAccessContainer.swf", "syspanel.title.access.forum");
+					return;
+				}
+				
+				if (data == "updateTree")
+				{
+					diyfather("module/datainput/DataTreeNodeManageModule.swf", "syspanel.title.config.module");
+					return;
+				}
+				if (data == "informationInput")
+				{
+					diyfather("module/datainput/DataInputModule.swf", "syspanel.title.document.new");
+					return;
+				}
+				if (data == "createkind")
+				{
+					dispatchEvent(new Event("AddNewKindEvent_true"));
+					return;
+				}
+				//modify field
+				if (data == "showword")
+				{
+					diyfather("module/datainput/ChangeShowWordModule.swf", "syspanel.title.config.field");
+					return;
+				}
+				if (data == "otherinfo")
+				{
+					diyfather("module/otherinfo/OtherInfoModule.swf","syspanel.title.config.others");
+					return;
+				}
+				if (data == "notice")
+				{
+					showNotice();
+					return;
+				}
+				if (data == "contactus")
+				{
+					showcontact();
+					return;
+				}
+				if (data == "batchDownload")
+				{
+					diyfather("module/dataoutput/BatchDownloadModule.swf", "syspanel.title.batch.download");
+					return;
+				}
+				if (data == "downloadList")
+				{
+					Application.application.showList();
+					return;
+				}
+				if (data == "en_US")
+				{
+					Application.application.currentLanguage="en_US";
+					ChangeLanguage.menuBar(mbar, "funcdesc", menuBarData);
+					ChangeLanguage.menuBar(mbar2, "funcdesc", menuBarData);
+					if (father.child != null && father.obj != null)
+					{
+						father.obj.language="en_US";
+						father.child.$treeSelectNode=father.obj;
+					}
+					return;
+				}
+				if (data == "zh_CN")
+				{
+					Application.application.currentLanguage="zh_CN";
+					ChangeLanguage.menuBar(mbar, "funcname", menuBarData);
+					ChangeLanguage.menuBar(mbar2, "funcname", menuBarData);
+					if (father.child != null && father.obj != null)
+					{
+						father.obj.language="zh_CN";
+						father.child.$treeSelectNode=father.obj;
+					}
+					return;
+				}
+				if (data == "indexlogout")
+				{
+					navigateToURL(new URLRequest("login.htm"), "_self");
+					return;
+				}
+				if (data == "userrightreturn")
+				{
+					Application.application.loginSussecc();
+					return;
+				}
+				if (data == "userright")
+				{
+					diyfather("module/UserRoleManage.swf","syspanel.title.config.um");
+					return;
+				}
+
+			}
+			//Load module and set system tree invisible
+			private function diyfather(module:String, titleKey:String):void
+			{
+				father.myLoadModule(module);
+				ComponentUtil.setVisible(father.systree, false);
+				father.sysPanelTitleKey=titleKey;
+			}
+			
+			private function popSearch(showButton:Boolean):void{
+					var catchCondition:AdvanceSearch=AdvanceSearch(PopUpManager.createPopUp(this.parentApplication as DisplayObject, AdvanceSearch, true));
+					catchCondition.isRight = showButton;
+					catchCondition.addEventListener("AdvanceSearchComponent_true",function(e:Event):void{
+						//validateArr:Temporary put widget "hbox"
+						var validateArr:Array = catchCondition.getValidateArr;
+						var validateList:ArrayCollection = new ArrayCollection();
+						for(var i:int=0; i<validateArr.length;i++){
+							validateList.addItem(validateArr[i]);
+						}
+						trace("validateList..." + validateList);
+						trace("father.manageModule.url..." + father.manageModule.url);
+						//if AdvanceDataGrid screen has been loaded, transfer data by $menuData
+						if(father.manageModule.url == "module/AdvanceDataGrid.swf"){
+							if(father.child != null){
+								father.child.$menuData = validateList;
+							}
+						}else{
+							father.validateList = validateList;
+							diyfather("module/AdvanceDataGrid.swf", "syspanel.title.search.result");
+						}
+					});
+					//advanceSearchForm func:reopen advanced search and keep all items selected is selected
+					Application.application.advanceSearchForm = catchCondition;
+					catchCondition.moduleTree = father.$moduletree;
+					PopUpManager.centerPopUp(catchCondition);
+			}
+		]]>
+	</mx:Script>
+</mx:HBox>

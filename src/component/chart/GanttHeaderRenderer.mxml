@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" width="100%"
+	verticalScrollPolicy="off" horizontalScrollPolicy="off" horizontalGap="0"
+	creationComplete="init()" styleName="yearInGhr">
+	<mx:Style>
+		.yearInGhr{
+			horizontal-gap: 0;
+		 	border-color: #66c4ff;
+			border-style: solid;
+			border-thickness: 1;
+			border-sides: "right";
+			color: #696969;	
+			vertical-align: middle;	
+		}
+		.labelCenter{
+			text-align: center;
+			vertical-align: middle;
+			font-weight: bold;
+			font-size: 11;
+		}
+	</mx:Style>
+	<mx:Script>
+		<![CDATA[
+			
+			private const MONTH_WIDTH:int = 42;
+			
+			[Bindable]
+			private var firstYearWidth:int = 0;
+			
+			[Bindable]
+			private var wholeYearWidth:int = MONTH_WIDTH * 12;
+			
+			[Bindable]
+			private var lastYearWidth:int = 0;
+			
+			[Bindable]
+			private var currentYear:int = 0;
+			
+			private function init():void{
+				var date:Date = new Date();
+				currentYear = date.getFullYear();
+				var currentMonth:int = date.getMonth();
+				firstYearWidth = MONTH_WIDTH * (12 - currentMonth) + 1;
+				lastYearWidth = MONTH_WIDTH * currentMonth;
+			}
+		]]>
+	</mx:Script>
+	<mx:HBox width="{firstYearWidth}" styleName="yearInGhr" 
+		verticalScrollPolicy="off" horizontalScrollPolicy="off"
+		height="100%">
+		<mx:Label text="{currentYear - 3}" styleName="labelCenter" width="100%"/>
+	</mx:HBox>
+	<mx:HBox width="{wholeYearWidth}" styleName="yearInGhr" 
+		verticalScrollPolicy="off" horizontalScrollPolicy="off"
+		height="100%">
+		<mx:Label text="{currentYear - 2}" styleName="labelCenter" width="100%"/>
+	</mx:HBox>
+	<mx:HBox width="{wholeYearWidth}" styleName="yearInGhr" 
+		verticalScrollPolicy="off" horizontalScrollPolicy="off"
+		height="100%">
+		<mx:Label text="{currentYear - 1}" styleName="labelCenter" width="100%"/>
+	</mx:HBox>
+	<mx:HBox width="{wholeYearWidth}" styleName="yearInGhr" 
+		verticalScrollPolicy="off" horizontalScrollPolicy="off"
+		height="100%">
+		<mx:Label text="{currentYear}" styleName="labelCenter" width="100%"/>
+	</mx:HBox>
+	<mx:HBox width="{wholeYearWidth}" styleName="yearInGhr" 
+		verticalScrollPolicy="off" horizontalScrollPolicy="off"
+		height="100%">
+		<mx:Label text="{currentYear + 1}" styleName="labelCenter" width="100%"/>
+	</mx:HBox>
+	<mx:HBox width="{lastYearWidth}" styleName="yearInGhr" 
+		verticalScrollPolicy="off" horizontalScrollPolicy="off"
+		height="100%">
+		<mx:Label text="{currentYear + 2}" styleName="labelCenter" width="100%"/>
+	</mx:HBox>
+	<mx:Label text="A"/>
+</mx:HBox>

@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" width="100%" height="100%"
+	creationComplete="init()" themeColor="#009DFF" horizontalAlign="center" resize="resizeHandler()">
+	<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Metadata>
+		[ResourceBundle("forumView")]
+	</mx:Metadata>
+	
+	<mx:Style>
+		.forumBox{
+			border-style:solid;
+			border-thickness:1;
+			horizontal-gap:0;
+			vertical-gap:0;
+		}
+		
+		.rowBoxTitle{
+			horizontal-align:left;
+			horizontal-gap:0;
+			vertical-gap:0;
+			background-image:Embed(source='/img/forum/cat_bg.gif');
+		}
+		
+		.rowBoxCategory{
+			horizontal-align:left;
+			horizontal-gap:0;
+			vertical-gap:0;
+			background-color:#366AAB;
+			font-size:12;
+			color:#FFFFFF;
+			font-weight:bold;
+		}
+		
+		.rowBoxNormal{
+			horizontal-align:left;
+			horizontal-gap:0;
+			vertical-gap:0;
+			font-size:12;
+			font-weight:normal;
+			background-color:#F5FAFE;
+		}
+		
+		.forumTitle{
+			border-style:solid;
+			border-thickness:1;
+			horizontal-align:center;
+			horizontal-gap:0;
+			vertical-align:middle;
+			vertical-gap:0;
+			font-size:14;
+			font-weight:bold;
+		}
+		
+		.forumItemLeft{
+			border-style:solid;
+			border-thickness:1;
+			horizontal-align:left;
+			horizontal-gap:0;
+			vertical-align:middle;
+			vertical-gap:0;
+		}
+		
+		.forumItemLeftPadding{
+			border-style:solid;
+			border-thickness:1;
+			horizontal-align:left;
+			horizontal-gap:0;
+			vertical-align:middle;
+			vertical-gap:0;
+			padding-left:10;
+		}
+		
+		.forumItem{
+			border-style:solid;
+			border-thickness:1;
+			horizontal-align:center;
+			horizontal-gap:0;
+			vertical-align:middle;
+			vertical-gap:0;
+		}
+		
+		.forumButton{
+			fill-colors:#E8F3FD, #E8F3FD;	
+		}
+		
+		ToolTip{
+			font-size:14;	
+		}
+	</mx:Style>
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Label;
+			import com.TrimStr;
+			import com.hp.events.CommonEvent;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import mx.resources.ResourceBundle;
+			import mx.collections.ArrayCollection;
+			
+			[Bindable]
+			private var forumWidth:uint = 0;
+			[Bindable]
+			private var topicWidth:uint = 140;
+			[Bindable]
+			private var postWidth:uint = 140;
+			[Bindable]
+			private var modifyDateWidth:uint = 300;
+			
+			[Bindable]
+			[Embed(source="/img/forum/forum_new.gif")]
+			public var iconUrl:Class;
+			
+			[Bindable]
+			private var categoryList:ArrayCollection;
+			
+			private function init():void{
+				forumWidth = topBox.width - topicWidth - postWidth - modifyDateWidth - 3;
+				var utmost:UtmostService = new UtmostService("ForumService", 
+					function(event:ResultEvent):void{
+						categoryList = event.result as ArrayCollection;
+						categoryListContainer.visible = true;
+					}
+				);
+				utmost.ro.getForumCategoryListWithStatistic();
+			}
+			
+			private function resizeHandler():void{
+				forumWidth = topBox.width - topicWidth - postWidth - modifyDateWidth - 3;
+			}
+			
+			private function searchHandler():void{
+				if(postContent.length == 0) return;
+				var searchEvent:CommonEvent = new CommonEvent(CommonEvent.FORUM_SEARCH_EVENT, true);
+				searchEvent.searchText = TrimStr.Trim(postContent.text);
+				this.dispatchEvent(searchEvent);
+			}
+			
+			private function goTopicList(categoryUuid:String):void{
+				if(categoryUuid != null && categoryUuid != ""){
+					var goTopicListEvent:CommonEvent = new CommonEvent(CommonEvent.GO_TOPIC_LIST_EVENT, true);
+					goTopicListEvent.categoryUuid = categoryUuid;
+					this.dispatchEvent(goTopicListEvent);
+				}
+			}
+			private function propertyBindTool(obj:Object, property:String):String{
+				var str:String = obj[property] as String;
+				return str;
+			}
+			
+			private function addToolTip(event:Event):void{
+				if(event.currentTarget is Label){
+					var label:Label = event.currentTarget as Label;
+					label.toolTip = label.text;
+				}
+			}
+		]]>
+	</mx:Script>
+	
+	<mx:VBox styleName="forumCtg" id="categoryListContainer" width="98%" height="100%" visible="false">
+		<mx:Spacer height="3"/>
+		<mx:HBox id="topBox" horizontalAlign="right" width="100%" fontSize="12">
+			<mx:Label text="{resourceManager.getString('forumView', 'keywords') + ':'}"/>
+			<mx:TextInput id="postContent" />
+			<mx:Button styleName="forumButton" label="{resourceManager.getString('forumView', 'search')}" click="searchHandler()"/>
+		</mx:HBox>
+		<mx:Repeater id="bigList" dataProvider="{categoryList}">
+			
+			<mx:VBox width="100%" styleName="forumBox">
+				<!--分类一-->
+				<mx:HBox width="100%" horizontalAlign="left" styleName="rowBoxCategory">
+					<mx:HBox width="100%" height="100%" styleName="forumItemLeft">
+						<mx:Label text="{propertyBindTool(bigList.currentItem, resourceManager.getString('forumView', 'category.name.field'))}"/>
+					</mx:HBox>
+				</mx:HBox>
+				<!--title-->
+				<mx:HBox width="100%" verticalAlign="middle" backgroundSize="100%" styleName="rowBoxTitle">
+					<mx:VBox width="{forumWidth}" height="100%" styleName="forumTitle" horizontalAlign="center">
+						<mx:Label text="{resourceManager.getString('forumView', 'category.forum.header.text')}"/>
+					</mx:VBox>
+					<mx:Box width="{topicWidth}" height="100%" styleName="forumTitle" horizontalAlign="center">
+						<mx:Label text="{resourceManager.getString('forumView', 'category.topic.header.text')}"/>
+					</mx:Box>
+					<mx:Box width="{postWidth}" height="100%" styleName="forumTitle" horizontalAlign="center">
+						<mx:Label text="{resourceManager.getString('forumView', 'category.post.header.text')}"/>
+					</mx:Box>
+					<mx:Box width="{modifyDateWidth}" height="100%" styleName="forumTitle" horizontalAlign="center">
+						<mx:Label text="{resourceManager.getString('forumView', 'category.last.post.header.text')}"/>
+					</mx:Box>
+				</mx:HBox>
+				<mx:Repeater id="smallList" dataProvider="{bigList.currentItem.children}">
+					<!--普通类型-->
+					<mx:HBox width="100%" horizontalAlign="left" styleName="rowBoxNormal">
+						<mx:HBox width="{forumWidth}" height="100%" styleName="forumItemLeftPadding"
+							verticalScrollPolicy="off" horizontalScrollPolicy="off">
+							<mx:Image source="{iconUrl}"/>
+							<mx:Spacer width="5"/>
+							<mx:VBox width="100%" verticalGap="0" verticalScrollPolicy="off" horizontalScrollPolicy="off">
+								<mx:LinkButton label="{'【' + propertyBindTool(smallList.currentItem, resourceManager.getString('forumView', 'category.name.field')) + '】'}"
+									click="goTopicList(event.currentTarget.getRepeaterItem().uuid)"/>
+								<mx:Label text="{propertyBindTool(smallList.currentItem, resourceManager.getString('forumView', 'category.desc.field'))}"
+									
+									creationComplete="addToolTip(event)"/>
+							</mx:VBox>
+						</mx:HBox>
+						<mx:Box width="{topicWidth}" height="100%" styleName="forumItem">
+							<mx:Label text="{smallList.currentItem.topicCount}"/>
+						</mx:Box>
+						<mx:Box width="{postWidth}" height="100%" styleName="forumItem">
+							<mx:Label text="{smallList.currentItem.topicCount + smallList.currentItem.replyCount}"/>
+						</mx:Box>
+						<mx:VBox width="{modifyDateWidth}" height="100%" styleName="forumItem" 
+							horizontalAlign="center" verticalScrollPolicy="off" horizontalScrollPolicy="off">
+							<mx:Label text="{smallList.currentItem.lastPostDate}"/>
+							<mx:Label text="{'by ' + smallList.currentItem.lastPostUsername}"
+								creationComplete="addToolTip(event)"/>
+						</mx:VBox>
+					</mx:HBox>
+				</mx:Repeater>
+			</mx:VBox>
+			<mx:Spacer height="10"/>
+		</mx:Repeater>
+	</mx:VBox>
+</mx:Module>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" width="100%" height="100%"
+	creationComplete="init()" themeColor="#009DFF">
+	<mx:Script>
+		<![CDATA[
+			import mx.core.UIComponent;
+			import com.hp.events.CommonEvent;
+			
+			private var attributeValue:String = null;
+			
+			private function init():void{
+				forumLoader.loadModule("module/forum/ForumCategoryList.swf");
+				this.addEventListener(CommonEvent.FORUM_SEARCH_EVENT, forumSearchHandler);
+				this.addEventListener(CommonEvent.GO_CATEGORY_LIST_EVENT, goCategoryListHandler);
+				this.addEventListener(CommonEvent.GO_TOPIC_LIST_EVENT, goTopicListHandler);
+				this.addEventListener(CommonEvent.GO_TOPIC_DETAIL_EVENT, goTopicDetailHandler);
+			}
+			
+			private function forumSearchHandler(event:Event):void{
+				forumLoader.unloadModule();
+				attributeValue = event["searchText"];
+				forumLoader.loadModule("module/forum/ForumTopicSearch.swf");
+			}
+			
+			private function goCategoryListHandler(event:Event):void{
+				forumLoader.unloadModule();
+				forumLoader.loadModule("module/forum/ForumCategoryList.swf");
+			}
+			
+			private function goTopicListHandler(event:Event):void{
+				forumLoader.unloadModule();
+				attributeValue = event["categoryUuid"];
+				forumLoader.loadModule("module/forum/ForumTopicList.swf");
+			}
+			
+			private function goTopicDetailHandler(event:Event):void{
+				forumLoader.unloadModule();
+				attributeValue = event["topicUuid"];
+				forumLoader.loadModule("module/forum/ForumTopicDetail.swf");
+			}
+			
+			private function readyHandler():void{
+				var child:Object = forumLoader.child as Object;
+//				if(child is ForumTopicList){
+//					child.categoryUuid(attributeValue);
+//				}else if(child is ForumTopicDetail){
+//					child.topicUuid(attributeValue);
+//				}
+				if(child.hasOwnProperty("categoryUuid")){
+					child.categoryUuid = attributeValue;
+				}else if(child.hasOwnProperty("topicUuid")){
+					child.topicUuid = attributeValue;
+				}
+			}
+		]]>
+	</mx:Script>
+	<mx:Style>
+		ToolTip{
+			font-size:14;	
+		}
+	</mx:Style>
+	<mx:ModuleLoader id="forumLoader" width="100%" height="100%" borderStyle="none"
+		ready="readyHandler()"/>
+</mx:Module>

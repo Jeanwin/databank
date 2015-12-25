@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Panel xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:flexlib="http://code.google.com/p/flexlib/"
+	layout="vertical" width="100%" height="100%" xmlns:mycomponents="org.utmost.mycomponents.*"
+	creationComplete="init();">
+	<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Script> 
+		<![CDATA[
+			import com.hp.events.CommonEvent;
+			import mx.binding.utils.ChangeWatcher;
+			import mx.controls.Alert;
+			import org.utmost.util.ComponentUtil;
+			import mx.controls.Tree;
+            
+            private function init():void{
+            	ChangeWatcher.watch(ctree, "labelField", 
+            		function(event:Event):void{
+            			ctree.dispatchEvent(new CommonEvent(CommonEvent.PANEL_TREE_MENU_DATA_PROVIDOR_CHANGE, true));
+            		});
+            }
+            
+            [Bindable]
+            public var _labelField:String = "funcname";
+            public function set labelField(_label:String):void{
+            	_labelField=_label;
+            }
+            
+            public  function set dataProvider(_dataProvider:Object):void {
+            	ctree.dataProvider=_dataProvider;
+            }
+            public function getTree():Tree {
+            	return ctree;
+            }
+            
+            public function set clickTree(func:Function):void {
+            	callLater(function():void {
+            		ctree.addEventListener(MouseEvent.CLICK,func);
+            	});
+            }
+		]]>
+	</mx:Script>
+	<mx:Canvas borderStyle="none" width="100%" height="100%">
+		<mx:Tree styleName="leftTree" id="ctree" width="100%" height="100%" labelField="{_labelField}" showRoot="true" borderStyle="none"   doubleClickEnabled="true" doubleClick="{ComponentUtil.ocSelectTree(event)}"  />
+	</mx:Canvas>
+	<mx:ControlBar paddingTop="0" paddingBottom="0">
+		<mx:HBox width="100%" height="20" horizontalAlign="left" verticalAlign="middle">
+			<mycomponents:Components_LinkButton iconType="right" label="Links" click="{dispatchEvent(new Event('ClickLinksEvent'));}" />
+		</mx:HBox>
+	</mx:ControlBar>
+</mx:Panel>

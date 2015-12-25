@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow title="{resourceManager.getString('BatchDownload','DownloadProgress')}" horizontalAlign="center" showCloseButton="true" creationComplete="init();" xmlns:mx="http://www.adobe.com/2006/mxml" width="300" height="100" >
+       <mx:Metadata>
+	   [ResourceBundle("BatchDownload")]
+	</mx:Metadata>
+        		
+        <mx:Script>
+        	<![CDATA[
+        		import flash.utils.setTimeout;
+        		import mx.collections.XMLListCollection;
+        		import org.utmost.effect.PopUpEffect;
+        		import mx.managers.PopUpManager;
+        		import mx.controls.Alert;
+        		private var j:uint=10;
+				[Bindable]
+        		private var statetext:String;
+        		
+        		internal function init():void {
+        			statetext = resourceManager.getString('BatchDownload','statetext');
+                  	runit();
+        		}
+        		
+            	private function runit():void
+         		 {
+              		if(j<=100)
+             		 {
+                 		bar.setProgress(j,100);
+                		bar.label= resourceManager.getString('BatchDownload','CurrentProgress') + " " + j + "%";
+                		 j+=10;
+            		  }  else if(j>100){
+            		  	j=0;
+            		  }	else	  {
+             		  	  statetext = resourceManager.getString('BatchDownload','complete');
+             		  	  PopUpManager.removePopUp(this);
+               			  return;
+              		  }
+              		  flash.utils.setTimeout(function ():void {runit();},500,null);
+         		 }
+
+        	]]>
+        </mx:Script>
+        <mx:Label text="{statetext}" width="100%"/>
+      <mx:HBox horizontalAlign="center" verticalAlign="middle">
+      	<mx:Image  source="@Embed('/img/file/Load.gif')"/>
+      	<mx:ProgressBar id="bar"  visible="true" label="{resourceManager.getString('BatchDownload','CurrentProgresslabel')}" 
+            direction="right" mode="manual" width="100%"/>
+      </mx:HBox>
+               
+</mx:TitleWindow>

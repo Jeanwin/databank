@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" width="50%" creationComplete="init()" verticalAlign="middle">
+	<mx:Script>
+		<![CDATA[
+			import com.hp.events.CommonEvent;
+			[Bindable]
+			private var leftLabelText:String;
+			public function set setll(_ll:String):void{
+				leftLabelText=_ll;
+			}
+			[Bindable]
+			private var leftTextText:String;
+			public function set setlt(_lt:String):void{
+				trace(_lt+"(NoticeDetailRow):::::"+leftLabelText);
+				leftTextText=_lt;
+			}
+			
+			private function init():void{
+				
+				if(leftTextText == null || leftTextText.length == 0){
+					lefttext.visible = false;
+					lefttext.includeInLayout = false;
+				}else{
+					lefttext.visible = true;
+					lefttext.includeInLayout = true;
+				}
+			}
+			
+			private function download():void
+			{
+				var downloadEvent:CommonEvent = new CommonEvent
+				(
+					CommonEvent.NOTICE_DOWNLOAD_FILE,
+					true
+				);
+				downloadEvent.titleName = leftLabelText;
+				downloadEvent.file = leftTextText;
+				this.dispatchEvent(downloadEvent);
+			}
+		]]>
+	</mx:Script>
+	<mx:Style>
+		.myLinkButton{
+			text-decoration:underline;	
+		}
+	</mx:Style>
+	<mx:Label id="leftlabel" text="{leftLabelText+':'}"   fontWeight="bold"/>
+	<!--
+	<mx:Text  id="lefttext" text="{leftTextText}" maxWidth="200" width="100%"
+		click="download()"/>
+	-->
+	<mx:LinkButton id="lefttext" label="{leftTextText}" styleName="myLinkButton"
+		maxWidth="230" icon="@Embed(source='/img/mail-attachment.png')" labelPlacement="left" click="download()"/>
+</mx:HBox>

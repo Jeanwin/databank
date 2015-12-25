@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" 
+	title="{resourceManager.getString('downloadList','listTitle')}" 
+	showCloseButton="true" 
+	width="600" height="400"
+	horizontalAlign="center" 
+	verticalAlign="middle"
+	creationComplete="init()"
+	close="close()">
+	<mx:Metadata>
+		[ResourceBundle("downloadList")]
+	</mx:Metadata>
+   <mx:Script>
+    <![CDATA[
+    	import mx.controls.dataGridClasses.DataGridColumn;
+    	import com.right.UserRight;
+    	import mx.controls.Alert;
+    	import org.utmost.service.UtmostService;
+    	import mx.collections.ArrayCollection;
+    	import mx.rpc.events.ResultEvent;
+    	import org.utmost.effect.PopUpEffect;
+    	import org.utmost.service.StaticChannelSet;
+    	import component.BatchDownLoad;
+    	import mx.managers.PopUpManager;
+    	import mx.core.Application;
+    	//Leave with all items need to download 
+    	private var dataList:ArrayCollection = new ArrayCollection();
+    	//tempList is used to control checkBox 
+    	private var tempList:ArrayCollection = new ArrayCollection();
+    	//Judge if select all items
+    	[Bindable]
+    	public var allSelected:Boolean = false;
+    	private var batchDownLoad:BatchDownLoad;
+    	//Initial all data after all widget is created
+    	private function init():void{
+    		var utmost:UtmostService = new UtmostService("DownloadListService",function(e:ResultEvent):void{
+    			var colArr:Array = new Array();
+				dataList = e.result as ArrayCollection;
+				dataGrid.dataProvider = dataList;
+				});
+			utmost.ro.getDownloadList(UserRight.getUserUUID());
+			//set visiblity of buttons based on func right.1102-downloadList,3-download
+			var flag:String = UserRight.hasFuncRight("1102","3");
+			if("1" === flag){
+				buttonBox.visible = true;
+				showCount();
+			}else{
+				buttonBox.visible = false;
+			}
+			
+    	}
+    	
+    	private function close():void{ 
+				PopUpManager.removePopUp(this);
+		}
+		//view file in browser
+		private function viewDoc():void{
+			if (tempList.length != 1){
+				Alert.show(resourceManager.getString('downloadList','message4'));
+			}else{
+				var downloadURL:String = makeURL("view");
+				var request:URLRequest = new URLRequest(encodeURI(downloadURL));
+				request.method=URLRequestMethod.POST;
+				navigateToURL(request, "_blank");
+			}
+		}
+		//download document
+		private function downloadDoc():void{
+			if(tempList.length < 1){
+				Alert.show(resourceManager.getString('downloadList','message3'));
+				return ;
+			}
+			down.enabled=false;
+			createPop();
+			var ut:UtmostService=new UtmostService("FileUtil", function(e:ResultEvent):void{
+				var url:String=e.result as String;
+				if (url != null)
+				{
+					down.enabled=false;
+					PopUpManager.removePopUp(batchDownLoad);
+				}
+				//set url, method is zipDownload meaning call java method zipDownload, besides, transfer data need to use in java
+				var downloadURL:String= StaticChannelSet.getWebRoot() + 
+										"/download.form?method=zipDownload&url=" + url + 
+										"&useruuid=" + UserRight.getUserUUID();
+				var request:URLRequest=new URLRequest(encodeURI(downloadURL));
+				//set transfer type(two type:'get' and 'post')
+				request.method=URLRequestMethod.POST;
+				//not open a new window	
+				navigateToURL(request, '_self'); 
+				down.enabled=true;
+				updateDownloadStatus();
+			});
+			
+			ut.ro.zipFile(tempList, UserRight.getUserUUID());				
+		}
+		
+		private function updateDownloadStatus():void{
+			var ut:UtmostService=new UtmostService("DownloadListService", function(e:ResultEvent):void{
+				init();
+			});
+			ut.ro.changeStatusToDownloaded(tempList);	
+		}
+		
+		private function createPop():void{
+			batchDownLoad=new BatchDownLoad();
+			PopUpManager.addPopUp(batchDownLoad, this, true);
+			PopUpManager.centerPopUp(batchDownLoad);
+		}
+		//piece together url
+		private function makeURL(action:String):String{
+			var url:String = "";
+			
+			var filename:String = tempList.getItemAt(0).document_name;
+			var funcuuid:String = tempList.getItemAt(0).func_uuid;
+			var useruuid:String = UserRight.getUserUUID();
+			//seems harmless when set to ""
+			var author:String="";
+			var last_modify_date_str:String="";
+			//set url, method is download meaning call java method zipDownload, besides, transfer data need to use in java
+			url=StaticChannelSet.getWebRoot() + 
+			   "/download.form?method=download&path=UPLOAD&name=" + filename + 
+			   "&uuid=" + funcuuid + 
+			   "&author=" + author + 
+			   "&useruuid=" + useruuid + 
+			   "&last_modify_date_str=" + last_modify_date_str + 
+			   "&action=" + action;
+			return url;
+			
+		}
+		//remove document
+		private function deleteDoc():void{ 
+			if(tempList.length == 0 || tempList == null){
+				Alert.show(resourceManager.getString('downloadList','message3'));
+				return;
+			}
+			var utmost:UtmostService = new UtmostService("DownloadListService",function(e:ResultEvent):void{
+    			Alert.show(resourceManager.getString('downloadList','message5'));
+    			//reset tempList 
+    			tempList.removeAll();
+    			init();
+				});
+			utmost.ro.deleteFromList(tempList);
+		}
+		//declare as public function to ensure the function is accessable 
+		public function cboxChanged(e:Event, data:Object):void{
+			if(e.currentTarget.selected){
+				tempList.addItem(data);
+			}else{
+				for(var i:int = 0;i<tempList.length;i++){
+					if(tempList.getItemAt(i).uuid == data.uuid){
+						tempList.removeItemAt(i);
+					}
+				}
+			}
+		}
+		
+		//declare as public function to ensure the function is accessable 
+		public function selectAll(object:Object):void{
+			var doc:Object = new Object();
+			tempList.removeAll();
+			if(object.chball.selected == true){
+				for each(doc in dataList){
+					tempList.addItem(doc);
+					doc.is_history = 1;
+				}
+				//refresh the dataList and make selectAll checkBox selected
+				dataGrid.dataProvider = dataList;
+				allSelected = true;
+			}else{
+				for each(doc in dataList){
+					doc.is_history = 0;
+				}
+				//refresh the dataList and make selectAll checkBox selected
+				dataGrid.dataProvider = dataList;
+				allSelected = false;
+			}
+		}
+		//show count
+		public function showCount():void{
+			Application.application.showCount();
+		}
+		
+     ]]>
+     </mx:Script>
+     <mx:VBox width="100%" height="100%">
+     	<mx:DataGrid height="90%" width="100%"
+					 id="dataGrid">
+			<mx:columns>					
+				<mx:DataGridColumn width="20" 
+								   editable="false" 
+								   headerText="" 
+								   sortable="false">
+					<mx:headerRenderer>
+						<mx:Component>
+							<mx:VBox horizontalAlign="center">
+								<mx:CheckBox id="chball"
+											 click="outerDocument.selectAll(this)"
+											 selected="{outerDocument.allSelected == true}"/>
+							</mx:VBox>
+						</mx:Component>
+					</mx:headerRenderer>
+					<mx:itemRenderer>
+						<mx:Component>
+							<mx:VBox width="100%" horizontalAlign="center">
+								<mx:CheckBox id="cbox"
+											 change="outerDocument.cboxChanged(event,data)" 
+											 selected="{data.is_history == 1}"/>
+											 <!--use is_history column to control checkBox-->
+							</mx:VBox>
+						</mx:Component> 
+					</mx:itemRenderer>
+				</mx:DataGridColumn>
+				<mx:DataGridColumn headerText="{resourceManager.getString('downloadList','docTitle')}"
+								   dataField="document_title"
+								   itemRenderer="mx.controls.Label"/>
+				<mx:DataGridColumn headerText="{resourceManager.getString('downloadList','path')}"
+								   dataField="path"
+								   itemRenderer="mx.controls.Label"/>
+			</mx:columns>
+		</mx:DataGrid>
+		<mx:HBox id="buttonBox"
+			     width="100%"
+				 horizontalAlign="left">
+			<mx:Button label="{resourceManager.getString('downloadList','buttonLabel4')}"
+					   click="deleteDoc()"/>
+			<mx:Button id="down"
+					   label="{resourceManager.getString('downloadList','buttonLabel3')}"
+				       click="downloadDoc()"
+				       />
+		</mx:HBox>
+     </mx:VBox>
+    
+</mx:TitleWindow>

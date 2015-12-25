@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml"
+		   implements="module.ModuleInterface"
+		   width="100%"
+		   height="100%"
+		   creationComplete="initPageHelperClass()"
+		   xmlns:pages="pages.*"
+		   xmlns:veiw="veiw.*"
+		   xmlns:conmponents="conmponents.*"
+		   xmlns:component="component.*"
+		   xmlns:cutpage="component.cutpage.*"
+		   xmlns:mycomponents="org.utmost.mycomponents.*">
+
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+			import com.pagination.PageAction;
+			import com.pagination.PageHelper;
+			import com.right.UserRight;
+			import component.detailComp.detail;
+			import mx.events.CloseEvent;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.controls.Alert;
+			import mx.collections.ArrayCollection;
+			import org.utmost.service.StaticChannelSet;
+			import org.utmost.service.UtmostService;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import com.AdvancedSorting; 
+
+
+			private var searchData:ArrayCollection;
+			[Bindable]
+			private var hasProtected:Boolean=false;
+			[Bindable]
+			private var useruuid:String;
+			[Bindable]
+			private var page:PageHelper;
+			//total row
+			[Bindable]
+			private var totalRows:Number;
+			//key word string spliting in space ' '
+			[Bindable]
+			private var keyWord:String;
+			//key words is 'or' filter or 'and' filter
+			private var andOr:String;
+			
+			private var hasCategory:Boolean = false;
+			
+			private var validNodes:String = "";
+
+			public function set $treeSelectNode(_node:Object):void
+			{
+				trace("$modulecode:" + _node);
+			}
+
+			public function set $moduletree(_tree:ArrayCollection):void
+			{
+				trace("$moduletree:" + _tree);
+			}
+			//this data is filter condition
+			public function set $menuData(_menu:ArrayCollection):void
+			{
+				trace("$menuData:" + _menu);
+			}
+
+			//cache keyWord
+			//handler complex keyword(eg:terms con com(this are three keyword))
+			public function set $selectNodeFuncUUID(_keyWord:String):void
+			{
+				if (vb != null && vb.getChildren().length > 1)
+				{
+					vb.removeChildAt(1);
+				}
+				useruuid=UserRight.getUserUUID();
+				if(_keyWord == null || _keyWord.length < 3){
+					this.keyWord=_keyWord;
+					this.hasCategory = false;
+					this.validNodes = "";
+				}else{
+					var typeStr:String = _keyWord.substr(0, 3);
+					if(typeStr == "C::"){
+						this.hasCategory = true;
+						var nextSeperator:int = _keyWord.indexOf("::", 3);
+						this.validNodes = _keyWord.substring(3, nextSeperator);
+						var nextSeperator2:int = _keyWord.indexOf("::", nextSeperator+2);
+						this.keyWord =  _keyWord.substring(nextSeperator+2, nextSeperator2);
+						this.andOr = _keyWord.substring(nextSeperator2 + 2);
+					}else{
+						var nextSeperator:int = _keyWord.indexOf("::", 3);
+						this.keyWord = _keyWord.substring(3, nextSeperator);
+						this.andOr = _keyWord.substring(nextSeperator+2);
+						this.hasCategory = false;
+						this.validNodes = "";
+					}
+				}
+				if(page != null){
+					page.first();
+					page.setDataProvider();
+				}
+			}
+			//init Page Helper Class
+			private function initPageHelperClass():void
+			{
+				page=new PageHelper(19, fPage, pPage, nPage, lPage);
+				page.callFunc=searchByKeywordTotalRows;
+				//call searchByKeywordTotalRows
+				page.setDataProvider();
+			}
+			public function searchByKeywordTotalRows():void
+			{
+				var uts:UtmostService=new UtmostService("SearchService", function(e:ResultEvent):void
+					{
+
+						totalRows=0;
+						totalRows=e.result as Number;
+						page.setTotalRows(totalRows);
+						if(totalRows==0){
+							dgs.dataProvider=null;
+						}
+						var ts:UtmostService=new UtmostService("SearchService", function(dataevent:ResultEvent):void
+							{
+								if (dataevent != null)
+								{
+									searchData=new ArrayCollection();
+									searchData=dataevent.result as ArrayCollection;
+									dgs.dataProvider=searchData;
+								}
+							});
+						ts.ro.searchByKeyword(page.currentPage, page.pageSize, keyWord,andOr, hasCategory, validNodes);
+
+					})
+				uts.ro.searchByKeywordTotalRows(keyWord, andOr,hasCategory, validNodes);
+			}
+			//call this function when double click item
+			public function doubleclickItem(dg:AdvancedDataGrid):void
+			{
+				if (dg.selectedIndex >= 0)
+				{
+					if (dg.selectedItem.hasOwnProperty("uuid"))
+					{
+						if (vb.getChildren().length > 1)
+						{
+							vb.removeChildAt(1);
+						}
+						//show detail
+						showDetail(dg.selectedItem);
+						//cancel selected item
+						dg.selectedItem=null;
+					}
+				}
+			}
+			//show a item detail
+			public function showDetail(obj:Object):void
+			{
+				//if has detail, remove it first
+				if (vb.getChildren().length > 1)
+				{
+					vb.removeChildAt(1);
+				}
+				var dataDetail:detail=new detail();
+				//if item clicked has not uuid, return
+				if (!obj.hasOwnProperty("uuid"))
+				{
+					return;
+				}
+				//initial detail info
+				hasProtected=(UserRight.hasMenuRight(obj.uuid, "4") == "1" ? true : false);
+				dataDetail.setrootuuid=obj.rootuuid;
+				dataDetail.setnodeuuid=obj.nodeuuid;
+				dataDetail.setuseruuid=useruuid;
+				dataDetail.recordUUID_=obj.uuid;
+				dataDetail.setprotected=hasProtected;
+				dataDetail.percentHeight=50;
+				dataTable.percentHeight=50;
+				vb.addChild(dataDetail);
+			}
+		]]>
+	</mx:Script>
+
+	<mx:Metadata>
+   [ResourceBundle("dataGrid")]
+   [ResourceBundle("cutpage")]
+</mx:Metadata>
+	<mx:Canvas width="100%"
+			   height="100%"
+			   id="canvas">
+			<mx:VDividedBox id="vb"
+							width="100%"
+							height="100%">
+				<mx:VBox id="dataTable"
+						 width="100%"
+						 height="100%" verticalAlign="top"
+				 horizontalAlign="center">
+					<mx:AdvancedDataGrid id="dgs"
+										 doubleClickEnabled="true"
+										 headerRelease="AdvancedSorting.advancedDataGridSort(event)" 
+										 doubleClick="doubleclickItem(dgs)"
+										 width="100%"
+										 height="100%" fontSize="12">
+						<mx:columns>
+							<mx:AdvancedDataGridColumn dataField="standard_no"  
+													   width="10"
+													   headerText="{resourceManager.getString('dataGrid','standardNo')}"
+													   itemRenderer="mx.controls.Label"/>
+							<mx:AdvancedDataGridColumn dataField="title_en"
+													   width="35"
+													   headerText="{resourceManager.getString('dataGrid','standardTitleInEnglish')}"
+													   itemRenderer="mx.controls.Label"/>
+							<mx:AdvancedDataGridColumn dataField="title_ch"
+													   width="15"
+													   headerText="{resourceManager.getString('dataGrid','standardTitleInChinese')}"
+													   itemRenderer="mx.controls.Label"/>
+							<mx:AdvancedDataGridColumn dataField="nodeuuid_"
+													   width="23"
+													   headerText="{resourceManager.getString('dataGrid','categorie')}"
+													   itemRenderer="mx.controls.Label" />
+						</mx:columns>
+					</mx:AdvancedDataGrid>
+					<mx:HBox horizontalGap="20">
+						<mx:Spacer width="45"
+								   height="0">
+						</mx:Spacer>
+						<mx:Label text="{resourceManager.getString('cutpage','count')}: {page.totalRows}"
+								  id="pagedetail"/>
+						<mx:Label text="{resourceManager.getString('cutpage','page')}: {page.currentPage}/{page.totalPages}"
+								  id="pagedetail2"/>
+						<mycomponents:Components_LinkButton id="fPage"
+															iconType="left"
+															enabled="false"
+															label="{resourceManager.getString('cutpage','home')}"
+															click="PageAction.firstAction(page)">
+
+						</mycomponents:Components_LinkButton>
+						<mycomponents:Components_LinkButton id="pPage"
+															iconType="prev"
+															enabled="false"
+															label="{resourceManager.getString('cutpage','prev')}"
+															click="PageAction.previousAction(page)">
+
+
+						</mycomponents:Components_LinkButton>
+						<mycomponents:Components_LinkButton id="nPage"
+															iconType="next"
+															enabled="false"
+															label="{resourceManager.getString('cutpage','next')}"
+															click="PageAction.nextAction(page)">
+
+
+						</mycomponents:Components_LinkButton>
+						<mycomponents:Components_LinkButton id="lPage"
+															iconType="right"
+															enabled="false"
+															label="{resourceManager.getString('cutpage','last')}"
+															click="PageAction.lastAction(page)">
+
+						</mycomponents:Components_LinkButton>
+					</mx:HBox>
+				</mx:VBox>
+			</mx:VDividedBox>
+	</mx:Canvas>
+</mx:Module>

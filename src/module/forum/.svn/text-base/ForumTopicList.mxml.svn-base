@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" width="100%" height="100%"
+	xmlns:mycomponents="org.utmost.mycomponents.*" creationComplete="init()" themeColor="#009DFF"
+	horizontalAlign="center">
+	<mx:Metadata>
+		[ResourceBundle("forumView")]
+		[ResourceBundle("cutpage")]
+	</mx:Metadata>
+	
+	<mx:Script>
+		<![CDATA[
+			import component.forum.ForumPostNewAndModify;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.ResultEvent;
+			import com.TrimStr;
+			import com.hp.events.CommonEvent;
+			import com.pagination.PageAction;
+			import com.pagination.PageHelper;
+			import org.utmost.service.UtmostService;
+			import mx.resources.ResourceBundle;
+			import mx.collections.ArrayCollection;
+			
+			[Bindable]
+			private var _categoryUuid:String = null;
+			
+			[Bindable]
+			private var topicWidth:uint = 0;
+			[Bindable]
+			private var authorWidth:uint = 230;
+			[Bindable]
+			private var postWidth:uint = 100;
+			[Bindable]
+			private var modifyDateWidth:uint = 230;
+			
+			[Bindable]
+			[Embed(source="/img/forum/folder_hot.gif")]
+			public var iconUrl:Class;
+			
+			[Bindable]
+			private var topicList:ArrayCollection;
+			
+			[Bindable]
+			private var page:PageHelper = null;
+			
+			[Bindable]
+			private var selfAndParent:Object;
+			
+			[Bindable]
+			private var topicCount:int = 0;
+			
+			[Bindable]
+			private var replyCount:int = 0;
+			
+			public function set categoryUuid(_categoryUuid:String):void{
+				this._categoryUuid = _categoryUuid;
+				if(page != null)
+					page.setDataProvider();
+			}
+			
+			public function get categoryUuid():String{
+				return this._categoryUuid;
+			}
+			
+			private function init():void{
+				page = new PageHelper(10, fPage, pPage, nPage, lPage);
+				page.callFunc = drawTopicList;
+				page.setTotalRows(0);
+				topicWidth = topBox.width - authorWidth - postWidth - modifyDateWidth - 3;
+				if(_categoryUuid != null)
+					page.setDataProvider();
+				this.addEventListener(CommonEvent.POST_CHANGED_EVENT, 
+					function(event:Event):void{
+						drawTopicList();
+					}
+				);
+			}
+			
+			private function drawTopicList():void{
+				var utmost0:UtmostService = new UtmostService("CategoryUtil", 
+					function(event:ResultEvent):void{
+						selfAndParent = event.result as Object;
+						topicListContainer.visible = true;
+					}
+				);
+				utmost0.ro.getSelfAndParentName(_categoryUuid);
+				var utmost:UtmostService = new UtmostService("ForumService", 
+					function(event:ResultEvent):void{
+						var topicResult:Object = event.result as Object;
+						topicList = topicResult.topicList;
+						topicCount = topicResult.topicCount;
+						replyCount = topicResult.replyCount;
+						page.setTotalRows(topicResult.rowCount);
+					}
+				);
+				utmost.ro.getTopicList(_categoryUuid, page.currentPage, page.pageSize);
+			}
+			
+			private function searchHandler():void{
+				if(postContent.length == 0) return;
+				var searchEvent:CommonEvent = new CommonEvent(CommonEvent.FORUM_SEARCH_EVENT, true);
+				searchEvent.searchText = TrimStr.Trim(postContent.text);
+				this.dispatchEvent(searchEvent);
+			}
+			
+			private function goCategoryList():void{
+				var goCategoryListEvent:CommonEvent = new CommonEvent(CommonEvent.GO_CATEGORY_LIST_EVENT, true);
+				this.dispatchEvent(goCategoryListEvent);
+			}
+			
+			private function goTopicDetail(topicUuid:String):void{
+				if(topicUuid != null && topicUuid != ""){
+					var goTopicDetailEvent:CommonEvent = new CommonEvent(CommonEvent.GO_TOPIC_DETAIL_EVENT, true);
+					goTopicDetailEvent.topicUuid = topicUuid;
+					this.dispatchEvent(goTopicDetailEvent);
+				}
+			}
+			private function propertyBindTool(obj:Object, property:String):String{
+				var str:String = obj[property] as String;
+				return str;
+			}
+			
+			private function newTopic():void{
+				var item:Object = {pid:_categoryUuid, title:"", content:""};
+				var editWindow:ForumPostNewAndModify = 
+					PopUpManager.createPopUp(this.parentApplication as DisplayObject, 
+						ForumPostNewAndModify, 
+						true
+					) as ForumPostNewAndModify;
+				editWindow.parentContainer = this;
+				editWindow.item = item;
+				editWindow.isTopic = true;
+				PopUpManager.centerPopUp(editWindow);
+			}
+			
+			private function addToolTip(event:Event):void{
+				if(event.currentTarget is Label){
+					var label:Label = event.currentTarget as Label;
+					label.toolTip = label.text;
+				}
+			}
+		]]>
+	</mx:Script>
+	<mx:Style>
+		.forumBox{
+			border-style:solid;
+			border-thickness:1;
+			horizontal-gap:0;
+			vertical-gap:0;
+			font-size:14;
+		}
+		
+		.rowBoxTitle{
+			horizontal-align:left;
+			horizontal-gap:0;
+			vertical-gap:0;
+			background-image:Embed(source='/img/forum/cat_bg.gif');
+		}
+		
+		.rowBoxCategory{
+			horizontal-align:left;
+			horizontal-gap:0;
+			vertical-gap:0;
+			background-color:#366AAB;
+			font-size:14;
+			color:#FFFFFF;
+			font-weight:bold;
+		}
+		
+		.rowBoxNormal{
+			horizontal-align:left;
+			horizontal-gap:0;
+			vertical-gap:0;
+			font-size:14;
+			font-weight:normal;
+			background-color:#F5FAFE;
+		}
+		
+		.forumTitle{
+			border-style:solid;
+			border-sides:top bottom;
+			border-thickness:1;
+			horizontal-align:center;
+			horizontal-gap:0;
+			vertical-align:middle;
+			vertical-gap:0;
+			font-size:16;
+			font-weight:bold;
+		}
+		
+		.forumItemLeft{
+			border-style:solid;
+			border-sides:top bottom;
+			border-thickness:1;
+			horizontal-align:left;
+			horizontal-gap:0;
+			vertical-align:middle;
+			vertical-gap:0;
+		}
+		
+		.forumItemLeftPadding{
+			border-style:solid;
+			border-sides:top bottom;
+			border-thickness:1;
+			horizontal-align:left;
+			horizontal-gap:0;
+			vertical-align:middle;
+			vertical-gap:0;
+			padding-left:10;
+		}
+		
+		.forumItem{
+			border-style:solid;
+			border-sides:top bottom;
+			border-thickness:1;
+			horizontal-align:center;
+			horizontal-gap:0;
+			vertical-align:middle;
+			vertical-gap:0;
+		}
+		
+		.forumButton{
+			fill-colors:#E8F3FD, #E8F3FD;	
+		}
+		
+		ToolTip{
+			font-size:14;	
+		}
+	</mx:Style>
+	<mx:VBox id="topicListContainer" width="98%" height="100%" visible="false">
+		<mx:HBox width="100%" verticalAlign="bottom" fontSize="12">
+			<mx:HBox width="100%" horizontalAlign="left" verticalAlign="middle" paddingTop="5">
+				<mx:Button styleName="forumButton" 
+					label="{resourceManager.getString('forumView', 'button.label.new.topic')}"
+					click="newTopic()"/>
+			</mx:HBox>
+			<mx:HBox horizontalAlign="right" width="100%">
+				<mx:Label text="{resourceManager.getString('forumView', 'keywords') + ':'}"/>
+				<mx:TextInput id="postContent" />
+				<mx:Button styleName="forumButton" label="{resourceManager.getString('forumView', 'search')}" click="searchHandler()"/>
+			</mx:HBox>
+		</mx:HBox>
+			
+		<mx:VBox id="topBox" width="100%" styleName="forumBox">
+			<!--分类一-->
+			<mx:HBox width="100%" verticalAlign="bottom" backgroundColor="#366AAB" color="#FFFFFF">
+				<mx:HBox width="100%" height="100%" verticalAlign="middle" horizontalGap="0">
+					<mx:Label text="【" width="10" fontWeight="bold"/>
+					<mx:LinkButton label="{propertyBindTool(selfAndParent.parent, resourceManager.getString('forumView', 'topic.list.category.name.field'))}" 
+						fontWeight="bold" color="#FFFFFF" click="goCategoryList()"/>
+					<mx:Label text="{'>> ' + propertyBindTool(selfAndParent.self, resourceManager.getString('forumView', 'topic.list.category.name.field')) + ' 】'}" 
+						fontWeight="bold"/>
+				</mx:HBox>
+				<mx:HBox height="95%" backgroundColor="#F5FAFE">
+					<mx:Label text="{resourceManager.getString('forumView', 'topic.list.topic.count') + ':'}" color="#000000"/>
+					<mx:Label text="{topicCount}" color="#FF0099"/>
+					<mx:Label text="{resourceManager.getString('forumView', 'topic.list.post.count') + ':'}" color="#000000"/>
+					<mx:Label text="{topicCount + replyCount}" color="#FF0099"/>
+				</mx:HBox>
+			</mx:HBox>
+			<!--title-->
+			<mx:HBox width="100%" verticalAlign="middle" backgroundSize="100%" styleName="rowBoxTitle">
+				<mx:VBox width="{topicWidth}" height="100%" styleName="forumTitle" horizontalAlign="center">
+					<mx:Label text="{resourceManager.getString('forumView', 'topic.list.topic.header.text')}"/>
+				</mx:VBox>
+				<mx:Box width="{authorWidth}" height="100%" styleName="forumTitle" horizontalAlign="center">
+					<mx:Label text="{resourceManager.getString('forumView', 'topic.list.author.header.text')}"/>
+				</mx:Box>
+				<mx:Box width="{postWidth}" height="100%" styleName="forumTitle" horizontalAlign="center">
+					<mx:Label text="{resourceManager.getString('forumView', 'topic.list.post.header.text')}"/>
+				</mx:Box>
+				<mx:Box width="{modifyDateWidth}" height="100%" styleName="forumTitle" horizontalAlign="center">
+					<mx:Label text="{resourceManager.getString('forumView', 'topic.list.last.post.header.text')}"/>
+				</mx:Box>
+			</mx:HBox>
+			<mx:Repeater id="topicRepeater" dataProvider="{topicList}">
+				<mx:HBox width="100%" horizontalAlign="left" styleName="rowBoxNormal">
+					<mx:HBox width="{topicWidth}" height="100%" styleName="forumItemLeftPadding" 
+						verticalScrollPolicy="off" horizontalScrollPolicy="off">
+						<mx:Image source="{iconUrl}"/>
+						<mx:Spacer width="5"/>
+						<mx:VBox width="100%" verticalGap="0" verticalScrollPolicy="off" horizontalScrollPolicy="off">
+							<mx:LinkButton label="{'【' + propertyBindTool(topicRepeater.currentItem, resourceManager.getString('forumView', 'topic.list.name.field')) + '】'}"
+								click="goTopicDetail(event.currentTarget.getRepeaterItem().uuid)"/>
+							<mx:Label text="{propertyBindTool(topicRepeater.currentItem, resourceManager.getString('forumView', 'topic.list.desc.field'))}"
+								creationComplete="addToolTip(event)"/>
+						</mx:VBox>
+					</mx:HBox>
+					<mx:Box width="{authorWidth}" height="100%" styleName="forumItem"
+						verticalScrollPolicy="off" horizontalScrollPolicy="off">
+						<mx:Label text="{topicRepeater.currentItem.username}"
+							creationComplete="addToolTip(event)"/>
+						<mx:Label text="{topicRepeater.currentItem.create_date}"/>
+					</mx:Box>
+					<mx:Box width="{postWidth}" height="100%" styleName="forumItem">
+						<mx:Label text="{topicRepeater.currentItem.postsCount}"/>
+					</mx:Box>
+					<mx:VBox width="{modifyDateWidth}" height="100%" styleName="forumItem" 
+						horizontalAlign="center" verticalScrollPolicy="off" horizontalScrollPolicy="off">
+						<mx:Label text="{topicRepeater.currentItem.lastPostDate}"/>
+						<mx:Label text="{'by ' + topicRepeater.currentItem.lastPostUsername}"
+							creationComplete="addToolTip(event)"/>
+					</mx:VBox>
+				</mx:HBox>
+			</mx:Repeater>
+		</mx:VBox>
+		<mx:HBox width="100%">
+			<mx:Button styleName="forumButton" 
+				label="{resourceManager.getString('forumView', 'button.label.new.topic')}"
+				click="newTopic()"/>
+				
+			<mx:Spacer width="30"/>
+			<mx:HBox width="100%" horizontalAlign="right">
+				<mx:Label text="{resourceManager.getString('cutpage','count')}: {page.totalRows}"
+						  id="pagedetail"/>
+				<mx:Label text="{resourceManager.getString('cutpage','page')}: {page.currentPage}/{page.totalPages}"
+						  id="pagedetail2"/>
+				<mycomponents:Components_LinkButton id="fPage"
+													iconType="left"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','home')}"
+													click="PageAction.firstAction(page)">
+				</mycomponents:Components_LinkButton>
+				<mycomponents:Components_LinkButton id="pPage"
+													iconType="prev"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','prev')}"
+													click="PageAction.previousAction(page)">
+				</mycomponents:Components_LinkButton>
+				<mycomponents:Components_LinkButton id="nPage"
+													iconType="next"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','next')}"
+													click="PageAction.nextAction(page)">
+				</mycomponents:Components_LinkButton>
+				<mycomponents:Components_LinkButton id="lPage"
+													iconType="right"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','last')}"
+													click="PageAction.lastAction(page)">
+				</mycomponents:Components_LinkButton>
+			</mx:HBox>
+		</mx:HBox>
+		<mx:Spacer height="3"/>
+	</mx:VBox>
+</mx:Module>

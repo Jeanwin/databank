@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" horizontalAlign="center" verticalAlign="middle" height="100%" >
+   <mx:Script>
+    <![CDATA[
+    	import com.right.UserRight;
+    	import mx.controls.Alert;
+    	import mx.managers.PopUpManager;
+		public var uuidlabel:String;
+    	public var swflabel:String;
+    	public var filelabel:String;
+    	public var author:String;
+    	public var last_modify_date_str:String;
+    	[Bindable]
+    	public var namelabel:String;
+    	public var funclabel:Function;
+    	
+     ]]>
+     </mx:Script>
+    <mx:LinkButton id="lab" label="{data[namelabel]}" maxWidth="60" click="{funclabel.call(this,data[last_modify_date_str],data[author],data[swflabel],data[filelabel],data[namelabel],data[uuidlabel]);}"/>
+</mx:HBox>

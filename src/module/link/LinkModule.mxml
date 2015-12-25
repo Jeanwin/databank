@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" 
+	width="100%" height="100%" xmlns:KapLab="com.kapit.visualizer.*" creationComplete="init()" horizontalGap="0">
+	<mx:Script>
+		<![CDATA[
+			import com.kapit.visualizer.events.VisualizerEvent;
+			import mx.controls.Alert;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.variable.TreeVar;
+			import mx.controls.Tree;
+			import mx.controls.Image;
+			import com.kapit.visualizer.LayoutConstants;
+			
+			public var urlStr:String;
+			
+			[Bindable] 
+            [Embed(source="/img/resources/zoom in5.png")] 
+            private var Icon:Class; 
+			
+			[Bindable]
+            private var linkStyle:Object={
+                thickness:1,
+                color:0x000000,
+                alpha:0.6,
+                pixelHinting:false,
+                scaleMode:"normal",
+                caps:"none",
+                joints:null,
+                miterLimit:3,
+                onLength:5,
+                offLength:5
+            };
+			
+			private function setVisualizerProperties():void
+            {
+                integration.hierarchicalTreeLayout.layerDistance=30;
+                integration.hierarchicalTreeLayout.defaultNodeDistance=30;
+                integration.hierarchicalTreeLayout.orientation=LayoutConstants.ORIENTATION_TOP_DOWN;
+                integration.hierarchicalTreeLayout.edgeDrawing=LayoutConstants.ORTHOGONAL_STRAIGHT_POLYLINE;
+            }
+			
+			private function init():void {
+				initTree(TreeVar.getOrgMainByTree(),TreeVar.getOrgKvByTree());
+				
+				hb1.setStyle("rollOverEffect",glowImage);
+				hb1.setStyle("rollOutEffect",unglowImage);
+				hb2.setStyle("rollOverEffect",glowImage);
+				hb2.setStyle("rollOutEffect",unglowImage);
+				gotoButton.setStyle("rollOverEffect",glowImage);
+				gotoButton.setStyle("rollOutEffect",unglowImage);
+			}
+			private function initTree(main:Object,kv:Object):void {
+			callLater(function():void {
+			 	integration.zoomContent(1.2);
+		 	});
+			}
+			private function myhander(event:VisualizerEvent):void{
+				urlStr = event.items[0].itemRenderer.data.@url;
+				urlName.text = event.items[0].itemRenderer.data.@nodename;
+				
+				if(urlStr!=null && urlStr.length>0){
+					gotoButton.visible = true;
+				}else{
+					gotoButton.visible = false;
+				}
+			}
+			
+			private function openUrl():void{
+				navigateToURL(new URLRequest(urlStr),"_blank");
+			}
+			
+			public function mouseWheelHander(event:MouseEvent):void{
+				if(event.delta>0){
+					integration.zoomContent(1.2);
+				}else{
+					integration.zoomContent(0.8)
+				}
+			}
+		
+		]]>
+	</mx:Script>
+	<mx:XML id="myDataProvider" source="xml/LinksData.xml" />
+	
+	<mx:Glow id="glowImage" duration="300" alphaFrom="1.0" alphaTo="1" blurXFrom="0.0" blurXTo="9.0" blurYFrom="0.0" blurYTo="9.0" color="#0099FF"/>
+	<mx:Glow id="unglowImage" duration="300" alphaFrom="1" alphaTo="1.0" blurXFrom="9.0" blurXTo="0.0" blurYFrom="9.0" blurYTo="0.0" color="#0099FF"/>
+	
+	<mx:Array id="cb_arr">
+		<mx:Object label="HIERARCHICAL" value="{LayoutConstants.HIERARCHICAL_TREE_LAYOUT}" />
+		<mx:Object label="BALLOON" value="{LayoutConstants.BALLOON_LAYOUT}" />
+		<mx:Object label="CIRCULAR" value="{LayoutConstants.CIRCULAR_LAYOUT}" />
+		<mx:Object label="STATIC_ORGANIC" value="{LayoutConstants.STATIC_ORGANIC_LAYOUT}" />
+		<mx:Object label="ORTHOGONAL" value="{LayoutConstants.ORTHOGONAL_LAYOUT}" />
+	</mx:Array>
+	<mx:Canvas width="100%" height="100%">
+		<mx:HBox width="100%" height="100%" horizontalAlign="center" verticalAlign="middle" mouseWheel="mouseWheelHander(event)">
+			<KapLab:Visualizer width="100%" height="100%"
+				backgroundColor="0xFFFFFF" 
+				id="integration"
+				dataProvider="{ myDataProvider}" 
+				labelFields="{['@showname']}"
+				tooltipFields="{['@nodename']}"
+				toolTipTitles="{['Detail']}"
+				layout="{LayoutConstants.HIERARCHICAL_TREE_LAYOUT}"
+        		linkStyle="{linkStyle}"
+				defaultNodeHeight="100"
+				elementClicked="{myhander(event);}"
+				defaultNodeWidth="100"
+				expandOnDoubleClick="true"
+				creationComplete="setVisualizerProperties()"
+			/>
+		</mx:HBox>
+		<mx:HBox width="100%" height="100%" horizontalAlign="right" verticalAlign="middle">
+			<mx:VBox id="vb" backgroundColor="#EEEEEE" alpha="0.5" verticalGap="15"  height="100%" verticalAlign="top" paddingTop="15" horizontalAlign="center" borderStyle="solid" borderColor="#9D9FA0">
+				<mx:ComboBox id="cb" dataProvider="{cb_arr}" change="integration.layout=cb.selectedItem.value"></mx:ComboBox>
+				<mx:HBox id="hb1" horizontalGap="0" click="integration.zoomContent(1.2)">
+					<mx:Image source="/img/resources/zoom in5.png" />
+					<mx:Label text="Zoom In" width="62" />
+				</mx:HBox>
+				<mx:HBox id="hb2" horizontalGap="0" click="integration.zoomContent(0.8)">
+					<mx:Image source="/img/resources/zoom out7.png" />
+					<mx:Label text="Zoom Out" width="62" />
+				</mx:HBox>
+				<mx:VBox paddingTop="15" verticalGap="10">
+					<mx:Text id="urlName" width="100"/>
+					<mx:HBox id="gotoButton" horizontalGap="0" click="openUrl()" visible="false">
+						<mx:Image source="/img/system/adelante1.png" width="18" height="18" />
+						<mx:Label text="Visit" width="62" />
+					</mx:HBox>
+				</mx:VBox>
+			</mx:VBox>
+		</mx:HBox>
+	</mx:Canvas>
+</mx:Module>

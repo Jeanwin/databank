@@ -1,0 +1,544 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" creationComplete="{initData();}" width="100%" height="100%" xmlns:mycomponents="org.utmost.mycomponents.*">
+ <mx:Script>
+ 	<![CDATA[ 
+ 		import mx.events.CloseEvent;
+ 		import mx.controls.dataGridClasses.DataGridColumn;
+ 		import mx.events.ListEvent;
+ 		import mx.events.DragEvent;
+ 		import org.utmost.service.AutoService;
+ 		import mx.controls.ComboBox;
+ 		import mx.controls.Alert;
+ 		import mx.rpc.events.ResultEvent;
+ 		import org.utmost.util.ComponentUtil;
+ 		import org.utmost.service.UtmostService;
+		import mx.collections.ArrayCollection;
+		import mx.managers.PopUpManager;
+		import mx.core.SoundAsset;
+		import com.MultiFileUpload; 
+		//绑定所有字段
+	    [Bindable]
+		private   var allwordArr:ArrayCollection=new ArrayCollection();
+		//绑定本类字段
+		[Bindable]
+		private	var oneClassArr:ArrayCollection=new ArrayCollection();
+		//存放数据库中所有字段表的数据，
+		private var tempArr:ArrayCollection;
+		[Bindable]
+	    private var dataGirdData:ArrayCollection;
+	    //private var service:AutoService=AutoService.getInstance(true);
+	    //向左移动一项（从本类删除字段）
+	    private function addtoLeft():void{
+	     	if(oneClass_word.selectedIndex!=-1){
+	     		//根据UUID删除本类当前选中字段
+	     			AutoService.getInstance(false).deleteByUUID("B_CLASS_FIELD",oneClass_word.selectedItem.uuid,function (e:ResultEvent):void{
+	     			initAllClassData();
+	     		});
+	     	}
+	     }
+	     
+	     //向右移动一项（向本类添加字段）
+	     private function addtoRight():void{
+	 	    if(allword.selectedIndex!=-1){
+	 	    	//在这里给大类添加信息时只初始化几项数据，其余属性等到用到字段配置时候再初始化
+	 	    	var newField:Object=new Object();
+	 	    		newField.field_name=allword.selectedItem.label;
+	 	    		newField.func_uuid=kind_combobox.selectedItem.data;
+	 	    		newField.is_protected="1";
+	 	    		newField.show_mode="2";
+	 	    		newField.is_config="1";
+	 	    		newField.show_width="90";
+	 	    		newField.show_name_ch=allword.selectedItem.label;
+	 	    		newField.show_name_en=allword.selectedItem.label;
+	 	    		newField.order_no=oneClassArr.length;
+	 	    		newField.regex="^.{0,400}$";
+	 	    	AutoService.getInstance(false).save("B_CLASS_FIELD",newField,function (e:ResultEvent):void{
+	 	    		dragCompleteHander(false);
+	 	    	});
+	 	    	}
+	     }
+	     private var seleItem:Object;
+	     
+	     //List拖拽放下后
+//	     private function dragDropHander(event:DragEvent):void{
+//	     	seleItem=event.currentTarget.selectedItem;
+//	     }
+	     
+	     //拖拽结束后
+	     private function dragCompleteHander(isall:Boolean=true):void{
+     			//获取到当前本类字段数据源
+		//      var nowIndex:int=(oneClass_word.dataProvider as ArrayCollection).getItemIndex(item);
+               var updateArr:ArrayCollection=indexChangeFunc(oneClass_word.dataProvider as ArrayCollection);
+               AutoService.getInstance(false).updateAll("B_CLASS_FIELD",updateArr,function (e:ResultEvent):void{
+               		if(isall==false){
+               			Alert.show(resourceManager.getString("errormsg","savesucc"),resourceManager.getString("errormsg","alert"));
+               		}
+               		initAllClassData();
+               });
+	               
+	     }
+	     //List中某项下标改变调用的方法,此方法接收当前数据源，然后将数据源中标识下标的项的值替换为当前在数据源中的下标
+	     private function indexChangeFunc(dataArrayColl:ArrayCollection):ArrayCollection{
+	     	var updateBeansColl:ArrayCollection=new ArrayCollection();
+	     	var obj:Object;
+	     	for (var i:int=0;i<dataArrayColl.length;i++){
+	     		obj=dataArrayColl[i];
+	     		obj.order_no=i;
+	     		updateBeansColl.addItem(obj);
+	     	}
+	     	return updateBeansColl;
+	     }
+	     
+	     //初始化页面显示的数据
+	     private function  initData():void{
+	     	var us:UtmostService=new UtmostService("classFieldService",function(e:ResultEvent):void{
+						var kindComboboxData:ArrayCollection=new ArrayCollection();
+						kindComboboxData=ArrayCollection(e.result);
+						kind_combobox.dataProvider=kindComboboxData;
+						kindChangeHander();
+					});
+				us.ro.getTotalClass();
+	     }
+	     
+	     
+	      //大类下拉框值改变时调用
+		  private function kindChangeHander():void{
+		  	if(kind_combobox.selectedIndex==-1){
+		  		kind_combobox.prompt="Please select one";
+		  		kind_combobox.selectedIndex=-1;
+		  		return;
+		  	};
+		 	var ut:UtmostService=new UtmostService("classFieldService",function(e:ResultEvent):void{
+						dataGirdData=new ArrayCollection();
+						dataGirdData=ArrayCollection(e.result);
+						kind_combobox.enabled=true;
+					});
+					//根据下拉框选中项的值获取此类字段
+					ut.ro.getClassFieldByUUID(kind_combobox.selectedItem.data);
+		  }
+				
+				
+		   //获取所有大类字段
+		  private function initAllClassData():void{
+		  	var classut:UtmostService=new UtmostService("classFieldService",getTotalResult);
+					classut.ro.getTotalClassField();
+		  }
+		  
+		  
+		  //根据UUID获取本类字段，在获取所有字段执行后执行此方法
+		  private function getTotalResult(e:ResultEvent):void{
+		  	   tempArr=new ArrayCollection();
+		  	   tempArr=ArrayCollection(e.result);
+		  	  var ut:UtmostService=new UtmostService("classFieldService",classification);
+		  	  if(kind_combobox.selectedIndex==-1)return;
+		  	  ut.ro.getClassFieldByUUID(kind_combobox.selectedItem.data);
+		  }
+		  
+		  
+		  [Bindable]
+		  private var detaiListArr:ArrayCollection=new ArrayCollection();
+		  private function getOneClassFields():void{
+		  	  var ut:UtmostService=new UtmostService("classFieldService",function (e:ResultEvent):void{
+		  	  	    var temp:ArrayCollection=new ArrayCollection();
+		  	  		detaiListArr=new ArrayCollection();
+		  	        temp=ArrayCollection(e.result);
+		  	        var ob:Object;
+			  		for each(var da:Object in temp){
+			  			//将所有可配置字段添加到本类字段列表中
+			  			if(da.hasOwnProperty("is_config")){
+			  				if(da.is_config=="1"){
+			  					ob=new Object();
+					  			ob=da;
+					  			ob.data=da.uuid;
+					  			ob.label=da.field_name;
+					  			detaiListArr.addItem(ob);
+			  				}
+			  			}
+			  		}
+			  		detaiObj=null;
+			  		saveDetail_link.enabled=false;
+		  	  });
+		  	  if(kind_combobox.selectedIndex==-1)return;
+		  	  ut.ro.getClassFieldByUUID(kind_combobox.selectedItem.data);
+		  }
+		  
+		  
+		  //初始化所有字段和本类字段显示列表，通过比对确定左右显示的内容
+		  private function classification(e:ResultEvent):void{
+					dataGirdData=ArrayCollection(e.result);
+					allwordArr=new ArrayCollection();
+					oneClassArr=new ArrayCollection();
+		  	//初始化本类字段，有序的
+		  	var ob:Object;
+	  		for each(var da:Object in dataGirdData){
+	  			//将所有可配置字段添加到本类字段列表中
+	  			if(da.hasOwnProperty("is_config")){
+	  				if(da.is_config=="1"){
+	  					ob=new Object();
+			  			ob=da;
+			  			ob.data=da.uuid;
+			  			ob.label=da.field_name;
+			  			oneClassArr.addItem(ob);
+	  				}
+	  			}
+	  		}
+		  	//初始化所有字段，无序
+		  	for each(var obj:Object in tempArr){
+		  		var bool:Boolean=true;
+		  		for each(var item:Object in dataGirdData){
+		  			if(obj.label==item.field_name)bool=false;
+		  		}
+		  		//如果本类没有，则将此对象添加到所有字段列表
+		  		if(bool)allwordArr.addItem(obj);
+		  	}
+		  	saveFields_link.enabled=false;
+		  }
+		  
+		  
+		  //accordion选中项改变时调用，判断当前需要什么数据
+		  private function accordionChangeHanger(order:int):void{
+		  	if(order==0){
+		  		callLater(function ():void{
+		  			kindChangeHander();
+		  		});
+		  	}
+		  	if(order==1){
+		  		callLater(function ():void{
+		  			initAllClassData();
+		  		});
+		  	}
+		  	if(order==2){
+		  		callLater(function ():void{
+		  			getOneClassFields();
+		  		});
+		  	}
+		  }
+	  [Bindable]
+	  private var detaiObj:Object;
+	  private var ischange:Boolean=false;
+	  //配置字段详细信息的List选中项改变时
+	  private function detailListChangeHanger(event:ListEvent):void{
+	  	var tempo:Object=event.currentTarget.selectedItem;
+	  	if(detaiObj!=null){//已经有选中的对象了，说明不是第一次点击
+	  			if(ischange==true){//如果已经对上一个对象做出了修改，则提示是否保存
+	  				Alert.yesLabel =resourceManager.getString("errormsg","yes");
+                	Alert.noLabel = resourceManager.getString("errormsg","no");
+                	Alert.show(detaiObj.label+resourceManager.getString("errormsg","savechange"),resourceManager.getString("errormsg","alert"), 3, this, function (event:CloseEvent):void{
+                		if (event.detail==Alert.YES){
+                			mydetai_list.selectedIndex=int(detaiObj.order_no);
+		                   saveEditField(detaiObj);
+		                }
+		                else{//点击的是否（不保存）
+		                    changeresult(tempo);
+		                }
+                	});
+	  			}else{//对象没有任何修改
+	  				 changeresult(tempo);
+	  			}
+	  		}else{//第一次点击
+	  			changeresult(tempo);
+	  		}
+	  }
+	  private function changeresult(o:Object):void{
+	  		detaiObj=o;
+	  		if(detaiObj==null)return;
+	  		ischange=false;
+	  		var str:String=detaiObj.label;
+	  		if(str.indexOf("DATE")!=-1){
+	  			wenben.enabled=false;
+	  			liebiao.enabled=false;
+	  			riqi.selected=true;
+	  			regexdate.prompt="";
+	  			regexdate.selectedIndex=-1;
+	  			for(var k:int=0;k<regexdateArr.length;k++){
+	  				if(regexdateArr[k].data==detaiObj.regex)
+	  					regexdate.selectedIndex=k;
+	  			}
+	  			return;
+	  		}else{
+	  			wenben.enabled=true;
+	  			liebiao.enabled=true;
+	  		}
+	  		if(detaiObj.field_type=='1'){
+	  			wenben.selected=true;
+	  			regexcombobox.prompt="";
+	  			regexcombobox.selectedIndex=-1;
+	  			for(var j:int=0;j<regexcomboboxArr.length;j++){
+	  				if(regexcomboboxArr[j].data==detaiObj.regex)
+	  					regexcombobox.selectedIndex=j;
+	  			}
+	  		}else if(detaiObj.field_type=='2'){
+	  			liebiao.selected=true;
+	  		}else if(detaiObj.field_type=='3'){
+	  			riqi.selected=true;
+	  			regexdate.prompt="";
+	  			regexdate.selectedIndex=-1;
+	  			for(var i:int=0;i<regexdateArr.length;i++){
+	  				if(regexdateArr[i].data==detaiObj.regex)
+	  					regexdate.selectedIndex=i;
+	  			}
+	  		}else{
+	  			wenben.selected=true;
+	  		}
+	  		saveDetail_link.selected=false;
+	  }
+	  
+	  private function realSaveEditField(isfromchange:Object=null):void{
+	  		var obj:Object=new Object();
+	  		obj=detaiObj;
+	  		obj.show_name_en=enname.text;
+	  		obj.show_name_ch=chname.text;
+	  		obj.tooltip=tootipvalue.text;
+	  	    obj.show_width=hSlider.value;
+	  		//是否保密,0是不保护
+	  		if(proyes.selected==true){
+	  			obj.is_protected="1";
+	  		}else{
+	  			obj.is_protected="0";
+	  		}
+	  		//显示模式,1是简洁
+	  		if(showyes.selected==true){
+	  			obj.show_mode="1";
+	  		}else{
+	  			obj.show_mode="2";
+	  		}
+	  		//字段类型，1文本，2列表，3时间
+	  		if(wenben.selected==true){
+	  				if(regexcombobox.selectedIndex==-1){
+	  					Alert.show(resourceManager.getString('errormsg','checkrules')+" "+resourceManager.getString("errormsg","selectone"),resourceManager.getString("errormsg","errtip"));
+			  		return;
+			  	} 
+			  		obj.field_type="1";
+	  				obj.regex=regexcombobox.selectedItem.data;
+	  		}
+	  		if(liebiao.selected==true){
+	  			if(regextextipuput.length<1||regextextipuput.length>100){
+	  				MyValidate.validateTextInput(regextextipuput,resourceManager.getString("errormsg","lengthchars"),false);
+			  		return;
+			  	}else{
+			  		MyValidate.validateTextInput(regextextipuput,"",true);
+			  	}
+	  			obj.field_type="2";
+	  			obj.field_value=regextextipuput.text;
+	  		}
+	  		if(riqi.selected==true){
+	  			if(regexdate.selectedIndex==-1){
+			  		Alert.show(resourceManager.getString('errormsg','checkrules')+" "+resourceManager.getString("errormsg","selectone"),resourceManager.getString("errormsg","errtip"));
+			  		return;
+			  	} 
+			  		obj.field_type="3";
+	  				obj.regex=regexdate.selectedItem.data;
+	  			
+	  		}
+	  		 AutoService.getInstance(true).update("B_CLASS_FIELD",obj,function (e:ResultEvent):void{
+//	  		 	getOneClassFields();
+	  		 	saveDetail_link.enabled=false;
+	  		 	Alert.show(resourceManager.getString("errormsg","savesucc"),resourceManager.getString("errormsg","alert"));
+	  		 	ischange=false;
+	  		 	if(isfromchange!=null){
+	  		 			changeresult(isfromchange);
+	  		 	}
+	  		 });
+	  }
+	  //修改字段详细信息
+	  private function saveEditField(isfromchange:Object=null):void{
+	  	var num:int=0;
+	  	saveDetail_link.enabled=false;
+	  	
+	  	if(detaiObj==null)return; 
+	  	//数据校验
+	  	if(enname.length<1||enname.length>100){
+	  		MyValidate.validateTextInput(enname,resourceManager.getString("errormsg","lengthchars"),false);
+	  		num++;
+	  	}else{
+	  		MyValidate.validateTextInput(enname,"",true);
+	  	}
+	  	if(chname.length<1||chname.length>100){
+	  		MyValidate.validateTextInput(chname,resourceManager.getString("errormsg","lengthchars"),false);
+	  		num++;
+	  	}else{
+	  		MyValidate.validateTextInput(chname,"",true);
+	  	}
+	  	if(tootipvalue.length<1||tootipvalue.length>100){
+	  		MyValidate.validateTextInput(tootipvalue,resourceManager.getString("errormsg","lengthchars"),false);
+	  		num++;
+	  	}else{
+	  		MyValidate.validateTextInput(tootipvalue,"",true);
+	  	}
+	  	if(num==0)realSaveEditField(isfromchange);
+	  }	
+	  //简介模式1：显示，2：不显示
+	  private function showModeFunc(item:Object,event:DataGridColumn):String{
+	  		return item.show_mode=="1"?"true":"false";
+	  }
+	  //是否保护0：不保护，1：保护
+	  private function isprotectedFunc(item:Object,event:DataGridColumn):String{
+	  		return item.is_protected=="1"?"true":"false";
+	  }
+ 	]]>
+ </mx:Script>
+	<mx:Metadata>
+        [ResourceBundle("config")]
+         [ResourceBundle("errormsg")]
+    </mx:Metadata>	
+	<mx:TabNavigator id="accordion"  change="{accordionChangeHanger(accordion.selectedIndex);}"     
+		width="100%" height="100%"> 
+		<mx:VBox id="mybox" label="{resourceManager.getString('config','view')}" paddingTop="5"   width="100%" height="95%">
+				<mx:HBox width="100%" horizontalAlign="right" paddingRight="35"  >
+					<mx:Label text="{resourceManager.getString('config','selectCategories')}:"  fontWeight="bold"/>
+						<mx:ComboBox id="kind_combobox"  enabled="false"    change="{kindChangeHander();}" />
+				</mx:HBox>
+				<mx:DataGrid width="100%"  dataProvider="{dataGirdData}" height="95%" resizeEffect="Resize">
+					<mx:columns>
+						<mx:DataGridColumn dataField="order_no" headerText="{resourceManager.getString('config','index')}" />
+						<mx:DataGridColumn dataField="field_name" headerText="{resourceManager.getString('config','fieldName')}" />
+						<mx:DataGridColumn dataField="show_name_en" headerText="{resourceManager.getString('config','displayName_en')}" />
+						<mx:DataGridColumn dataField="show_name_ch" headerText="{resourceManager.getString('config','displayName_ch')}" />
+						<mx:DataGridColumn dataField="is_protected" labelFunction="isprotectedFunc" headerText="{resourceManager.getString('config','isProtected')}" />
+						<mx:DataGridColumn dataField="show_mode" labelFunction="showModeFunc" headerText="{resourceManager.getString('config','displayAtSimple')}" />
+					</mx:columns>
+				</mx:DataGrid>
+		</mx:VBox>
+		<mx:VBox id="editbox"  label="{resourceManager.getString('config','edit')}" paddingTop="5"   width="100%" height="100%">
+			<mx:HBox width="100%" id="hbox1" height="100%" horizontalAlign="center" verticalAlign="middle">
+					<mx:VBox width="50%" height="95%"  horizontalAlign="right">
+						<mx:Label text="{resourceManager.getString('config','allFields')}" width="200"  fontWeight="bold"/>
+						<mx:List width="240" id="allword"  dataProvider="{allwordArr}"     allowMultipleSelection="true"   height="100%">
+					</mx:List>
+					</mx:VBox>
+					<mx:VBox  height="100%" verticalGap="50" verticalAlign="middle" horizontalAlign="center">
+						<mycomponents:Components_LinkButton iconType="right" width="40"  click="{addtoRight()}"/>
+						<mycomponents:Components_LinkButton iconType="left" width="40"  click="{addtoLeft()}" />
+					</mx:VBox>
+					<mx:HBox width="50%" height="95%"  horizontalAlign="left">
+						<mx:VBox height="100%">
+							<mx:HBox width="100%">
+							<mx:Label text="{resourceManager.getString('config','classFields')}"   fontWeight="bold"/>
+							<mx:Spacer width="100%" />
+							<mycomponents:Components_LinkButton iconType="right" id="saveFields_link" enabled="false" label="{resourceManager.getString('errormsg','saveorder')}"  click="{dragCompleteHander();}"/>
+						</mx:HBox>
+						<mx:List width="240"  id="oneClass_word" dataProvider="{oneClassArr}"  dragDrop="{saveFields_link.enabled=true;}"  dragMoveEnabled="true" dragEnabled="true" dropEnabled="true"  height="100%">
+						</mx:List>
+						</mx:VBox>
+					</mx:HBox>
+			</mx:HBox>
+			<!-- 
+			mx:ControlBar width="100%" horizontalGap="50" horizontalAlign="center">
+					<mycomponents:Components_LinkButton iconType="up" label="{resourceManager.getString('config','back')}" click="{accordion.selectedIndex-1}" />
+					<mycomponents:Components_LinkButton iconType="right" id="saveFields_link"  label="{resourceManager.getString('config','save')}"  click="{dragCompleteHander();}" />
+			</mx:ControlBar  -->
+			
+		</mx:VBox>
+		<mx:VBox id="detailbox" label="{resourceManager.getString('config','detail')}" paddingTop="5"   width="100%" height="100%">
+			<mx:HBox width="100%" horizontalGap="40" horizontalScrollPolicy="off" verticalScrollPolicy="off"  height="100%" horizontalAlign="center" verticalAlign="middle">
+				<mx:VBox height="95%">
+					<mx:HBox width="200" fontWeight="bold">
+						<mx:Label text="{resourceManager.getString('config','classFields')}"  />
+					</mx:HBox>
+					<mx:List width="240" id="mydetai_list" dataProvider="{detaiListArr}" change="{detailListChangeHanger(event);}"    height="100%">
+					</mx:List>
+				</mx:VBox>
+				<mx:VBox height="100%">
+					<mx:HBox width="100%" >
+						<mx:Label text="{resourceManager.getString('config','fieldProperties')}"   fontWeight="bold"/>
+							<mx:Spacer width="100%" />
+						<mycomponents:Components_LinkButton iconType="right" id="saveDetail_link" label="{resourceManager.getString('config','save')}"  click="{saveEditField();}" />
+					</mx:HBox>
+					<mx:VBox height="100%" horizontalScrollPolicy="off" horizontalAlign="right"  borderStyle="solid" paddingLeft="10" paddingRight="10"  verticalGap="20" verticalAlign="top" >
+						<mx:FormItem label="{resourceManager.getString('errormsg','fieldname')}" paddingTop="10" required="true">
+							<mx:TextInput width="200" id="wordname" text="{detaiObj.field_name}" toolTip="{detaiObj.field_name}" enabled="false"   />
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('errormsg','enname')}" required="true">
+							 <mx:TextInput width="200" id="enname" change="{saveDetail_link.enabled=true;ischange=true;}"  text="{detaiObj.show_name_en}" toolTip="{enname.text}" />
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('errormsg','chname')}" required="true">
+							 <mx:TextInput width="200" id="chname" change="{saveDetail_link.enabled=true;ischange=true;}" text="{detaiObj.show_name_ch}" toolTip="{chname.text}"  />
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('errormsg','pro')}"  required="true">
+							<mx:HBox width="200" horizontalGap="15" >
+								<mx:RadioButtonGroup id="isprotected" />
+								<mx:HBox width="50%" horizontalAlign="left">
+									<mx:RadioButton label="Yes" groupName="isprotected"  id="proyes"  click="{saveDetail_link.enabled=true;ischange=true;}" selected="{detaiObj.is_protected=='1'}"  />
+								</mx:HBox>
+								<mx:HBox width="50%" horizontalAlign="left">
+									<mx:RadioButton label="No" groupName="isprotected" id="prono"  click="{saveDetail_link.enabled=true;ischange=true;}" selected="{detaiObj.is_protected=='0'}"  />
+								</mx:HBox>
+							</mx:HBox>
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('errormsg','simplemode')}"   required="true">
+							<mx:HBox width="200" horizontalGap="15"  >
+								<mx:RadioButtonGroup id="showmode"   />
+								<mx:HBox width="50%" horizontalAlign="left">
+									<mx:RadioButton label="{resourceManager.getString('errormsg','display')}"  click="{saveDetail_link.enabled=true;ischange=true;}"  id="showyes" groupName="showmode" selected="{detaiObj.show_mode=='1'}"    />
+								</mx:HBox>
+							 	<mx:HBox width="50%" horizontalAlign="left">
+									<mx:RadioButton label="{resourceManager.getString('errormsg','notdisplay')}"  click="{saveDetail_link.enabled=true;ischange=true;}"  id="showno" groupName="showmode" selected="{detaiObj.show_mode=='2'}" />
+								</mx:HBox>
+							</mx:HBox>
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('errormsg','diswidth')}"  required="true">
+							<mx:HBox   width="200" >
+								<mx:HSlider id="hSlider" width="100%" minimum="10" maximum="200"  value="{detaiObj.show_width}"  dataTipPlacement="top"  
+						            snapInterval="1" tickInterval="10"  allowTrackClick="true"  
+						            liveDragging="true" click="{saveDetail_link.enabled=true;ischange=true;}" />
+						            <mx:Label text="{hSlider.value}"    />
+							</mx:HBox>
+						</mx:FormItem>
+						<mx:Spacer height="5" />
+						<mx:FormItem label="{resourceManager.getString('errormsg','tootip')}"   required="true">
+							<mx:HBox width="200" >
+							 	<mx:TextInput width="200" id="tootipvalue" change="{saveDetail_link.enabled=true;ischange=true;}" text="{detaiObj.tooltip}"     />
+							</mx:HBox>
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('errormsg','fieldtype')}"  required="true">
+							<mx:HBox width="200"  >
+								<mx:RadioButtonGroup  id="wordtype"   />
+							 	<mx:RadioButton label="{resourceManager.getString('errormsg','text')}" click="{saveDetail_link.enabled=true;ischange=true;}" id="wenben"  groupName="wordtype"   />
+							 	<mx:RadioButton label="{resourceManager.getString('errormsg','list')}" click="{saveDetail_link.enabled=true;ischange=true;}" id="liebiao" groupName="wordtype"   />
+							 	<mx:RadioButton label="{resourceManager.getString('errormsg','date')}" click="{saveDetail_link.enabled=true;ischange=true;}" id="riqi"    groupName="wordtype"  />
+							</mx:HBox>
+						</mx:FormItem>
+						<mx:VBox resizeEffect="Dissolve" verticalGap="20">
+							<mx:FormItem label="{resourceManager.getString('errormsg','checkrules')}"  visible="{wenben.selected}" includeInLayout="{wenben.selected}" required="true">
+							<mx:HBox width="200" >
+							 	<mx:ComboBox width="200" id="regexcombobox" change="{saveDetail_link.enabled=true;ischange=true;}">
+							 		<mx:ArrayCollection id="regexcomboboxArr">
+							 			<!-- 0-100  1-100 0-200 1-200 0-400 1-400 -->
+							 			<mx:Object data="{'^.{0,2000}$'}" label="{resourceManager.getString('errormsg','twelvezero')}" />
+							 			<mx:Object data="{'^.{1,2000}$'}" label="{resourceManager.getString('errormsg','twelveone')}" />
+							 			<mx:Object data="{'^.{0,400}$'}" label="{resourceManager.getString('errormsg','fourzero')}" />
+							 			<mx:Object data="{'^.{1,400}$'}" label="{resourceManager.getString('errormsg','fourone')}" />
+							 			<mx:Object data="{'^.{0,200}$'}" label="{resourceManager.getString('errormsg','twozero')}" />
+							 			<mx:Object data="{'^.{1,200}$'}" label="{resourceManager.getString('errormsg','twoone')}" />
+							 			<mx:Object data="{'^.{0,100}$'}" label="{resourceManager.getString('errormsg','onezero')}" />
+							 			<mx:Object data="{'^.{1,100}$'}" label="{resourceManager.getString('errormsg','oneone')}" />
+							 			<mx:Object data="^\d\d\d\d\d([.]\d)?$" label="{resourceManager.getString('errormsg','nums')}" />
+							 		</mx:ArrayCollection>
+							 	</mx:ComboBox>
+							</mx:HBox>
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('errormsg','listcontent')}"  visible="{liebiao.selected}" includeInLayout="{liebiao.selected}" required="true">
+							<mx:HBox width="200" >
+							 	<mx:TextInput id="regextextipuput" change="{saveDetail_link.enabled=true;ischange=true;}" text="{detaiObj.field_value}" toolTip="{resourceManager.getString('errormsg','manycut')}" width="200"/>
+							</mx:HBox>
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('errormsg','checkrules')}"   visible="{riqi.selected}" includeInLayout="{riqi.selected}" required="true">
+							<mx:HBox width="200" >
+							 	<mx:ComboBox width="200" id="regexdate" change="{saveDetail_link.enabled=true;ischange=true;}">
+							 		<mx:ArrayCollection id="regexdateArr">
+							 			<mx:Object data=""  label="{resourceManager.getString('errormsg','cannull')}"  />
+							 			<mx:Object data="." label="{resourceManager.getString('errormsg','notnull')}" />
+							 		</mx:ArrayCollection>
+							 	</mx:ComboBox>
+							</mx:HBox>
+						</mx:FormItem>
+						</mx:VBox>
+				</mx:VBox>
+				</mx:VBox>
+			</mx:HBox>
+			<!--mx:ControlBar width="100%" horizontalGap="50" horizontalAlign="center">
+					<mycomponents:Components_LinkButton iconType="up" label="{resourceManager.getString('config','back')}" click="{accordion.selectedIndex=0}" />
+			</mx:ControlBar -->
+		</mx:VBox>
+	</mx:TabNavigator>
+</mx:Module>

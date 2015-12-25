@@ -1,0 +1,152 @@
+###############################################################################
+# Licensed Materials - Property of IBM
+# 5724-Y31
+# (c) Copyright IBM Corporation 2007, 2009. All Rights Reserved.
+#
+# Note to U.S. Government Users Restricted Rights:
+# Use, duplication or disclosure restricted by GSA ADP Schedule
+# Contract with IBM Corp.
+###############################################################################
+
+#######################################
+# TaskChart Sample
+#######################################
+
+#Main panel title
+taskchartsample.application.title=IBM ILOG Elixir demo: Task Chart
+
+#Panel title
+taskchartsample.title.Help=Help
+
+#Button tip
+taskchartsample.button.tip.ExpandAll=Expand All
+
+#Button tip
+taskchartsample.button.tip.CollapseAll=Collapse All
+
+#Button tip
+taskchartsample.button.tip.ZoomIn=Zoom In
+
+#Button tip
+taskchartsample.button.tip.ZoomOut=Zoom Out
+
+#Button tip
+taskchartsample.button.tip.ZoomToFit=Zoom to Fit
+
+#Column label, name of task
+taskchartsample.column.Name=Name
+
+#Column label, identifier of task
+taskchartsample.column.ID=ID
+
+#Column label, start date of task
+taskchartsample.column.Start=Start
+
+#Column label, end date of task
+taskchartsample.column.End=End
+
+#Date format for the start and end of tasks, used in the data grid
+taskchartsample.dateformat.task.datagrid=MMM DD
+
+#Date format for the start and end of tasks, used in the tooltips of tasks.
+taskchartsample.dateformat.task.tooltip=MM/DD/YYYY JJ:NN
+
+#Date format for the date of milestone, used in the labels of milestones.
+taskchartsample.dateformat.milestone.label=MMMM DD
+
+#Date format for the date of tasks, used in the item panel.
+#taskchartsample.dateformat.task.item=MM/DD/YYYY
+
+#Format for the tooltips of tasks
+#{0}: Name of the task
+#{1}: Start date of the task 
+#{2}: End date of the task
+taskchartsample.tooltip.format.task=Task: {0}\nFrom: {1}\nTo: {2}
+
+#Format for the tooltips of milestones
+#{0}: Name of the milestone
+#{1}: Date of the milestone
+taskchartsample.tooltip.format.milestone=Milestone: {0}\nOn: {1}
+
+#Format for the tooltips of constraints, when the constraint kind is startToStart
+#{0}: Name of the task that is the source of the constraint
+#{1}: Name of the task that is the destination of the constraint
+taskchartsample.tooltip.format.constraint.startToStart=Constraint\nFrom the start of: {0}\nTo the start of: {1}
+
+#Format for the tooltips of constraints, when the constraint kind is startToEnd
+#{0}: Name of the task that is the source of the constraint
+#{1}: Name of the task that is the destination of the constraint
+taskchartsample.tooltip.format.constraint.startToEnd=Constraint\nFrom the start of : {0}\nTo the end of: {1}
+
+#Format for the tooltips of constraints, when the constraint kind is endToStart
+#{0}: Name of the task that is the source of the constraint
+#{1}: Name of the task that is the destination of the constraint
+taskchartsample.tooltip.format.constraint.endToStart=Constraint\nFrom the end of: {0}\nTo the start of: {1}
+
+#Format for the tooltips of constraints, when the constraint kind is endToEnd
+#{0}: Name of the task that is the source of the constraint
+#{1}: Name of the task that is the destination of the constraint
+taskchartsample.tooltip.format.constraint.endToEnd=Constraint\nFrom the end of: {0}\nTo the end of: {1}
+
+#Item panel title
+taskchartsample.title.Item=Edit Item
+
+#Item panel, new task action
+taskchartsample.properties.NewTask=New Task
+
+#Item panel, new task action tool tip
+taskchartsample.properties.tip.NewTask=Create a new task
+
+#Item panel, new constraint action
+taskchartsample.properties.NewConstraint=New Constraint
+
+#Item panel, new constraint action tool tip
+taskchartsample.properties.tip.NewConstraint=Create a new constraint
+
+#Item panel, delete item action
+taskchartsample.properties.Delete=Delete
+
+#Item panel, delete item action tool tip
+taskchartsample.properties.tip.DeleteConstraint=Delete the selected item
+
+#Item properties title
+taskchartsample.title.Properties=Properties
+
+#Item properties, from task label
+taskchartsample.properties.ConstraintFromTask=From: 
+
+#Item properties, to task label
+taskchartsample.properties.ConstraintToTask=To: 
+
+#Item properties, constraint kind label
+taskchartsample.properties.ConstraintKind = Type: 
+
+#Constraint kind
+taskchartsample.label.startToStart=Start to start
+
+#Constraint kind
+taskchartsample.label.startToEnd=Start to end
+
+#Constraint kind
+taskchartsample.label.endToStart=End to start
+
+#Constraint kind
+taskchartsample.label.endToEnd=End to end
+
+#Item properties, task name label
+taskchartsample.properties.TaskName=Name:
+
+#Item properties, task from date label
+taskchartsample.properties.TaskFromDate=Start: 
+
+#Item properties, task to date label
+taskchartsample.properties.TaskToDate=End: 
+
+#Item properties, task information label
+taskchartsample.properties.TaskInfo=Information: 
+
+#Item properties, task is milestone checkbox
+taskchartsample.properties.TaskIsMilestone=Milestone
+
+#HTML formatted help text.
+taskchartsample.help = <p><b>Description</b><br/>This sample shows the visualization of a project plan in an IBM ILOG Elixir task chart.</p><br/><p><b>Interactions</b><br/><p>Select a task by clicking it in the data grid or Gantt sheet.</p><br/><p>Select a constraint by clicking it in the Gantt sheet.</p><br/><p>Edit a task by selecting it and changing its properties in the <i>Edit Item</i> pane, or dragging it sideways to change the time, or dragging one end to change the duration.</p><br/><p>Edit a constraint by selecting it and changing its type in the <i>Edit item</i> pane.</p><br/><p>Zoom the Gantt sheet by pressing a zoom button or the + or - key,or by holding the CTRL key down and rolling the mouse wheel.</p><br/><p>Pan the Gantt sheet by clicking and dragging it or by pressing a keyboard arrow key.</p><br/><p>Display a specific time interval on the Gantt sheet by highlighting it in the time scale and then clicking.</p><br/><p>Display the full range of the project by pressing the <i>Zoom to Fit</i> button.</p><br/></p>

@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" width="100%" height="100%" creationComplete="init()" xmlns:controls="com.sephiroth.controls.*" xmlns:mycomponents="org.utmost.mycomponents.*" xmlns:component="component.*">
+	<mx:Script>
+		<![CDATA[
+			import org.utmost.service.UtmostService;
+			import mx.controls.Alert;
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
+			import mx.events.ListEvent;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.util.ComponentUtil;
+			//global variable
+			public var tableName:String="U_PORTAL_REFROLEUSER";
+			public var redUUID:String="roleuuid";
+			public var redName:String="rolename";
+			public var redCode:String="rolecode";
+			public var blueUUID:String="useruuid";
+			public var blueName:String="username";
+			public var blueCode:String="usercode";
+			
+			private var enabledUsers:ArrayCollection;
+			private var disabledUsers:ArrayCollection;
+			
+			[Bindable]
+			public var selectedNode:Object;
+			
+			private function init():void {
+				
+				btn_save.enabled = false;
+				userVBox.visible=false;
+				initRoles();
+				findblueTree();
+			}
+			
+			private function initRoles():void{
+				var ut_role:UtmostService = new UtmostService("RightService",function(e:ResultEvent){
+					redTree.dataProvider = e.result as ArrayCollection;
+				})
+				ut_role.ro.queryPortalRoles();
+			}
+			
+			private function findblueTree():void {
+			
+			}
+			private function initTree(_tree:Tree,main:Object,kv:Object):void {
+			}
+			//save
+			private var saveAC:ArrayCollection;
+			
+			private function submit():void {
+				var users:Object = userBox.getCheckResult();
+				
+				var ut_save:UtmostService = new UtmostService("RightService",function(e:ResultEvent){
+					if(e.result == 0){
+						resultInfo.text = "Success!";
+					}else{
+						resultInfo.text = "Error!";
+					}
+					//refresh the user list
+					searchUser();
+					btn_save.enabled = false;
+				})
+				ut_save.ro.savePortalRefRoleUser(users);
+			}
+			private function findXML(xmllist:XMLList):void {
+				for each(var element:XML in xmllist) {
+					if(element.@checked.toString()!=""&&element.@checked.toString()!="0") {
+						var o:Object=new Object();
+						o[redName]=redTree.selectedItem.@rolename.toString();
+						o[redCode]=redTree.selectedItem.@rolecode.toString();
+						o[redUUID]=redTree.selectedItem.@roleuuid.toString();
+						o[blueName]=element.@username.toString();
+						o[blueCode]=element.@usercode.toString();
+						o[blueUUID]=element.@useruuid.toString();
+						saveAC.addItem(o);
+					}
+					if(element.elements()!=null)
+						findXML(element.elements());
+				}
+			}
+			
+			/**
+			 * Get user by tree node
+			 * */
+			private function treeClick(e:Event):void {
+				
+				resultInfo.text = "";
+				searchTerm.text = "";
+				selectedNode=e.currentTarget.selectedItem;
+				
+				var ut_user:UtmostService = new UtmostService("RightService",function(e:ResultEvent){
+					enabledUsers = e.result.enabledUsers;
+					disabledUsers = e.result.disabledUsers;
+					userVBox.visible=true;
+					
+					enable.selected = true;
+					showUsers();
+				})
+				ut_user.ro.queryRoleUsers(selectedNode.uuid,"");
+				
+			}
+			
+			private function searchUser():void {
+				var ut_user:UtmostService = new UtmostService("RightService",function(e:ResultEvent){
+					enabledUsers = e.result.enabledUsers;
+					disabledUsers = e.result.disabledUsers;
+					
+					userVBox.visible=true;
+					
+					enable.selected = true;
+					showUsers();
+				})
+				ut_user.ro.queryRoleUsers(selectedNode.uuid,searchTerm.text);
+			}
+			
+			private function showUsers():void{
+				if(enable.selected){
+					userBox.setList(enabledUsers, selectedNode);
+				}else if(disable.selected){
+					userBox.setList(disabledUsers, selectedNode);
+				}
+				
+			}
+		]]>
+	</mx:Script>
+	
+	<mx:Metadata>
+        [ResourceBundle("auth")]
+    </mx:Metadata>
+	
+	<mx:Sequence id="shake" target="{hbox}" duration="100" repeatCount="2">
+        <mx:Move xBy="15"/>
+        <mx:Move xBy="-15"/>
+    </mx:Sequence>
+     <mx:TabNavigator width="100%" height="100%">
+		<mx:VBox label="Group Assignment" verticalGap="0"  width="100%" height="100%">
+			<mx:HBox width="100%" horizontalAlign="center">
+				<mx:Label id="resultInfo" color="#A21E4D" text=""/>
+			</mx:HBox>
+			<mx:HBox id="hbox" width="100%" height="100%" verticalAlign="middle" horizontalAlign="center" horizontalGap="60">
+				<mx:Tree id="redTree" width="320" height="85%" labelField="rolename" itemClick="treeClick(event)">
+				</mx:Tree>
+				<mx:VBox id="userVBox" width="320" height="85%">
+					<mx:RadioButton id="enable" label="{resourceManager.getString('auth','enabledUser')}" click="showUsers()" selected="true"/>
+					<mx:RadioButton id="disable" label="{resourceManager.getString('auth','disabledUser')}" click="showUsers()"/>
+					<mx:HBox width="100%" horizontalAlign="center">
+						<mx:TextInput id="searchTerm"/>
+						<mycomponents:Components_LinkButton  iconType="right" label="{resourceManager.getString('auth','searchUsers')}" click="searchUser()"/>
+					</mx:HBox>
+
+					<component:RoleUserList id="userBox" click="{resultInfo.text='';btn_save.enabled=true;}" />
+				</mx:VBox>
+			</mx:HBox>
+			<mx:HBox width="100%" height="50" verticalAlign="top" horizontalAlign="center" horizontalGap="40">
+				<mycomponents:Components_LinkButton id="btn_save" iconType="right" label="{resourceManager.getString('auth','save')}" click="submit()"/>
+				<mycomponents:Components_LinkButton iconType="right" label="{resourceManager.getString('auth','cancel')}" click="init()"/>
+			</mx:HBox>
+		</mx:VBox>
+	</mx:TabNavigator>
+</mx:Module>

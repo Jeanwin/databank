@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" 
+	title="{resourceManager.getString('config','search.category.title')}"
+	showCloseButton="true" close="closeMe()" fontSize="14">
+	<mx:Metadata>
+        [ResourceBundle("config")]
+        [ResourceBundle("manageView")]
+    </mx:Metadata>
+    <mx:Script>
+    	<![CDATA[
+    		import com.hp.events.CommonEvent;
+    		import mx.managers.PopUpManager;
+    		import mx.collections.ArrayCollection;
+    		
+    		private function closeMe():void{
+    			PopUpManager.removePopUp(this);
+    		}
+    		
+    		[Bindable]
+    		private var _treeProvider:ArrayCollection;
+    		
+    		public function set treeProvider(provider:ArrayCollection):void{
+    			this._treeProvider = provider;
+    		}
+    		
+    		[Bindable]
+    		private var _selectedItem:Object;
+    		
+    		public function get selectedItem():Object{
+    			return _selectedItem;
+    		}
+    		
+    		public function get validNodes():String{
+    			if(_selectedItem == null) return "";
+    			else{
+    				var leafNodes:String = getLeafNodesOfItem(_selectedItem);
+    				trace(leafNodes);
+	    			return leafNodes;
+    			}
+    		}
+    		
+    		private function getLeafNodesOfItem(item:Object):String{
+    			var resultStr:String = "";
+    			var nodeType:String = item["nodetype"];
+    			if(nodeType == "3"){
+    				resultStr = "'" + item["funcuuid"] + "'";
+    			}
+    			var childs:ArrayCollection = item["children"] as ArrayCollection;
+    			if(childs != null){
+    				var length:int = childs.length;
+    				for(var i:int = 0; i < length; i++){
+    					var thisLeafStr:String = getLeafNodesOfItem(childs[i]);
+    					if(thisLeafStr != ""){
+    						if(resultStr != "")
+    							resultStr += "," + thisLeafStr;
+    						else
+    							resultStr = thisLeafStr;
+    					}
+    				}
+    			}
+    			
+    			return resultStr;
+    		}
+    		
+    		public function selectHandler():void{
+    			_selectedItem = directoryTree.selectedItem;
+    			var selectCategoryEvent:CommonEvent = new CommonEvent(CommonEvent.SEARCH_DIRECTORY_SELECTED, true);
+    			this.dispatchEvent(selectCategoryEvent);
+    			closeMe();
+    		}
+    	]]>
+    </mx:Script>
+    <mx:Text text="{resourceManager.getString('config','double.click.to.select')}" 
+    	fontWeight="bold" color="#880015"/>
+	<mx:Tree id="directoryTree" dataProvider="{_treeProvider}"
+		labelField="{resourceManager.getString('manageView', 'doc.category.tree.label.field')}"
+		width="450" height="350" itemDoubleClick="selectHandler()" doubleClickEnabled="true"
+		fontSize="14">
+		
+	</mx:Tree>
+</mx:TitleWindow>

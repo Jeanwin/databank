@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>  
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml"    horizontalScrollPolicy="off"  creationComplete="{init();}"  layout="absolute" width="100%" height="100%" xmlns:com="com.*" xmlns:local="*" xmlns:component="component.*">  
+   <mx:Script>
+   	<![CDATA[
+   		import mx.modules.ModuleManager;
+   		import mx.modules.IModuleInfo;
+   		import mx.core.Application;
+   		import mx.controls.Alert;
+   		import org.utmost.util.ComponentUtil;
+   		import mx.events.ModuleEvent;
+   			
+   			[Bindable]
+   			public var treeData:XML=Application.application.appXML;
+   			
+   			private function init():void{
+   				this.parentApplication.isBack = "false";
+   				pbar.visible=false;
+   			}
+   			
+   			private function systemMenuBarCreationComplete():void{
+   				in_menubar.addEventListener("MenuBarEvent_simpleMode",function(e:Event):void{
+   					if(manageModule.url=="module/simpleDataGirdBack.swf"){
+   						Application.application.dataGridState="simple";
+   						myLoadModule("module/simpleDataGirdBack.swf");
+   						ComponentUtil.setVisible(systree,true);
+   						sysPanel.title=resourceManager.getString('menubar','simple');
+   					}
+   				});
+   				in_menubar.addEventListener("MenuBarEvent_richMode",function(e:Event):void{
+   					if(manageModule.url=="module/simpleDataGirdBack.swf"){
+	   					Application.application.dataGridState="rich";
+	   					myLoadModule("module/simpleDataGirdBack.swf");
+	   					ComponentUtil.setVisible(systree,true);
+	   					sysPanel.title=resourceManager.getString('menubar','rich');
+   					}
+   				});
+   				in_menubar.addEventListener("SearchEvent_true",function(e:Event):void{
+   					myLoadModule("module/basicDataGrid.swf");
+   					sysPanel.title=resourceManager.getString('menubar','result');
+   				});
+   				in_menubar.addEventListener("AddNewDataEvent_true",function(e:Event):void{
+   					myLoadModule("module/datainput/DataInputModule.swf");
+   					sysPanel.title=resourceManager.getString('menubar','info');
+   				});
+   				in_menubar.addEventListener("NoticeEvent",function(e:Event):void{
+   					showNotice(); //show system notice
+   				});
+   				in_menubar.addEventListener("BatchDownload",function(e:Event):void{
+   					myLoadModule("module/dataoutput/BatchDownloadModule.swf");
+   					ComponentUtil.setVisible(systree,false);
+   					sysPanel.title="";
+   				});
+   				in_menubar.addEventListener("ReturnToLogoEvent",function(e:Event):void{
+   					myLoadModule("module/otherinfo/LogoInfoModule.swf");
+   					ComponentUtil.setVisible(systree,true);
+   					sysPanel.title="";
+   				});
+   				showNotice();
+   				myLoadModule("module/otherinfo/LogoInfoModule.swf");
+   			}
+   			//system tree call function after init complete
+   			private function systreeCreationComlete():void{
+	        	systree.addEventListener("ClickLinksEvent",function ():void{
+	        		myLoadModule("module/link/LinkModule.swf");
+   					ComponentUtil.setVisible(systree,true);
+   					sysPanel.title="Links";
+	        	});
+	        }
+   			private var _moduleInfo:IModuleInfo; 
+   			private var disobj:DisplayObject;
+   			public function showNotice():void{
+   					_moduleInfo = ModuleManager.getModule( 'module/notice.swf' );
+	   				_moduleInfo.addEventListener( ModuleEvent.READY,moduleLoadHandler );  
+	                _moduleInfo.load(); 
+   			}
+   			
+   			private function moduleLoadHandler( evt:ModuleEvent ):void{  
+            	 var notice:DisplayObject = _moduleInfo.factory.create() as DisplayObject;
+            		sysPanel.height = 300;
+            		notice.height = 170;
+            		disobj=notice;
+            		vb.addChildAt(notice,1);
+            }  
+            
+			private function treeItemClick(e:MouseEvent):void
+			{
+				var o:Object=systree.getTree().selectedItem;
+				if (o != null )
+				{	 
+					//check LOGO icon
+					if(o.@label == "Standards"){
+					Application.application.imgFlag = "Standards";
+					}
+					if(o.@label == "Policy"){
+						Application.application.imgFlag = "falv";
+					}
+					if(o.@label == "Homologation"){
+						Application.application.imgFlag = "renzheng";
+					}
+					if(o.@label == "Technical Information"){
+						Application.application.imgFlag = "xinxi";
+					}
+					if(o.@label == "What's Hot"){
+						Application.application.imgFlag = "hot";
+					}
+
+					sysPanel.title=o.@label;
+					if(o.@label=="Standards"||o.@label=="Technical Information"){
+						myLoadModule("module/otherinfo/LogoInfoModule.swf");
+					}else if(o.@type=="weifabu"){
+						 //no issued 
+							   myLoadModule("module/ganttDataGird.swf");
+					}else if(o.@type=="hot"||o.@type=="fatherfalv"||o.@type=="fatherrenzheng"){
+						//What's hot
+							   myLoadModule("module/otherinfo/LogoInfoModule.swf");
+					}
+					else{
+							//issued
+							if(o.@type=="yifabu"){
+								Application.application.tittlelist=standards2;
+								Application.application.datalist=standards4;
+								Application.application.tittlelistRich=standards1;
+								Application.application.datalistRich=standards3;
+								Application.application.isStandards=true;
+								myLoadModule("module/simpleDataGirdBack.swf");
+							}
+							
+							//laws and regulations
+							if(o.@type=="falv"){
+								Application.application.tittlelist=policy2;
+								Application.application.datalist=policy4;
+								Application.application.tittlelistRich=policy1;
+								Application.application.datalistRich=policy3;
+								Application.application.isStandards=false;
+								myLoadModule("module/simpleDataGirdBack.swf");
+							}
+							//Certificate
+							if(o.@type=="renzheng"){
+								Application.application.tittlelist=homologation2;
+								Application.application.datalist=homologation4;
+								Application.application.tittlelistRich=homologation1;
+								Application.application.datalistRich=homologation3;
+								Application.application.isStandards=false;
+								myLoadModule("module/simpleDataGirdBack.swf");
+							}
+							//information pool
+							if(o.@type=="infor"){
+								myLoadModule("module/otherinfo/LogoInfoModule.swf");
+							}
+							//ppt，survey，qikan
+							if(o.@type=="ppt"||o.@type=="survey"||o.@type=="qikan"){
+								Application.application.tittlelist=technical2;
+								Application.application.datalist=technical4;
+								Application.application.tittlelistRich=technical1;
+								Application.application.datalistRich=technical3;
+								Application.application.isStandards=false;
+								myLoadModule("module/simpleDataGirdBack.swf");
+							}
+					}
+				}
+			}
+			public function myLoadModule(newUrl:String):void{
+				if(manageModule.url!=""){
+					pbar.visible=true; 
+					manageModule.unloadModule();
+					manageModule.loadModule(newUrl);
+				}else{
+					manageModule.loadModule(newUrl);
+				}
+				
+				
+			}
+			private function readyModule(event:ModuleEvent):void{
+				 pbar.visible=false;
+			}
+	        [Embed('/img/buttonicon/m1img.png')]
+      		private const upLinkButton:Class;
+      		
+      		[Embed('/img/buttonicon/m2img.png')]
+      		private const bottomLinkButton:Class;
+	        [Bindable] 
+			private var layoutState:String="M1";
+			private function setLayout():void {
+				if(menubar.visible==true) {
+					ComponentUtil.setVisible(menubar,false);
+					myfullscreem.setStyle("icon",bottomLinkButton);
+					layoutState="M2";
+				}else {
+					ComponentUtil.setVisible(menubar,true);
+					myfullscreem.setStyle("icon",upLinkButton);
+					layoutState="M1";
+				}
+			}
+			//<menuitem label="View" data="preferences" />
+                
+            private function showCloseButton():void{
+				closeButton.visible = true;
+			}
+			
+			private function hideCloseButton():void{
+				closeButton.visible = false;
+			}
+			
+			private function closeBanner():void{
+				in_menubar.mbar.visible = false;
+				in_menubar.mbar.includeInLayout = false;
+				in_menubar.mbar.dataProvider = null;
+				in_menubar.percentWidth = 100;
+				in_menubar.height = 30;
+				menubar.height = 30;
+				menubar.clearStyle("backgroundImage");
+				closeButton.parent.removeChild(closeButton);
+				in_menubar.mbar2.visible = true;
+				in_menubar.mbar2.includeInLayout = true;
+			}
+   	]]>
+   </mx:Script>
+    <mx:XML id="homologation1" source="xml/dataGrid/HomologationDataGrid.xml" />
+   <mx:XML id="homologation2" source="xml/dataGrid/HomologationDataGridSimple.xml" />
+    <mx:XML id="homologation3" source="xml/dataGrid/HomologationData.xml" />
+   <mx:XML id="homologation4" source="xml/dataGrid/HomologationDataSimple.xml" />
+   
+    <mx:XML id="policy1" source="xml/dataGrid/PolicyDataGrid.xml" />
+   <mx:XML id="policy2" source="xml/dataGrid/PolicyDataGridSimple.xml" />
+    <mx:XML id="policy3" source="xml/dataGrid/PolicyData.xml" />
+   <mx:XML id="policy4" source="xml/dataGrid/PolicyDataSimple.xml" />
+   
+    <mx:XML id="standards1" source="xml/dataGrid/StandardsDataGrid.xml" />
+   <mx:XML id="standards2" source="xml/dataGrid/StandardsDataGridSimple.xml" />
+    <mx:XML id="standards3" source="xml/dataGrid/StandardsData.xml" />
+   <mx:XML id="standards4" source="xml/dataGrid/StandardsDataSimple.xml" />
+   
+    <mx:XML id="technical1" source="xml/dataGrid/TechnicalInformationDataGrid.xml" />
+   <mx:XML id="technical2" source="xml/dataGrid/TechnicalInformationDataGridSimple.xml" />
+    <mx:XML id="technical3" source="xml/dataGrid/TechnicalInformationData.xml" />
+   <mx:XML id="technical4" source="xml/dataGrid/TechnicalInformationDataSimple.xml" />
+   <mx:VBox width="100%" height="100%" horizontalAlign="center">
+   <mx:VBox width="1000" height="100%">  
+   		<mx:VBox   width="100%" verticalGap="10">
+  		    <mx:VBox width="100%" backgroundColor="#FFFFFF" borderSides="bottom" borderStyle="solid">
+			    <mx:HBox width="100%" height="101" horizontalAlign="center">
+				    <mx:Image source="img/logo/vwlogo.jpg"   width="178" height="101" />
+			    </mx:HBox>
+		 	</mx:VBox>
+		 </mx:VBox>
+	   <mx:VBox minHeight="620" horizontalAlign="center" paddingLeft="2" height="100%" width="99%">
+       	 <mx:VBox id="menubar"  backgroundImage="img/213.jpg" backgroundSize="100%" width="100%" height="192" horizontalGap="20" verticalGap="0" mouseOver="showCloseButton()" mouseOut="hideCloseButton()" >
+				<mx:Canvas width="100%" height="100%">
+					<component:SystemMenuBar id="in_menubar" typeFlag="front" backgroundAlpha="0.0" width="220" paddingTop="5" height="192"  creationComplete="{systemMenuBarCreationComplete();}"    />	 
+					<mx:VBox id="closeButton" width="100%" height="100%" horizontalAlign="right" verticalGap="0" visible="false" paddingRight="5" paddingTop="5">
+						<mx:LinkButton label="x" click="closeBanner()"/>
+					</mx:VBox>
+				</mx:Canvas>
+			</mx:VBox>
+         <mx:HDividedBox id="hdbox" width="100%" height="100%">
+			<component:PanelTree id="systree"  title="{resourceManager.getString('menubar','user')+'【 admin】'}" creationComplete="{systreeCreationComlete()}"   dataProvider="{treeData}" clickTree="treeItemClick"  width="220" height="100%"  resizeEffect="Resize"/>
+			<mx:VDividedBox id="vb" width="100%" height="99%">
+				<mx:Panel id="sysPanel" width="100%" height="99%" layout="vertical">
+					<mx:ModuleLoader id="manageModule" width="100%" height="100%"  resizeEffect="Resize" ready="readyModule(event)"   borderStyle="none" borderSides="0" borderThickness="0">
+					</mx:ModuleLoader>
+					<mx:ControlBar paddingTop="0" paddingBottom="0">
+					<mx:HBox width="100%" height="20" horizontalAlign="center" verticalAlign="middle">
+						<mx:ProgressBar id="pbar" source="manageModule" width="100%" labelPlacement="center" height="18"/>
+						<mx:Label text="{Application.application.memoryCount}" color="#A8ADB3"  fontStyle="italic"/>		
+						<!--microCharts:MicroLineChart width="60" height="15"  dataProvider="{Application.application.memoryCountDP}"/-->
+						<mx:Spacer width="10" />
+						<mx:LinkButton id="myfullscreem" label="{layoutState}" fontSize="9" color="#A21E4D"  fontWeight="normal"  icon="{upLinkButton}"  click="setLayout()" height="18"   paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0"/>
+					</mx:HBox>
+					</mx:ControlBar>
+				</mx:Panel>
+			</mx:VDividedBox>
+		</mx:HDividedBox> 
+	 </mx:VBox>           
+    </mx:VBox> 
+    </mx:VBox> 
+</mx:Module>  
+

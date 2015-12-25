@@ -1,0 +1,537 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml"
+		   creationComplete="{initData();}"
+		   width="100%"
+		   height="100%"
+		   backgroundColor="#FFFFFF"
+		   horizontalScrollPolicy="off">
+	<mx:Metadata>
+	   [ResourceBundle("dataGrid")]
+	</mx:Metadata>
+
+	<mx:Script>
+		<![CDATA[
+			import com.hp.events.CommonEvent;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import component.chart.ganttBox;
+			import module.simpleDataGirdBack;
+			import mx.managers.PopUpManager;
+			import com.right.UserRight;
+			import component.fileDown;
+			import mx.containers.HBox;
+			import mx.core.Application;
+			import mx.controls.Alert;
+			import org.utmost.service.UtmostService;
+			import mx.rpc.events.ResultEvent;
+			import mx.collections.ArrayCollection;
+			import component.detailComp.DetailRow;
+
+			[Bindable]
+			private var dataObj:Object; //对象
+			[Bindable]
+			private var title:ArrayCollection; //列名
+			[Bindable]
+			private var language:String=Application.application.language;
+			//语言
+			[Bindable]
+			private var useruuid:String; //用户UUID
+			
+			private var last_modify_date_str_download:String;
+			private var author_download:String = "";
+			private var swf_download:String = "";
+			private var file_download:String = "";
+			private var uuid_download:String = "";
+
+			public function set setuseruuid(_useruuid:String):void
+			{
+				useruuid=_useruuid;
+			}
+			[Bindable]
+			private var rootuuid:String; //大类UUID
+
+			public function set setrootuuid(_rootuuid:String):void
+			{
+				rootuuid=_rootuuid;
+			}
+			[Bindable]
+			private var nodeuuid:String; //节点UUID
+
+			public function set setnodeuuid(_uuid:String):void
+			{
+				nodeuuid=_uuid;
+			}
+			[Bindable]
+			private var recordUUID:String; //当前记录UUID
+
+			public function set recordUUID_(_recordUUID:String):void
+			{
+				recordUUID=_recordUUID;
+			}
+			[Bindable]
+			private var hasProtected:Boolean=false; //是否允许查看保密字段
+
+			public function set setprotected(_hasProtected:Boolean):void
+			{
+				hasProtected=_hasProtected;
+			}
+			
+			public function init():void{}
+			
+			//初始化数据
+			private function initData():void
+			{
+				this.addEventListener(CommonEvent.NOTICE_DOWNLOAD_FILE, download);
+				var ut:UtmostService=new UtmostService("DataInfoService", function(event:ResultEvent):void
+					{
+						title=new ArrayCollection();
+						title=event.result as ArrayCollection;
+						//判断当前用户对该节点有没有查看权限
+						var uts:UtmostService=new UtmostService("DataInfoService", function(dataevent:ResultEvent):void
+							{
+								var dataList:ArrayCollection=new ArrayCollection();
+								dataList=dataevent.result as ArrayCollection;
+								if (dataList == null || dataList.length != 1)
+								{
+									initRows();
+								}
+								else
+								{
+									dataObj=new Object();
+									dataObj=dataList[0];
+									initRows();
+								}
+							});
+						uts.ro.getSingleData(rootuuid, nodeuuid, useruuid, hasProtected, 2, recordUUID);
+					});
+				ut.ro.getSingleDataTitle(rootuuid, nodeuuid, useruuid, hasProtected, 2, recordUUID);
+			}
+			
+			private function drawGantt(e:ResultEvent):void
+			{
+				var ga:ArrayCollection = ArrayCollection(e.result);
+				var prewdata:ArrayCollection;
+				
+				if(ga==null){
+					ga = new ArrayCollection();
+				}else if(ga.length > 0){
+					ga.getItemAt(0).canShowModifyButton = false;
+				}
+				
+				var headObj:Object = new Object();
+				headObj.type = "year";
+				headObj.now = new Date();
+				ga.addItemAt(headObj,0);
+				prewdata=new ArrayCollection();
+				prewdata=ga;
+				
+				//甘特图列
+				var ganttArr:Array = new Array();
+				
+				var dc_gantt:DataGridColumn = new DataGridColumn();
+				dc_gantt.dataField = "gantts";
+				dc_gantt.headerText = resourceManager.getString('dataGrid','ganttChart');
+				dc_gantt.itemRenderer = new ClassFactory(component.chart.ganttBox);
+				ganttArr.push(dc_gantt);
+				
+				dg2.columns = ganttArr;
+				
+				dg2.dataProvider = null;
+				
+				dg2.dataProvider = ga;
+				
+				ganttPanel.includeInLayout = true;
+				ganttPanel.visible = true;
+				callLater(setGattPosition);
+			}
+			
+			private function download(event:CommonEvent):void
+			{
+				var name_download:String = "";
+				file_download = event.file;
+				if(event.titleName == "download_gb_en")
+					name_download = "EN";
+				else if(event.titleName == "download_gb_ch")
+					name_download = "CH";
+				else if(event.titleName == "download_ece_r")
+					name_download = "ECE_R";
+				else if(event.titleName == "download_eec")
+					name_download = "EEC";
+				else if(event.titleName == "download_others")
+					name_download = "OTHERS";
+				else if(event.titleName == "doc_");
+					name_download = "DOC_";
+				
+				labelclick(last_modify_date_str_download, author_download, swf_download, file_download, name_download, nodeuuid);
+			}
+			
+			/**
+			 * 显示Download列的LinkButton链接
+			 */ 
+			public function labelclick(last_modify_date_str:String, author:String, swf:String, file:String, name:String, uuid:String):void
+			{
+				var download:fileDown=fileDown(PopUpManager.createPopUp(this.parentApplication as DisplayObject, fileDown, true));
+				var list:ArrayCollection=new ArrayCollection();
+
+				if (swf == null && file != null&&name != null)
+				{
+					var arrayStr:Array=null;
+					arrayStr=file.split("/");
+					if(arrayStr.length>=2){
+						for (var ai:Number=0; ai < arrayStr.length-1; ai++)
+						{
+							var ao:Object=new Object();
+							ao.fieldname=arrayStr[ai];
+							ao.fieldswf=arrayStr[ai];
+							ao.fielddoc=arrayStr[ai];
+							ao.fielduuid=uuid;
+							ao.author=author;
+							ao.last_modify_date_str=last_modify_date_str;
+							list.addItem(ao);
+						}
+					}else if(arrayStr.length==1){
+						for (var bi:Number=0; bi < arrayStr.length; bi++)
+						{
+							var bo:Object=new Object();
+							bo.fieldname=arrayStr[bi];
+							bo.fieldswf=arrayStr[bi];
+							bo.fielddoc=arrayStr[bi];
+							bo.fielduuid=uuid;
+							bo.author=author;
+							bo.last_modify_date_str=last_modify_date_str;
+							list.addItem(bo);
+						}
+					}else{
+							var co:Object=new Object();
+							co.fieldname="";
+							co.fieldswf="";
+							co.fielddoc="";
+							co.fielduuid="";
+							co.author="";
+							co.last_modify_date_str="";
+							list.addItem(co);
+					}
+					download.open.visible=false;
+					var flag:String=UserRight.hasMenuRight(uuid, "3");
+					if (flag == "1")
+					{
+						download.browseBTN.visible=true;
+					}
+					else
+					{
+						download.browseBTN.visible=false;
+						download.browseBTN.enabled=false;
+					}
+				}
+				else if(swf != null && file != null&&name != null)
+				{
+					var o:Object=new Object();
+					o.fieldname=file;
+					o.fieldswf=swf;
+					o.fielddoc=file;
+					o.fielduuid=uuid;
+					o.author=author;
+					o.last_modify_date_str=last_modify_date_str;
+					if(file!=""&&swf!=""){
+						var flagOpen:String=UserRight.hasMenuRight(uuid, "2");
+						var flagDownload:String=UserRight.hasMenuRight(uuid, "3");
+						if (flagOpen == "1")
+						{
+							download.open.visible=true;
+						}
+						else
+						{
+							download.open.visible=false;
+							download.open.enabled=false;
+						}
+						if (flagDownload == "1")
+						{
+							download.browseBTN.visible=true;
+							if(file==""){
+								download.browseBTN.enabled=false;
+							}
+						}
+						else
+						{
+							download.browseBTN.visible=false;
+							download.browseBTN.enabled=false;
+						}
+					}else{
+						if(file==""){
+							o.fieldname=swf;						
+							if(swf==""){
+								o.fieldname="";
+								o.fieldswf="";
+								o.fielddoc="";
+								o.fielduuid="";
+								o.author="";
+								o.last_modify_date_str="";
+								download.open.visible=false;
+								download.open.enabled=false;
+								download.browseBTN.visible=false;
+								download.browseBTN.enabled=false;
+							}else{
+								download.browseBTN.visible=false;
+								download.browseBTN.enabled=false;
+								var _flagOpen:String=UserRight.hasMenuRight(uuid, "2");
+								if (_flagOpen == "1")
+								{
+									download.open.visible=true;
+								}
+								else
+								{
+									download.open.visible=false;
+									download.open.enabled=false;
+								}
+							}
+						}else{
+							download.open.visible=false;
+							download.open.enabled=false;
+							
+							var _flagDownload:String=UserRight.hasMenuRight(uuid, "3");
+							if(_flagDownload == "1"){
+								download.browseBTN.visible=true;
+							}else{
+								download.browseBTN.visible=false;
+								download.browseBTN.enabled=false;
+							}
+						}
+					}
+					list.addItem(o);
+				}
+				download.filesDG.dataProvider=list;
+				PopUpManager.centerPopUp(download);
+			}
+
+			//初始化行
+			private function initRows():void
+			{
+				if (title == null)
+					return;
+				if (dataObj == null)
+					dataObj=new Object();
+				var states:int=1; //是否换行
+				var bgc:int=1; //当前行是否变色
+				var hbox:HBox=new HBox();
+				var last_modify_author:DetailRow=new DetailRow();
+				var last_modify_date_str:DetailRow=new DetailRow();
+				hbox.percentWidth=100;
+				for (var i:int=0; i < title.length; i++)
+				{
+					if(title[i] != null){
+						//initialize the download temp variable
+						if(title[i].field_name.toLowerCase() == "uuid")
+						{
+							uuid_download  = dataObj[title[i].field_name.toLowerCase()];
+						}
+						else if(title[i].field_name.toLowerCase() == "last_modify_date_str")
+						{
+							last_modify_date_str_download  = dataObj[title[i].field_name.toLowerCase()];
+						}
+						else if(title[i].field_name.toLowerCase() == "last_modify_author")
+						{
+							author_download  = dataObj[title[i].field_name.toLowerCase()];
+						}
+						
+						
+						if(title[i].field_name.toLowerCase() == "last_modify_author"){
+							if (language == "en_US")
+							{ 
+								last_modify_author.setll=title[i].show_name_en;
+							}
+							else
+							{ 
+								last_modify_author.setll=title[i].show_name_ch;
+							}
+							last_modify_author.setlt=dataObj[title[i].field_name.toLowerCase()];
+							continue;
+						}
+						if(title[i].field_name.toLowerCase() == "last_modify_date_str"){
+							if (language == "en_US")
+							{ 
+								last_modify_date_str.setll=title[i].show_name_en;
+							}
+							else
+							{ 
+								last_modify_date_str.setll=title[i].show_name_ch;
+							} 
+							last_modify_date_str.setlt=dataObj[title[i].field_name.toLowerCase()];
+							continue;
+						}
+						if (title[i].field_name.toLowerCase() == "key_words" 
+						|| title[i].field_name.toLowerCase() == "last_modify_date" 
+						|| title[i].field_name.toLowerCase() == "summary_swf" 
+						|| title[i].field_name.toLowerCase() == "doc_title" 
+						|| title[i].field_name.toLowerCase() == "download_others_swf" 
+						|| title[i].field_name.toLowerCase() == "download_others_title" 
+						|| title[i].field_name.toLowerCase() == "download_eec_swf" 
+						|| title[i].field_name.toLowerCase() == "download_eec_title" 
+						|| title[i].field_name.toLowerCase() == "download_ece_r_swf" 
+						|| title[i].field_name.toLowerCase() == "download_ece_r_title" 
+						|| title[i].field_name.toLowerCase() == "download_gb_ch_swf" 
+						|| title[i].field_name.toLowerCase() == "download_gb_ch_title" 
+						|| title[i].field_name.toLowerCase() == "download_gb_en_swf" 
+						|| title[i].field_name.toLowerCase() == "download_gb_en_title" 
+						|| title[i].field_name.toLowerCase() == "online_auto_execute_date" 
+						|| title[i].field_name.toLowerCase() == "technical_committees_code_uuid" 
+						|| title[i].field_name.toLowerCase() == "gorvernor_code_uuid" 
+						|| title[i].field_name.toLowerCase() == "pre_execute_date" 
+						|| title[i].field_name.toLowerCase() == "execute_date" 
+						|| title[i].field_name.toLowerCase() == "func_uuid" 
+						|| title[i].field_name.toLowerCase() == "recordid" 
+						|| title[i].field_name.toLowerCase() == "uuid"
+						|| title[i].field_name.toLowerCase() == "no_"
+						|| title[i].field_name.toLowerCase() == "version_"
+						|| title[i].field_name.toLowerCase() == "standard_attribute1"
+						|| title[i].field_name.toLowerCase() == "standard_attribute2"
+						|| title[i].field_name.toLowerCase() == "standard_attribute3"
+						)
+						{
+							continue;
+						}
+						var row:Object=null;
+						
+						if(title[i].field_name.toLowerCase() == "download_gb_en"
+							|| title[i].field_name.toLowerCase() == "download_gb_ch"
+							|| title[i].field_name.toLowerCase() == "download_ece_r"
+							|| title[i].field_name.toLowerCase() == "download_eec"
+							|| title[i].field_name.toLowerCase() == "download_others"
+							|| title[i].field_name.toLowerCase() == "doc_"
+						){
+							row = new NoticeDetailRow();
+						}
+						else
+						{
+							row = new DetailRow();
+						}
+						if (language == "en_US")
+						{ //英文 字段显示名称
+							row.setll=title[i].show_name_en;
+						}
+						else
+						{ //中文
+							row.setll=title[i].show_name_ch;
+						} //字段值
+						if(title[i].field_name.toLowerCase() == "ismandatory"){
+							instead1Or0(dataObj,title[i],row);
+						}else if(title[i].field_name.toLowerCase() == "isccc"){
+							instead1Or0(dataObj,title[i],row);
+						}else if(title[i].field_name.toLowerCase() == "isbulletin"){
+							instead1Or0(dataObj,title[i],row);
+						}else if(title[i].field_name.toLowerCase() == "is_national_emi"){
+							instead1Or0(dataObj,title[i],row);
+						}else if(title[i].field_name.toLowerCase() == "is_local_emi"){
+							instead1Or0(dataObj,title[i],row);
+						}else if(title[i].field_name.toLowerCase() == "gorvernor_code_uuid"){
+							row.setlt = dataObj["govenor_code"];
+						}else if(title[i].field_name.toLowerCase() == "technical_committees_code_uuid"){
+							row.setlt = dataObj["technical_committees_code"];
+						}else{
+							row.setlt=dataObj[title[i].field_name.toLowerCase()];
+						}
+						hbox.addChild(row as DisplayObject);
+						if (states == 2)
+						{
+							bgc=(bgc == 1 ? 2 : 1);
+							rowsbox.addChild(hbox);
+							hbox=new HBox();
+							hbox.percentWidth=100;
+							if (bgc == 2)
+								hbox.setStyle("backgroundColor", "#F3F3F3");
+						}
+						states=(states == 1 ? 2 : 1);
+					}
+				}
+				if(null != last_modify_author.getll && "" != last_modify_author.getll){
+					hbox.addChild(last_modify_author);
+					if (states == 2)
+					{ 
+						bgc=(bgc == 1 ? 2 : 1);
+						rowsbox.addChild(hbox);
+						hbox=new HBox();
+						hbox.percentWidth=100;
+						if (bgc == 2)
+							hbox.setStyle("backgroundColor", "#F3F3F3");
+					}
+					states=(states == 1 ? 2 : 1);
+				}
+				if(null != last_modify_date_str.getll && "" != last_modify_date_str.getll){
+					hbox.addChild(last_modify_date_str);
+					if (states == 2)
+					{
+						bgc=(bgc == 1 ? 2 : 1);
+						rowsbox.addChild(hbox);
+						hbox=new HBox();
+						hbox.percentWidth=100;
+						if (bgc == 2)
+							hbox.setStyle("backgroundColor", "#F3F3F3");
+					}
+					states=(states == 1 ? 2 : 1);
+				}
+				if(rootuuid == "0202")
+				{
+					var utGant:UtmostService = new UtmostService("GanttService", drawGantt);
+					utGant.ro.queryGanttsByUuid(recordUUID);
+				}
+			}
+			private function instead1Or0(dataObj:Object,title:Object,row:Object):void{
+				if(null != dataObj[title.field_name.toLowerCase()]){
+					var  temp01:String = dataObj[title.field_name.toLowerCase()].toString();
+					if(temp01 != null && temp01 != ""){
+						if(temp01 == "1")
+							row.setlt = "Yes";
+						else if(temp01 == "0")
+							row.setlt = "No";
+						else
+							row.setlt=dataObj[title.field_name.toLowerCase()];
+					}
+				}else{
+					row.setlt=dataObj[title.field_name.toLowerCase()];
+				}
+			}
+			private function setGattPosition():void
+			{
+				ganttContainer.horizontalScrollPosition = 1100;
+			}
+
+			//点击关闭本窗口
+			public function close():void
+			{
+				dataObj=null;
+				title=null;
+				useruuid=null;
+				rootuuid=null;
+				nodeuuid=null;
+				recordUUID=null;
+				this.parent.removeChild(this);
+			}
+		]]>
+	</mx:Script>
+	<mx:Metadata>
+		[ResourceBundle("dataGrid")]
+	</mx:Metadata>
+	<mx:VBox x="10"
+			 y="20"
+			 width="95%"
+			 verticalGap="15">
+		<mx:HBox id="closeBox" width="100%"
+				 horizontalAlign="right">
+			<mx:LinkButton label="X"
+						   height="20"
+						   click="close()"/>
+		</mx:HBox>
+		<mx:VBox id="rowsbox"
+				 width="100%"
+				 verticalGap="15">
+
+		</mx:VBox>
+		<mx:Panel id="ganttPanel" width="100%" title="{resourceManager.getString('dataGrid','ganttChart')}"
+			includeInLayout="false" visible="false">
+			<mx:Canvas id="ganttContainer" width="100%" verticalScrollPolicy="off" horizontalScrollPolicy="on">
+				<mx:DataGrid id="dg2" showHeaders="false"
+					 fontSize="15" sortableColumns="false" width="2520" rowCount="2" verticalScrollPolicy="off"
+					 draggableColumns="false" dragEnabled="false" dragMoveEnabled="false" dropEnabled="false">
+				</mx:DataGrid>
+			</mx:Canvas>
+		</mx:Panel>
+	</mx:VBox>
+</mx:Canvas>

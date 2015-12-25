@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow   borderThicknessLeft="0" borderThicknessRight="0"   showCloseButton="true" creationComplete="{init()}" horizontalScrollPolicy="off"   verticalScrollPolicy="off" close="{PopUpManager.removePopUp(this);}"   xmlns:mx="http://www.adobe.com/2006/mxml"  >
+	<mx:Script>
+		<![CDATA[
+			import org.utmost.service.StaticChannelSet;
+			import mx.controls.Alert;
+			import org.utmost.effect.PopUpEffect;
+			import mx.managers.PopUpManager;
+			private function init():void{
+				this.isPopUp=false;
+			}
+			public function set swfUrl(_url:String):void{
+				try{
+					var path:String= StaticChannelSet.getWebRoot() + "/download.form?method=readImage&fileName=";
+					mySWFLoader.load(path+_url);
+				}catch(err:Error){
+					Alert.show("Error to load the file:"+_url,"ERROR");
+				}
+			}
+		]]>
+	</mx:Script>
+		<mx:SWFLoader   autoLoad="false"  id="mySWFLoader"   />
+</mx:TitleWindow>

@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml"  width="100%" paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0" verticalGap="0">
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Label;
+			import mx.controls.LinkButton;
+			import mx.containers.HBox;
+			import mx.controls.TextInput;
+			import mx.controls.Button;
+			import mx.containers.Canvas;
+			import mx.controls.Alert;
+			import mx.collections.ArrayCollection;
+			
+			[Embed(source="/component/upload/assets/add.png")]
+            [Bindable]
+            private var buttonAdd:Class;  
+			
+			[Embed(source="/component/upload/assets/delete.png")]
+            [Bindable]
+            private var buttonDelete:Class; 
+            
+            public var fileNameArr:Array = new Array();
+            public var uploadFileArr:Array = new Array();
+            //filter the file types
+            private var docFile:Array = new Array(new FileFilter("Documents/PDF/SWF Files (*.pdf;*.swf;*.flv;*.doc)",("*.pdf;*.swf;*.flv;*.doc")));
+            private var refAddFile:FileReference;
+            private var date:Date=new Date();
+            private var fileS:String = null;
+            //clear all the files 
+            public function clearFileUpload():void{
+            	fileContainer.removeAllChildren();
+            	fileNameArr = new Array();
+            	uploadFileArr = new Array();
+            	fileS = null;
+            }
+            //add a new file upload line
+			public function addNewFileLine():Boolean{
+				var line:HBox = new HBox();
+				var fileName:TextInput = new TextInput();
+				fileName.width = 175;
+				//upload button
+				var uploadButton:Button = new Button();
+				uploadButton.setStyle("icon",buttonAdd);
+				uploadButton.toolTip = "upload file";
+				uploadButton.width = 26;
+				//delete new line button
+				var deleteButton:Button = new Button();
+				deleteButton.setStyle("icon",buttonDelete);
+				deleteButton.toolTip = "delete this line";
+				deleteButton.width = 26;
+				var cavas:Canvas = new Canvas();
+				cavas.minHeight=30;
+				var fileUploadBox:VBox = new VBox();
+				fileUploadBox.horizontalScrollPolicy = "off";
+				fileUploadBox.verticalScrollPolicy = "off";
+				fileUploadBox.minHeight=25;
+				fileUploadBox.width = 276;
+				fileUploadBox.setStyle("borderStyle", "solid");
+			    var tempLabel:Label = new Label();
+				tempLabel.width=30;
+				line.addChild(tempLabel);
+				cavas.addChild(fileUploadBox);
+				line.addChild(fileName);
+				line.addChild(uploadButton);
+				line.addChild(cavas);
+				line.addChild(deleteButton);
+			
+				fileContainer.addChild(line);
+				/////
+				
+				date=new Date();
+				var tempid:String=date.time.toString();
+				deleteButton.id=tempid;
+				//add event listener when clicking the upload button
+				uploadButton.addEventListener(MouseEvent.CLICK,function(event:Event):void{
+					if(fileUploadBox.getChildren().length==1){
+						return;
+					}
+					refAddFile = new FileReference();
+					refAddFile.addEventListener(Event.SELECT,function(event:Event):void{
+					   onSelectFile(event,fileUploadBox,tempid);
+					});
+					refAddFile.browse(docFile);
+				});
+				//add delete line button event
+				deleteButton.addEventListener(MouseEvent.CLICK,function(event:Event):void{
+					fileContainer.removeChild(line);
+					
+					var tempArr:Array=new Array();
+					for(var i:Number=0; i < uploadFileArr.length; i++)
+					{
+//								trace(currentVbox.getChildAt(1)+"///////=========////////////////");
+					   trace(uploadFileArr[i].tempid+":::uploadFileArr[i].tempid");
+					   trace(tempid+":::tempId");
+					   if(uploadFileArr[i].tempid==tempid){
+						 trace(uploadFileArr[i].name);
+						 uploadFileArr[i]=null;
+						}else{
+						  tempArr.push(uploadFileArr[i]);
+						 }
+					 }
+					 uploadFileArr = tempArr;
+					 var fileNameTempArr:Array = new Array();
+					 for(var j:Number=0; j < fileNameArr.length; j++)
+					{
+					   if(fileNameArr[j].tempid==tempid){
+						  fileNameArr[j]=null;
+						}else{
+						  fileNameTempArr.push(fileNameArr[j]);
+						 }
+					 }
+					 fileNameArr = fileNameTempArr;
+							
+				});
+				//add fileName into arr
+				fileNameArr.push({tempid:tempid,fileNameContainer:fileName});
+				return true;
+			}
+			
+			public function getNewUploadFiles():Array{
+				var newUploadFiles:Array = new Array();
+				for(var j:Number=0; j < uploadFileArr.length; j++)
+				{
+				    if(fileS==null||fileS.indexOf(uploadFileArr[j].name)<0){
+					   newUploadFiles.push({tempid:uploadFileArr[j].tempid,fileName:uploadFileArr[j].name});
+				     }
+			    }
+			    return newUploadFiles;
+			}
+			public function replaceFileName(newFileNameArr:ArrayCollection):void{
+				if(newFileNameArr!=null){
+				  for(var j:Number=0; j < uploadFileArr.length; j++){	
+					for(var i:Number=0;i<newFileNameArr.length;i++){
+						if(uploadFileArr[j].tempid==newFileNameArr[i].tempid){
+							uploadFileArr[j].name = newFileNameArr[i].fileName;
+							break;
+						}
+					}
+				  }
+				}
+			}
+			private function buildUploadFileLine(fileNameStr:String,fileStr:String):void{
+				        var line:HBox = new HBox();
+						var fileName:TextInput = new TextInput();
+						fileName.width = 175;
+						if(fileNameStr!=null&&fileNameStr!=""){
+						  fileName.text = fileNameStr;
+						}
+						//upload button
+						var uploadButton:Button = new Button();
+						uploadButton.setStyle("icon",buttonAdd);
+						uploadButton.toolTip = "upload file";
+						uploadButton.width = 26;
+						//delete new line button
+						var deleteButton:Button = new Button();
+						deleteButton.setStyle("icon",buttonDelete);
+						deleteButton.toolTip = "delete this line";
+						deleteButton.width = 26;
+						var cavas:Canvas = new Canvas();
+						cavas.minHeight=30;
+						var fileUploadBox:VBox = new VBox();
+						fileUploadBox.horizontalScrollPolicy = "off";
+						fileUploadBox.verticalScrollPolicy = "off";
+						fileUploadBox.minHeight=25;
+						fileUploadBox.width = 276;
+						fileUploadBox.setStyle("borderStyle", "solid");
+					    var tempLabel:Label = new Label();
+						tempLabel.width=30;
+						line.addChild(tempLabel);
+						cavas.addChild(fileUploadBox);
+						line.addChild(fileName);
+						line.addChild(uploadButton);
+						line.addChild(cavas);
+						line.addChild(deleteButton);
+					
+						fileContainer.addChild(line);
+						/////
+						
+						date=new Date();
+						var tempid:String=date.time.toString();
+						deleteButton.id=tempid;
+						//add event listener when clicking the upload button
+						uploadButton.addEventListener(MouseEvent.CLICK,function(event:Event):void{
+							if(fileUploadBox.getChildren().length==1){
+								return;
+							}
+							refAddFile = new FileReference();
+							refAddFile.addEventListener(Event.SELECT,function(event:Event):void{
+							   onSelectFile(event,fileUploadBox,tempid);
+							});
+							refAddFile.browse(docFile);
+						});
+						//add delete line button event
+						deleteButton.addEventListener(MouseEvent.CLICK,function(event:Event):void{
+							fileContainer.removeChild(line);
+							
+							var tempArr:Array=new Array();
+							for(var i:Number=0; i < uploadFileArr.length; i++)
+							{
+		//								trace(currentVbox.getChildAt(1)+"///////=========////////////////");
+							   trace(uploadFileArr[i].tempid+":::uploadFileArr[i].tempid");
+							   trace(tempid+":::tempId");
+							   if(uploadFileArr[i].tempid==tempid){
+								 trace(uploadFileArr[i].name);
+								 uploadFileArr[i]=null;
+								}else{
+								  tempArr.push(uploadFileArr[i]);
+								 }
+							 }
+							 uploadFileArr = tempArr;
+							 var fileNameTempArr:Array = new Array();
+							 for(var j:Number=0; j < fileNameArr.length; j++)
+							{
+							   if(fileNameArr[j].tempid==tempid){
+								  fileNameArr[j]=null;
+								}else{
+								  fileNameTempArr.push(fileNameArr[j]);
+								 }
+							 }
+							 fileNameArr = fileNameTempArr;
+									
+						});
+						//add fileName into arr
+						fileNameArr.push({tempid:tempid,fileNameContainer:fileName});
+						if(fileStr!=null){
+							buildFileComponent(fileStr,tempid,fileUploadBox);
+							uploadFileArr.push({fr:null,tempid:tempid,name:fileStr, size:null, file:null,kind:null,type:null,isOld:1});
+						}
+			}
+			
+			//get the filename string and files from database, and then put them to the seperate fields
+			public function addExistFiles(fileNameStr:String,fileStr:String):void{
+				fileS = fileStr;
+				var tempFileNameArr:Array = null;
+				if(fileNameStr!=null){
+					tempFileNameArr = fileNameStr.split("/");
+				}
+				var tempFileArr:Array = null;
+				trace("fileStr:" + fileStr);
+				if(fileStr!=null){
+					tempFileArr = fileStr.split("/")
+				}
+				
+				if(tempFileNameArr!=null&&tempFileArr!=null){
+					for(var m:int = 0; m<tempFileNameArr.length;m++){
+						if(tempFileArr[m]!=null&&tempFileArr[m]!=""){
+						  buildUploadFileLine(tempFileNameArr[m],tempFileArr[m]);
+						}
+					}
+				}
+				
+				
+			}
+			
+			private function checkIfHaveUploaded():Boolean{
+				if(fileNameArr!=null){
+					if(fileNameArr.length==0){
+						return true;
+					}
+					for(var i:int=0;i<fileNameArr.length;i++){
+						var tempId:String = fileNameArr[i].tempid;
+						for(var j:Number=0; j < uploadFileArr.length; j++)
+					    {
+						   if(uploadFileArr[j].tempid==tempId){
+						   	    return true;
+							}
+					    }
+					}
+				}
+				return false;
+			}
+			
+			private function buildFileComponent(uploadFileName:String,tempId:String,fileUploadBox:VBox):void{
+				    var hbox:HBox=new HBox();
+					hbox.setStyle("background-color","#FFFFFF");
+					var label:Label=new Label();
+					label.text=uploadFileName;
+					var clo_button:LinkButton=new LinkButton();
+					clo_button.label="x";
+						//the close button event
+						clo_button.addEventListener(MouseEvent.CLICK,function():void{
+							fileUploadBox.removeChild(hbox);
+							var tempArr:Array=new Array();
+							for(var i:Number=0; i < uploadFileArr.length; i++)
+							{
+//								trace(currentVbox.getChildAt(1)+"///////=========////////////////");
+								trace(uploadFileArr[i].tempid+":::uploadFileArr[i].tempid");
+								trace(hbox.id+":::hbox.id");
+								if(uploadFileArr[i].tempid==tempId){
+									trace(uploadFileArr[i].name);
+									uploadFileArr[i]=null;
+								}else{
+									tempArr.push(uploadFileArr[i]);
+								}
+							}
+							uploadFileArr=tempArr;
+						});
+					hbox.addChild(clo_button);
+					hbox.addChild(label);
+					fileUploadBox.addChild(hbox);
+			}
+			
+			// Called when a file is selected
+			private function onSelectFile(event:Event,fileUploadBox:VBox,tempId:String):void{
+					var fr:FileReference=(refAddFile as FileReference);
+					trace("fr:" + fr);
+					trace("_arrUploadFiles:" + uploadFileArr);
+					uploadFileArr.push({fr:fr,tempid:tempId,name:fr.name, size:formatFileSize(fr.size), file:fr,kind:fileUploadBox.id,type:fr.type.toLowerCase()});
+					//build upload file name display
+					buildFileComponent(fr.name,tempId,fileUploadBox);
+					//if the file name input field is null, set the selected file name into this field
+					if(fileNameArr!=null){
+						for(var j:Number=0; j < fileNameArr.length; j++){
+							if(fileNameArr[j].tempid == tempId){
+								var fileNameInputField:TextInput = (fileNameArr[j].fileNameContainer as TextInput);
+								if(fileNameInputField.text == null||fileNameInputField.text == ""){
+									fileNameInputField.text = fr.name;
+								}
+							}
+						}
+					}
+			}
+			
+				// Called to format number to file size
+			private function formatFileSize(numSize:Number):String
+			{
+				var strReturn:String;
+				numSize=Number(numSize / 1000);
+				strReturn=String(numSize.toFixed(1) + " KB");
+				if (numSize > 1000)
+				{
+					numSize=numSize / 1000;
+					strReturn=String(numSize.toFixed(1) + " MB");
+					if (numSize > 1000)
+					{
+						numSize=numSize / 1000;
+						strReturn=String(numSize.toFixed(1) + " GB");
+					}
+				}
+				return strReturn;
+			}
+			//return all upload files
+			public function get getUploadFiles():Array{
+				return uploadFileArr;
+			}
+			
+			//return all file names\
+			public function get getFileNames():Array{
+				return fileNameArr;
+			}
+		]]>
+	</mx:Script>
+	
+	<mx:VBox id="fileContainer" paddingBottom="0" paddingTop="0" paddingLeft="0" paddingRight="0" verticalAlign="middle" width="100%">
+	</mx:VBox>
+</mx:VBox>

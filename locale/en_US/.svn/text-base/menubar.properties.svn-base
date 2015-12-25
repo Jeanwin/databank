@@ -1,0 +1,32 @@
+#Created by JInto - www.guh-software.de
+#Thu Jan 10 16:11:21 CST 2013
+adduser=Create
+back=Main menu
+changepassword=Change Pwd
+chinese=\u4E2D\u6587/Chinese
+clear=Clear
+config=Configuration
+contactus=Contact us
+currentuser=Current user\:
+delete=Delete
+english=\u82F1\u6587/English
+info=Publish
+kind=New Category
+language=Language
+logout=Logout
+lookgg=Content
+menu=Module
+other=Others
+rich=Extend
+serch=Search
+showmode=Mode
+simple=Simple
+sys=System
+sysgg=Notice
+theme=View
+user=Administrator
+user.manual=User Manual
+usergroup=User Groups
+userlabel=User
+word=Field Config
+welcome=Welcome, 

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow title="{resourceManager.getString('fileDown','uploading')}"
+				close="{PopUpManager.removePopUp(this);}"
+				xmlns:mx="http://www.adobe.com/2006/mxml"
+				width="400"
+				height="168" xmlns:mycomponents="org.utmost.mycomponents.*">
+	<mx:Metadata>
+	   [ResourceBundle("fileDown")]
+	    [ResourceBundle("errormsg")]
+	</mx:Metadata>
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Alert;
+			import org.utmost.effect.PopUpEffect;
+			import mx.managers.PopUpManager;
+			public var callbackFunction:Function;
+			public function uploadcomp():void{
+				Alert.show(resourceManager.getString("errormsg","uploadcomp"),resourceManager.getString("errormsg","alert"));
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function showAlertWindow():void{
+				if(callbackFunction!=null){
+				  callbackFunction.call(parent);
+				}
+			}
+		]]>
+	</mx:Script>
+	<mx:VBox width="100%" height="100%" horizontalAlign="center" verticalAlign="middle">
+		<mx:HBox width="100%" height="50" verticalAlign="middle">
+			<mx:HBox>
+				<mx:Label id="fileName"  width="316" textAlign="center" fontWeight="bold" fontSize="10"/>
+			</mx:HBox>
+			<mx:HBox>
+				<mx:Label id="fileNum" width="54" fontSize="10" fontWeight="bold" textAlign="center"/>
+			</mx:HBox>
+		</mx:HBox>
+		<mx:HBox width="100%" horizontalAlign="center">
+			<mx:ProgressBar id="proBar" mode="manual" label="" labelPlacement="center" width="100%"/>
+		</mx:HBox>
+		<mx:HBox width="100%" height="40" verticalAlign="middle" horizontalAlign="center">
+			<mycomponents:Components_LinkButton id="finishBtn" visible="false" iconType="right" label="{resourceManager.getString('fileDown','complete')}" width="100" fontSize="14" click="{PopUpManager.removePopUp(this);showAlertWindow();}" /> 
+		</mx:HBox>
+	</mx:VBox>
+</mx:TitleWindow>

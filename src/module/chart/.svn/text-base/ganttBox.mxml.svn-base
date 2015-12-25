@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" backgroundColor="#FFFFFF" horizontalScrollPolicy="off" verticalScrollPolicy="off"
+    height="45" creationComplete="init()">
+	<mx:Style>
+		.yearStyle{
+			horizontal-gap: 0;
+		}		
+		.aYearStyle{
+			 vertical-gap: 0;
+		}
+		.yearStyle{
+		 	background-color: #DDDDFF;
+		 	border-color: #66c4ff;
+			border-style: solid;
+			border-thickness: 1;
+			border-sides: "right";
+			color: #696969;		
+		}
+		.mouthsStyle{
+			horizontal-gap: 0;
+		}
+		.mouthStyle{
+			backgroundColor: #FFFFFF;
+			border-color: #66c4ff;
+			border-style: solid;
+			border-thickness: 1;
+			border-sides: "right,bottom";
+		}
+		.fujianStyle{
+			backgroundColor: #006ba2;
+		}
+		.daysStyle{
+			backgroundColor: #FFFFFF;
+		 	horizontal-gap: 0;
+		}
+		.stageLightStyle{
+			backgroundColor: #FFFFFF;
+			background-alpha: 0.5;
+		}
+		.stageStyle7{
+			backgroundColor: #F6E5BC;
+			border-color: #F6E5BC;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle6{
+			backgroundColor: #E7F3F3;
+			border-color: #E7F3F3;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle5{
+			backgroundColor: #C26D88;
+			border-color: #C26D88;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle4{
+			backgroundColor: #C6DFE7;
+			border-color: #C6DFE7;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle3{
+			backgroundColor: #C26D88;
+			border-color: #C26D88;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle2{
+			backgroundColor: #A8ADB3;
+			border-color: #A8ADB3;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle1{
+			backgroundColor: #A21E4D;
+			border-color: #A21E4D;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyleNull{
+			backgroundColor: #FFFFFF;
+		}
+		.labelCenter{
+			text-align: center;
+		}
+		.linkStyle{
+		  	disabledSkin:ClassReference(null);
+			downSkin:ClassReference(null);
+			overSkin:ClassReference(null);
+			upSkin:ClassReference(null);
+			focusSkin:ClassReference(null);
+		}
+</mx:Style>
+	<mx:Script>
+		<![CDATA[
+			import ascb.util.DateFormat;
+			import mx.controls.Image;
+			import component.accDownLoad;
+			import mx.core.IFlexDisplayObject;
+			import mx.managers.PopUpManager;
+			import component.fileDownLoad;
+			import com.ganttBean.Mouth;
+			import mx.containers.ApplicationControlBar;
+			import mx.controls.LinkButton;
+			import mx.effects.IAbstractEffect;
+			import mx.containers.HBox;
+			import mx.controls.Label;
+			import mx.controls.Alert;
+			import mx.collections.ArrayCollection;
+			import com.ganttBean.Gantt;
+			import com.ganttBean.GanttStage;
+			
+			private var MOUTH_WIDTH:int = 40;
+			private var DAY_HEIGHT:int = 15;
+			
+			public var ganttObj:Gantt;
+			
+			private var ganttIndex:int;
+			
+			private function init():void{
+				ganttIndex = this.data.ganttIndex;
+				this.width = getWidthNum();
+				dateBox.width = getWidthNum();
+				makeView();
+			}
+			
+			public function getWidthNum():int{
+				ganttObj = this.makeData();
+				
+				var startYear:int = ganttObj._startYear;
+				var startMouth:int = ganttObj._startMouth;
+				var endYear:int = ganttObj._endYear;
+				var endMouth:int = ganttObj._endMouth;
+				
+				var mouthNum:int = getMouthNum(startYear,startMouth,endYear,endMouth);
+				
+				return mouthNum * MOUTH_WIDTH;
+			}
+			
+			public function makeData():Gantt{
+//				var stage1:GanttStage = new GanttStage(2009,10,15,-1,-1,-1,"起草");
+				var arr:ArrayCollection = new ArrayCollection();
+//				arr.addItem(stage1);
+				
+				for(var i:int; i<ganttData.gantt[ganttIndex].stages.child("stage").length(); i++){
+					
+					var start:String = ganttData.gantt[ganttIndex].stages[0].stage[i].@startDate;
+					var end:String = ganttData.gantt[ganttIndex].stages[0].stage[i].@endDate;
+					
+					if(end == "-"){
+						var d:Date = new Date();
+						var df:DateFormat = new DateFormat("Y.m.d");
+						end = df.format(d);
+					}
+					
+					var startArr:Array = start.split(".");
+					var endArr:Array = end.split(".");
+					
+					var sy:int = int(startArr[0]);
+					var sm:int = int(startArr[1]);
+					var sd:int = int(startArr[2]);
+					var ey:int = int(endArr[0]);
+					var em:int = int(endArr[1]);
+					var ed:int = int(endArr[2]);
+					
+					var tipStr:String = ganttData.gantt[ganttIndex].stages[0].stage[i].@name + " ("+ganttData.gantt[ganttIndex].stages[0].stage[i].@remark+")";
+					var stageItem:GanttStage = new GanttStage(sy,sm,sd,ey,em,ed,tipStr);
+					
+					arr.addItem(stageItem);
+				}
+				
+				var mouths:ArrayCollection = new ArrayCollection();
+				
+				for(var j:int; j<ganttData.gantt[ganttIndex].fujians.child("mouth").length(); j++){
+					
+					var accList:ArrayCollection = new ArrayCollection();
+				}
+				
+				var sd_gantt:String = ganttData.gantt[ganttIndex].@startDate;
+				var ed_gantt:String = ganttData.gantt[ganttIndex].@endDate;
+				
+				var startArr_gantt:Array = sd_gantt.split(".");
+				var endArr_gantt:Array = ed_gantt.split(".");
+				
+				var gantt:Gantt = new Gantt(startArr_gantt[0],startArr_gantt[1],endArr_gantt[0],endArr_gantt[1],arr);
+				gantt._dayAmount = this.getMouthNum(startArr_gantt[0],startArr_gantt[1],endArr_gantt[0],endArr_gantt[1]) * 30;
+				
+				return gantt;
+			}
+			
+			public function makeView():void{
+				
+				ganttObj = this.makeData();
+				
+				var startYear:int = ganttObj._startYear;
+				var startMouth:int = ganttObj._startMouth;
+				var endYear:int = ganttObj._endYear;
+				var endMouth:int = ganttObj._endMouth;
+				var dayAmountYear:int = ganttObj._dayAmount;
+				var stageList:ArrayCollection = ganttObj._stageList;
+				var nowYear:int = 2009;
+				var nowMouth:int = 11;
+				var nowDay:int = 15;
+				
+				var yearBox:HBox = new HBox(); //年月BOX
+				yearBox.percentWidth = 100;
+				yearBox.height = 30;
+				yearBox.styleName = "yearStyle";
+				yearBox.horizontalScrollPolicy = "off";
+				yearBox.verticalScrollPolicy = "off";
+				
+				//计划的跨年数
+				var nYear:int = ganttObj._endYear - ganttObj._startYear +1;
+				
+				for(var i:int=0; i<nYear; i++){
+					var nMouth:int; //本年份历经的月数
+					var firstMouth:int; //起始月份
+					
+					if(i>0){
+						firstMouth = 1;
+					}else{
+						firstMouth = startMouth;
+					}
+					
+					if( i < ( nYear - 1 ) ){
+						if(i == 0){
+							nMouth = 12 - startMouth + 1;
+						}else{
+							nMouth = 12;
+						}
+					}else{
+						nMouth = endMouth;
+					}
+					
+					var aYear:VBox = new VBox(); //一年
+					aYear.width = nMouth * MOUTH_WIDTH;
+					aYear.styleName = "aYearStyle";
+					
+					var year:Canvas = new Canvas(); //年份
+					year.percentWidth = 100;
+					year.height = 15;
+					year.styleName = "yearStyle";
+					
+					var yearLabel:Label = new Label(); //年份标签
+					yearLabel.text = startYear+i + "";
+					yearLabel.percentWidth = 100;
+					yearLabel.styleName = "labelCenter";
+					
+					year.addChild(yearLabel);
+					
+					aYear.addChild(year);
+					
+					var mouths:HBox = new HBox(); //月份集合
+					
+					mouths.percentWidth = 100;
+					mouths.height = 15;
+					mouths.styleName = "mouthsStyle";
+					
+					//附件标示
+					var fujian:Canvas = new Canvas();
+					fujian.percentWidth = 100;
+					fujian.height = 5;
+					fujian.styleName = "fujianStyle";
+					
+					var fujianImg:Image = new Image();
+					fujianImg.source = "img/mini_icons/flag_white.gif";
+					fujianImg.width = 13;
+					fujianImg.height = 13;
+					fujianImg.x = 26;
+					fujian.addChild(fujianImg);
+					
+					
+					for(var j:int=0; j<nMouth; j++){
+						var mouth:Canvas = new Canvas();
+						mouth.percentWidth = 100;
+						mouth.height = 20;
+						mouth.styleName = "mouthStyle";
+						mouth.horizontalScrollPolicy = "off";
+						mouth.verticalScrollPolicy = "off";
+						mouths.addChild(mouth);
+						
+						var mouthLink:LinkButton = new LinkButton();
+						mouthLink.label = firstMouth+j + "";
+						mouthLink.percentWidth = 100;
+						mouthLink.styleName = "linkStyle";
+						
+						if(j == 0){
+							mouth.addChild(fujianImg);
+							mouthLink.addEventListener(MouseEvent.CLICK, showAccList);
+						}
+						
+						mouth.addChild(mouthLink);
+						
+					}
+					
+					aYear.addChild(mouths);
+					
+					yearBox.addChild(aYear);
+				}
+				
+				dateBox.addChild(yearBox);
+				
+				var yearFlag:int = startYear;
+				var mouthFlag:int = startMouth;
+				var dayFlag:int = 1;
+				
+				var dayBox:HBox = new HBox();  //日BOX
+				dayBox.width = getWidthNum();
+				dayBox.height = DAY_HEIGHT;
+				dayBox.styleName = "daysStyle";
+				
+				for(var k:int=0; k<stageList.length; k++){
+					var stageObj:GanttStage = stageList.getItemAt(k) as GanttStage;
+					
+					var frontDate:int = getDateInterval(yearFlag,mouthFlag,dayFlag,stageObj._startYear, stageObj._startMouth, stageObj._startDay);	//阶段前空白天数
+					var dayAmount:int = getDateInterval(stageObj._startYear, stageObj._startMouth, stageObj._startDay,stageObj._endYear, stageObj._endMouth, stageObj._endDay);;  //阶段的总天数
+					
+					//Alert.show("f"+frontDate+"  d"+dayAmount+"   "+stageObj._startYear+"/"+stageObj._startMouth+"/"+stageObj._startDay);
+					var stageFront:Canvas = new Canvas();
+					stageFront.height = 25;
+					var dIntervalFront:Number = frontDate /dayAmountYear * 100;
+					stageFront.percentWidth = dIntervalFront;
+					stageFront.styleName = "stageStyleNull";
+					
+					var stage:VBox = new VBox();
+					stage.height = 25;
+					var dInterval:Number = dayAmount /dayAmountYear * 100;
+					stage.percentWidth = dInterval;
+					stage.styleName = "stageStyle"+(k+1);
+					stage.toolTip = stageObj._stageName;
+					stage.setStyle("rollOverEffect",glowImage);
+					stage.setStyle("rollOutEffect",unglowImage);
+					
+					var stage2:Canvas = new Canvas();
+					stage2.height = 5;
+					stage2.percentWidth = 100;
+					stage2.styleName = "stageLightStyle";
+					
+					stage.addChild(stage2);
+					
+					dayBox.addChild(stageFront);
+					dayBox.addChild(stage);
+					
+					yearFlag = stageObj._endYear;
+					mouthFlag = stageObj._endMouth;
+					dayFlag = stageObj._endDay;
+				}
+				
+				dateBox.addChild(dayBox);
+			}
+			
+			private function getDateInterval(startY:int,startM:int,startD:int
+				,endY:int,endM:int,endD:int):int{
+				
+				var mouthInterval:int = getMouthNum(startY,startM,endY,endM);
+				
+				var dayInterval:int = (mouthInterval * 30) - startD - (30 - endD);
+				
+				return dayInterval;
+			}
+			
+			public function getMouthNum(sy:int,sm:int,ey:int,em:int):int{
+				
+				var mouthSum:int = (ey-sy-1)*12;
+				
+				if((ey-sy) == 0){
+					mouthSum = em - sm + 1;
+				}else{
+					mouthSum += (13 - sm + em);
+				}
+				
+				return mouthSum<0 ? 0 : mouthSum;
+			}
+			
+			public function showAccList(e:Event):void{
+				var download:accDownLoad=accDownLoad(PopUpManager.createPopUp(this.parentApplication as DisplayObject,accDownLoad,true));
+			 	PopUpManager.centerPopUp(download);
+			}
+		]]>
+	</mx:Script>
+	
+	<mx:XML id="ganttData" source="xml/ganttData.xml"/>
+	
+	<mx:Blur id="blurImage" duration="300" 
+        blurXFrom="0.0" blurXTo="6.0" 
+        blurYFrom="0.0" blurYTo="6.0"/>
+    <mx:Blur id="unblurImage" duration="300" 
+        blurXFrom="6.0" blurXTo="0.0" 
+        blurYFrom="6.0" blurYTo="0.0"/>
+	
+	<mx:Glow id="glowImage" duration="300" alphaFrom="1.0" alphaTo="1" blurXFrom="0.0" blurXTo="9.0" blurYFrom="0.0" blurYTo="9.0" color="#0099FF"/>
+    
+    <mx:Glow id="unglowImage" duration="300" alphaFrom="1" alphaTo="1.0" blurXFrom="9.0" blurXTo="0.0" blurYFrom="9.0" blurYTo="0.0" color="#0099FF"/>
+	
+	<mx:Zoom id="zoomAll" zoomWidthTo="1" zoomHeightTo="1" zoomWidthFrom=".5" zoomHeightFrom=".5"  />
+
+	
+	<mx:VBox id="dateBox" width="100%" height="100%" verticalGap="0" borderStyle="solid" borderThickness="1" borderColor="#036FBB" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+		<!--mx:HBox id="yearBox" width="100%" height="35" horizontalGap="0">
+			<mx:VBox id="date1" width="240" verticalGap="0" styleName="aYearStyle">
+				<mx:Canvas width="100%" height="15" styleName="yearStyle">
+					<mx:Label width="100%" text="2009" textAlign="center"/>
+				</mx:Canvas>
+				<mx:HBox width="100%" height="20" horizontalGap="0">
+					<mx:Canvas width="100%" height="20" styleName="mouthStyle">
+						<mx:Label width="100%" text="9" textAlign="center"/>
+					</mx:Canvas>
+					<mx:Canvas width="100%" height="20">
+						<mx:Label width="100%" text="10" textAlign="center" click="{Alert.show('aaa')}"/>
+					</mx:Canvas>
+					<mx:Canvas width="100%" height="20">
+						<mx:Label width="100%" text="11" textAlign="center"/>
+					</mx:Canvas>
+					<mx:Canvas width="100%" height="20">
+						<mx:Label width="100%" text="12" textAlign="center"/>
+					</mx:Canvas>
+				</mx:HBox>
+			</mx:VBox>
+			<mx:VBox id="date2" width="240" verticalGap="0">
+				<mx:Canvas width="100%" height="15">
+					<mx:Label width="100%" text="2009" textAlign="center"/>
+				</mx:Canvas>
+				<mx:HBox width="100%" height="20" horizontalGap="0">
+					<mx:Canvas width="100%" height="20">
+						<mx:Label width="100%" text="9" textAlign="center"/>
+					</mx:Canvas>
+					<mx:Canvas width="100%" height="20">
+						<mx:Label width="100%" text="10" textAlign="center"/>
+					</mx:Canvas>
+					<mx:Canvas width="100%" height="20">
+						<mx:Label width="100%" text="11" textAlign="center"/>
+					</mx:Canvas>
+					<mx:Canvas width="100%" height="20">
+						<mx:Label width="100%" text="12" textAlign="center"/>
+					</mx:Canvas>
+				</mx:HBox>
+			</mx:VBox>
+		</mx:HBox>
+		<mx:HBox id="dayBox" width="100%" horizontalGap="0">
+			<mx:Canvas width="33%" height="50" backgroundColor="red">
+			</mx:Canvas>
+			<mx:Canvas width="33%" height="50" backgroundColor="green">
+			</mx:Canvas>
+			<mx:Canvas width="33%" height="50" backgroundColor="yellow">
+			</mx:Canvas>		
+		</mx:HBox-->
+	</mx:VBox>
+</mx:Canvas>

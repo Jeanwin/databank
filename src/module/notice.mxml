@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" 
+	width="100%" height="150" borderStyle="solid" borderThickness="6" backgroundAlpha="1"   borderSides="left,right,bottom"
+	borderColor="#E4E4E5" horizontalAlign="center" horizontalScrollPolicy="off" 
+	verticalScrollPolicy="off" cornerRadius="9" layout="absolute"    
+	xmlns:component="component.*" creationComplete="init();">
+	<mx:Metadata>
+		[ResourceBundle("errormsg")]
+	</mx:Metadata>
+	<mx:Script> 
+		<![CDATA[
+			import mx.resources.ResourceBundle;
+			import mx.collections.ArrayCollection;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.AutoService;
+			import mx.events.EffectEvent;
+			import mx.effects.easing.Linear;
+			import mx.controls.Alert;
+			[Bindable]
+			private var noticeStr:String;
+			private var timer:Timer;
+			public function init():void{
+				timer= new Timer(5000, 1);
+				AutoService.getInstance(true).pagination(1,5,"select new map(b.last_modify_author as author, b.last_modify_date_str as datestr,b.title_en as en,b.no_ as no,b.title_ch as ch,u.funcname as funcname) from B_COMMONDATA b,U_PORTAL_FUNC u where b.func_uuid=u.uuid   order by b.last_modify_date desc",function (e:ResultEvent):void{
+					var noticeArr:ArrayCollection=new ArrayCollection();
+						noticeArr=ArrayCollection(e.result);
+						if(noticeArr!=null&&noticeArr.length>0){
+							noticeStr="";
+								for each(var item:Object in noticeArr){
+									noticeStr+=item["no"]+"      ";
+									noticeStr+=item["en"]+"      ";
+									noticeStr+=item["ch"]+"      (";
+									noticeStr+=item["funcname"]+")      ";
+									noticeStr+="\n";
+									noticeStr+="                                ";
+									noticeStr+="Author: "+item["author"]+"      ";
+									noticeStr+=item["datestr"]+"      ";
+									noticeStr+="\n\n";
+								}
+						}else{
+						noticeStr="\n\n"+"No notice currently.";
+						}
+				});
+				timmerFunc();
+//				mar.play();
+			}
+			//三秒后，如果banner还存在/公告窗还存在就remove掉
+   			private function timmerFunc():void{
+				   if(timer!=null){
+				   		 timer.addEventListener(TimerEvent.TIMER, function(e:TimerEvent):void{
+		   						close();
+				    });
+				    timer.start();
+				   }
+   			}
+			public function close():void{
+				timer.stop();
+				dispatchEvent(new Event("NoticeCloseEvent"));
+				this.parent.removeChild(this);
+			}
+		]]>
+	</mx:Script>
+	<mx:VBox width="100%" height="100%" verticalGap="0">
+		<mx:VBox width="100%" horizontalAlign="center">
+			<mx:HBox width="100%" backgroundColor="#E4E4E5"  backgroundAlpha="0.9" >
+				<mx:HBox width="93%" horizontalAlign="center">
+					<mx:Label y="10" text="{resourceManager.getString('errormsg','notice')}" fontWeight="bold" color="#7F8789" fontSize="15"/>
+				</mx:HBox>
+				<mx:HBox width="6%" horizontalAlign="right">
+					<mx:LinkButton label="x" height="20" click="close()" fontSize="12"  />
+				</mx:HBox>
+			</mx:HBox>
+		</mx:VBox>
+		<mx:VBox id="marqueeBox" width="100%" height="100%">
+			<mx:Text htmlText="{noticeStr}" width="100%" height="100%"/>
+		</mx:VBox>
+	</mx:VBox>
+</mx:Module>

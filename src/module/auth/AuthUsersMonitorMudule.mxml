@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml"
+		   layout="vertical"
+		   width="100%"
+		   height="100%"
+		   creationComplete="initPageHelperClass()"
+		   xmlns:mycomponents="org.utmost.mycomponents.*">
+	<mx:Script>
+		<![CDATA[
+			import com.pagination.PageAction;
+			import com.pagination.PageHelper;
+			import com.Page;
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.core.IFlexDisplayObject;
+			import mx.core.Application;
+			import mx.managers.PopUpManager;
+			import org.utmost.service.UtmostService;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			[Bindable]
+			private var pag:Page;
+			private var list:ArrayCollection;
+			private var listData:Array;
+			[Bindable]
+			private var page:PageHelper;
+			[Bindable]
+			private var totalRows:Number;
+			private var authUserDownLoadInfo:AuthUserDownLoadInfo;
+
+			private var object:Object;
+
+
+			private function setObj(dataGrid:AdvancedDataGrid):void
+			{
+				if (dataGrid.selectedIndex != -1)
+				{
+					del.enabled=true;
+					object=dataGrid.selectedItem;
+				}
+			}
+
+			/**
+			 *初始化分页帮助类
+			 */
+			private function initPageHelperClass():void
+			{
+				page=new PageHelper(17, fPage, pPage, nPage, lPage);
+				page.callFunc=getTotalRows;
+				page.setDataProvider();
+			}
+
+			private function getTotalRows():void{
+				var t:UtmostService=new UtmostService("MonitorService", function(e:ResultEvent):void
+					{
+						if (e != null)
+						{
+							totalRows=0;
+							totalRows=e.result as Number;
+							page.setTotalRows(totalRows);
+							if(totalRows==0){
+								adg.dataProvider=null;
+							}
+							var uts:UtmostService=new UtmostService("MonitorService", function(dataevent:ResultEvent):void
+								{
+									if (dataevent != null)
+									{
+										list=new ArrayCollection();
+										list=dataevent.result as ArrayCollection;
+										adg.dataProvider=list;
+									}
+								});
+							uts.ro.getPageLoglist(page.currentPage, page.pageSize);
+						}
+					});
+				t.ro.getTotalRows();
+			}
+			private function searchAcountTotalRows():void{
+				var t:UtmostService=new UtmostService("MonitorService", function(e:ResultEvent):void
+					{
+						if (e != null)
+						{
+							totalRows=0;
+							totalRows=e.result as Number;
+							page.setTotalRows(totalRows);
+							var uts:UtmostService=new UtmostService("MonitorService", function(dataevent:ResultEvent):void
+								{
+									if (dataevent != null)
+									{
+										list=new ArrayCollection();
+										list=dataevent.result as ArrayCollection;
+			//							Alert.show(list.toString());
+										adg.dataProvider=list;
+									}
+								});
+							uts.ro.searchAcountInfo(page.currentPage, page.pageSize, blur.text, fromDate.text, toDate.text);
+						}
+					});
+				t.ro.searchAcountTotalRows(blur.text, fromDate.text, toDate.text);
+			}
+
+			public function delSelectItem():void
+			{
+				var uts:UtmostService=new UtmostService("MonitorService", function(dataevent:ResultEvent):void
+					{
+						if (dataevent.result != null)
+						{
+							var b:Boolean=dataevent.result as Boolean;
+							if (b)
+							{
+								PageAction.refreshAction(page);
+								del.enabled=false;
+							}
+							else
+							{
+								Alert.show(resourceManager.getString('monitor', 'notdelete'), ""); //notdelete errors
+							}
+						}
+					});
+				uts.ro.delAcountInfo(object.uuid, object.user_uuid);
+			}
+
+			public function showDownloadInfo(dg:AdvancedDataGrid):void
+			{
+				if (dg.selectedIndex >= 0)
+				{
+					if (dg.selectedItem.hasOwnProperty("uuid"))
+					{
+						showDetail(dg.selectedItem.uuid);
+						//取消选择项
+						dg.selectedItem=null;
+					}
+				}
+			}
+
+			private function showDetail(uuid:String):void
+			{
+				authUserDownLoadInfo=new AuthUserDownLoadInfo();
+				authUserDownLoadInfo.uuid=uuid;
+				PopUpManager.addPopUp(authUserDownLoadInfo, Application.application as DisplayObject, true);
+				PopUpManager.centerPopUp(authUserDownLoadInfo);
+			}
+
+			private function search():void
+			{
+				if (blur.text != null && fromDate.text != null && toDate.text != null)
+				{
+					page=new PageHelper(19, fPage, pPage, nPage, lPage);
+					page.callFunc=searchAcountTotalRows;
+					page.setDataProvider();
+				}
+			}
+
+			public function clearText(ins:TextInput):void
+			{
+				ins.text="";
+			}
+			
+			public function clickDownloadTimesHandler():void
+			{
+				showDownloadInfo(adg);
+			}
+		]]>
+	</mx:Script>
+
+	<mx:Metadata>
+ [ResourceBundle("auth")]
+   [ResourceBundle("dataGrid")]
+   [ResourceBundle("monitor")]
+   [ResourceBundle("cutpage")]
+</mx:Metadata>
+	<mx:TabNavigator width="100%"
+					 height="100%">
+		<mx:VBox label="{resourceManager.getString('monitor','usermonitor')}"
+				 width="100%"
+				 height="100%"
+				 verticalGap="3">
+
+			<mx:HBox width="100%"
+					 paddingLeft="20"
+					 verticalAlign="middle"
+					 paddingRight="6">
+				<mx:Label text="{resourceManager.getString('auth','searchUsers')}"/>
+				<mx:TextInput id="blur"
+							  restrict="^'="
+							  maxChars="128"/>
+				<mx:Label text="{resourceManager.getString('monitor','from')}"/>
+				<mx:DateField formatString="YYYY-MM-DD" id="fromDate"/>
+				<mx:Label text="{resourceManager.getString('monitor','to')}"/>
+				<mx:DateField formatString="YYYY-MM-DD" id="toDate"/>
+				<mycomponents:Components_LinkButton iconType="right"
+													label="{resourceManager.getString('auth','serch')}"
+													click="search()"/>
+				<mx:Spacer width="100%"/>
+
+				<mycomponents:Components_LinkButton iconType="right"
+													id="del"
+													label="{resourceManager.getString('auth','delete')}"
+													click="{delSelectItem();}"
+													enabled="false"
+													paddingLeft="0"
+													paddingRight="0"/>
+			</mx:HBox>
+			<mx:AdvancedDataGrid id="adg"
+								 designViewDataType="flat"
+								 width="100%"
+								 height="100%"
+								 selectionMode="multipleRows"
+								 click="setObj(adg)"
+								 doubleClickEnabled="true"
+								 doubleClick="showDownloadInfo(adg)">
+				<mx:columns>
+					<mx:AdvancedDataGridColumn headerText="{resourceManager.getString('auth','userName')}"
+											   dataField="loginname"
+											   itemRenderer="mx.controls.Label"
+											   textAlign="center"/>
+					<mx:AdvancedDataGridColumn headerText="{resourceManager.getString('auth','loginTimes')}"
+											   dataField="logincount"
+											   itemRenderer="mx.controls.Label"
+											   textAlign="center"/>
+					<mx:AdvancedDataGridColumn headerText="{resourceManager.getString('auth','lastLogin')}"
+											   dataField="logintimestring"
+											   itemRenderer="mx.controls.Label"
+											   textAlign="center"/>
+					<mx:AdvancedDataGridColumn headerText="{resourceManager.getString('auth','lastExit')}"
+											   dataField="logouttimestring"
+											   itemRenderer="mx.controls.Label"
+											   textAlign="center"/>
+					<mx:AdvancedDataGridColumn headerText="IP"
+											   dataField="loginip"
+											   itemRenderer="mx.controls.Label"
+											   textAlign="center"/>
+					<mx:AdvancedDataGridColumn headerText="{resourceManager.getString('auth','downloadTimes')}"
+											   dataField="downloadtimes"
+											   textAlign="center">
+						<mx:itemRenderer>
+							<mx:Component>
+								<mx:VBox horizontalAlign="center">
+									<mx:LinkButton label="{data.downloadtimes}" click="outerDocument.clickDownloadTimesHandler()"/>
+								</mx:VBox>
+							</mx:Component>
+						</mx:itemRenderer>
+					</mx:AdvancedDataGridColumn>
+				</mx:columns>
+			</mx:AdvancedDataGrid>
+			<mx:HBox horizontalGap="20">
+				<mx:Spacer width="45"
+						   height="0">
+				</mx:Spacer>
+				<mx:Label text="{resourceManager.getString('cutpage','count')}: {page.totalRows}"
+						  id="pagedetail"/>
+				<mx:Label text="{resourceManager.getString('cutpage','page')}: {page.currentPage}/{page.totalPages}"
+						  id="pagedetail2"/>
+				<mycomponents:Components_LinkButton id="fPage"
+													iconType="left"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','home')}"
+													click="PageAction.firstAction(page)">
+				</mycomponents:Components_LinkButton>
+				<mycomponents:Components_LinkButton id="pPage"
+													iconType="prev"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','prev')}"
+													click="PageAction.previousAction(page)">
+				</mycomponents:Components_LinkButton>
+				<mycomponents:Components_LinkButton id="nPage"
+													iconType="next"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','next')}"
+													click="PageAction.nextAction(page)">
+				</mycomponents:Components_LinkButton>
+				<mycomponents:Components_LinkButton id="lPage"
+													iconType="right"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','last')}"
+													click="PageAction.lastAction(page)">
+				</mycomponents:Components_LinkButton>
+			</mx:HBox>
+		</mx:VBox>
+	</mx:TabNavigator>
+</mx:Module>

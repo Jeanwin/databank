@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" horizontalScrollPolicy="auto" verticalScrollPolicy="auto"   
+	implements="module.ModuleInterface"   layout="absolute"   width="100%" height="100%" 
+	xmlns:mycomponents="org.utmost.mycomponents.*" creationComplete="init();">
+	<mx:Metadata>
+		[ResourceBundle("manageView")]
+	</mx:Metadata>
+<mx:Script>
+	<![CDATA[
+		import mx.resources.ResourceBundle;
+		import mx.binding.utils.ChangeWatcher;
+		import org.utmost.service.StaticChannelSet;
+		import mx.managers.PopUpManager;
+		import mx.core.IFlexDisplayObject;
+		import org.utmost.util.ComponentUtil;
+		import com.right.UserRight;
+		import mx.rpc.events.ResultEvent;
+		import org.utmost.service.AutoService;
+		import mx.collections.ArrayCollection;
+		import mx.core.Application;
+		import mx.controls.Alert;
+		
+		private var imageOriginalWidth:int = 0;
+		private var imageOriginalHeight:int = 0;
+		private var imageOriginalSizeHasSet:Boolean = false;
+		
+		private var documentUUID:String = null;
+		private function init():void{
+			ChangeWatcher.watch(page_picture, "source", imageSourceChangeHandler);
+		}
+		
+		private function imageSourceChangeHandler(event:Event):void{
+			page_picture.width = NaN; 
+			page_picture.height = NaN;
+			imageOriginalSizeHasSet = false;
+		}
+		
+		 public function set $documentUUID(_uuid:String):void{
+            	documentUUID = _uuid;
+         }
+		
+		 public function set $treeSelectNode(_node:Object):void {
+				trace("$modulecode------------------:"+_node);
+				if(_node==null||!_node.hasOwnProperty("nodeuuid"))return;
+				var _funcuuid:String=_node.nodeuuid;
+				ComponentUtil.setVisible(seemore_but,false);
+				 AutoService.getInstance().findByHql("select new map(b.uuid as uuid,b.func_uuid as func_uuid,b.title as title,b.picture_pathname as picture_pathname,b.content as content)from B_CLASS_ATTRIBUTE_PAGE b where b.func_uuid='"+_funcuuid+"'",function (e:ResultEvent):void{
+					logoObject=new Object();
+					var arr:ArrayCollection=e.result as ArrayCollection;
+					if(arr!=null&&arr.length!=0){
+						logoObject=arr[0];
+						trace(logoObject+":logoObject.title");
+						//如果找到了节点对应的静态页面，则显示，否则则没找到，则显示一个默认的静态页面
+						if(logoObject!=null){
+							
+							ComponentUtil.setVisible(logocont,false);
+							page_picture.visible=true;
+							page_tittle.visible=true;
+							page_content.visible=true;
+	 						page_tittle.text=logoObject.title;
+	 						page_picture.source=StaticChannelSet.getWebRoot() + "/download.form?method=readImage&fileName="+logoObject.picture_pathname;
+	 						if(logoObject.content!=null){
+	 						  page_content.htmlText="<br/>"+logoObject.content;
+	 						}
+	 						findLinks(_funcuuid);
+						}else{
+							ComponentUtil.setVisible(logocont,true);
+							page_picture.visible=false;
+							page_tittle.visible=false;
+							page_content.visible=false;
+						}
+					}
+				});
+		}
+		public function set $moduletree(_tree:ArrayCollection):void {
+			trace("$moduletree:"+_tree);
+			//systree.dataProvider=_tree;
+		}
+		public function set $menuData(_menu:ArrayCollection):void {
+			trace("$menuData:"+_menu);
+			//systree.dataProvider=_tree;
+		}
+		private var swfUrl:String;
+		private var logoObject:Object;
+		public function set $selectNodeFuncUUID(_funcuuid:String):void {
+			//其实是ClassUUID
+			trace("_funcuuid:"+_funcuuid);
+		}
+		private function findLinks(_funcuuid:String):void{
+			   AutoService.getInstance().findByHql("from B_CLASS_ATTRIBUTE_APPENDIX b where b.class_attribute_page_uuid='"+_funcuuid+"'",function (e:ResultEvent):void{
+					var linksArr:ArrayCollection=new ArrayCollection();
+						linksArr=ArrayCollection(e.result);
+						if(linksArr.length!=1){
+							return;
+						}
+//						如果当前用户有查看附件的权限，则显示See More的链接
+						if(UserRight.hasMenuRight(_funcuuid,"2")){
+							seemore_but.label=linksArr[0].link_title;
+							swfUrl=linksArr[0].link_appendix_filename;
+							ComponentUtil.setVisible(seemore_but,true);
+						}
+				});
+		}
+		private function showAttachment():void{
+			if(swfUrl.substring(swfUrl.lastIndexOf("."),swfUrl.length)==".pdf"){
+				showPDF();
+			}else if(swfUrl.substring(swfUrl.lastIndexOf("."),swfUrl.length)==".swf"){
+				showSwf();
+			}
+		}
+		private function showPDF():void{
+			var downloadUrl:String = StaticChannelSet.getWebRoot()+"/download.form?method=readImage&fileName="+swfUrl;
+	    	var request:URLRequest = new URLRequest(encodeURI(downloadUrl));
+	    	request.method = URLRequestMethod.POST;
+	    	navigateToURL(request, "_blank");
+		}
+		private function showSwf():void{
+			var obj:SeeMoreLinkFile=SeeMoreLinkFile(PopUpManager.createPopUp(this.parentApplication as DisplayObject, SeeMoreLinkFile, true));
+			obj.swfUrl=swfUrl;
+			obj.width=Application.application.width;
+			obj.height=Application.application.height;
+			PopUpManager.centerPopUp(obj);
+		}
+		private function imageUpdateCompleteHandler():void{
+			//第一次更新时为空图片
+			if(page_picture.width == 0 || page_picture.height == 0)
+				return;
+			if(!imageOriginalSizeHasSet){
+				imageOriginalSizeHasSet = true;
+				imageOriginalWidth = page_picture.width;
+				imageOriginalHeight = page_picture.height;
+			}
+		}
+		
+		private function imageMouseWheel(event:MouseEvent):void{
+			event.stopPropagation();
+			var delta:int = event.delta;
+			var currentWidth:int = page_picture.width;
+			var goalWidth:int = currentWidth + delta * 5;
+			if(goalWidth < 20) return;
+			var currentHeight:int = page_picture.height;
+			var goalHeight:int = 0;
+			if(imageOriginalHeight > 0 && imageOriginalWidth >0)
+				goalHeight = int(imageOriginalHeight * goalWidth /imageOriginalWidth);
+			else
+				goalHeight = int(currentHeight * goalWidth / currentWidth);
+			if(goalHeight < 20) return;
+			page_picture.width = goalWidth;
+			page_picture.height = goalHeight;
+		}
+		
+//		public function init():void{
+//			switch(Application.application.imgFlag){
+//				case "Standards": img = "img/logo/VWAG_ImgLayout_001.png"; break;
+//				case "hot": img = "img/logo/VWAG_ImgLayout_004.png"; break;
+//				case "falv": img = "img/logo/VWAG_ImgLayout_018.png"; break;
+//				case "renzheng": img = "img/logo/VWAG_ImgLayout_025.png"; break;
+//				case "xinxi": img = "img/logo/VWAG_ImgLayout_026.png"; break;
+//			}
+//		}
+	]]>
+</mx:Script>
+	<mx:Style>
+		ToolTip {
+			font-size: 14;
+		}
+	</mx:Style>
+	<mx:VBox verticalScrollPolicy="off" horizontalScrollPolicy="off" 
+		width="100%" height="100%" verticalGap="10" paddingLeft="10" paddingTop="10">
+		<mx:Label id="page_tittle"  text=""  color="#335F7D" fontSize="11" fontWeight="bold" paddingBottom="9"/>
+		<mx:Image id="page_picture" toolTip="{resourceManager.getString('manageView', 'logo.info.module.image.tooltip')}" mouseWheel="imageMouseWheel(event);" updateComplete="imageUpdateCompleteHandler();"/>
+		<mx:Text  id="page_content"  htmlText=""  width="600"  color="#7F8789" />
+		<mx:VBox  id="logocont" horizontalAlign="center" verticalAlign="middle" height="50%" width="100%">
+			<mx:HBox width="100%" height="100%" horizontalAlign="center" verticalAlign="middle" visible="false" includeInLayout="false">
+				<mx:Text     htmlText="   Welcome to Volkswagen Group China &lt;br/>China Automotive Technical Online System"  width="600" height="100" fontSize="22"  color="#335F7D" />
+			</mx:HBox>
+		</mx:VBox>
+		<mycomponents:Components_LinkButton id="seemore_but" iconType="right" visible="false" includeInLayout="false" click="{showAttachment();}" />
+	</mx:VBox>
+</mx:Module>

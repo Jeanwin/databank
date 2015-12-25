@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" width="100%" height="100%" creationComplete="init()" xmlns:controls="com.sephiroth.controls.*">
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Alert;
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
+			import mx.events.ListEvent;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.util.ComponentUtil;
+			//全局变量
+			public var tableName:String="U_PORTAL_REFROLEUSER";
+			public var redUUID:String="roleuuid";
+			public var redName:String="rolename";
+			public var redCode:String="rolecode";
+			public var blueUUID:String="useruuid";
+			public var blueName:String="username";
+			public var blueCode:String="usercode";
+			
+			private function init():void {
+				findblueTree();
+				initApp();
+//				blueTree.visible=false;
+			}
+			private function findblueTree():void {
+			
+			}
+			private function initTree(_tree:Tree,main:Object,kv:Object):void {
+			}
+			//保存使用
+			private var saveAC:ArrayCollection;
+			private function getDataProvider(_tree:Tree):XMLList {
+				var o:XMLListCollection=_tree.dataProvider as XMLListCollection;
+				var xmllist:XMLList=o.source as XMLList;
+				return xmllist;
+			}
+			private function submit():void {
+				saveAC=new ArrayCollection();
+				findXML(getDataProvider(blueTree));
+				var nodecode:String=redTree.selectedItem.@rolecode.toString();//* redTree
+				var hql:String="from "+tableName+" v where v."+redCode+"='"+nodecode+"'";
+					save(saveAC);			
+			}
+			private function findXML(xmllist:XMLList):void {
+				for each(var element:XML in xmllist) {
+					if(element.@checked.toString()!=""&&element.@checked.toString()!="0") {
+						var o:Object=new Object();
+						o[redName]=redTree.selectedItem.@rolename.toString();
+						o[redCode]=redTree.selectedItem.@rolecode.toString();
+						o[redUUID]=redTree.selectedItem.@roleuuid.toString();
+						o[blueName]=element.@username.toString();
+						o[blueCode]=element.@usercode.toString();
+						o[blueUUID]=element.@useruuid.toString();
+						saveAC.addItem(o);
+					}
+					if(element.elements()!=null)
+						findXML(element.elements());
+				}
+			}
+			
+			private function save(ac:ArrayCollection):void {
+					//Alert.show("保存成功","提示");
+					shake.play();
+			}
+			private function treeClick(e:ListEvent):void {
+				var o:XML=e.itemRenderer.data as XML;
+				if(o.elements().length()==0) {
+					flashData(e.currentTarget as Tree);
+//					blueTree.visible=true;
+				}else {
+					clearXML(getDataProvider(blueTree));
+//					blueTree.visible=false;
+				}
+			}
+			//刷新权限数据
+			private function flashData(_tree:Tree):void {
+			}
+			private function clearXML(xmllist:XMLList):void {
+				for each(var element:XML in xmllist) {
+					element.@checked=0;
+					if(element.elements()!=null)
+						clearXML(element.elements());
+				}
+			}
+			//改变XML
+			private function flashTree():void {
+				blueTree.flashTree(blueTree);
+			}
+			private function initApp():void {
+			      for each(var item:XML in this.redTree.dataProvider)
+			     	this.redTree.expandChildrenOf(item,true);
+		     }
+		]]>
+	</mx:Script>
+	<mx:XML id="treeData" source="xml/AuthUserGroupData.xml" />
+	<mx:XML id="blueTreeData" source="xml/ManageTreeData.xml" />
+	
+	<mx:Sequence id="shake" target="{hbox}" duration="100" repeatCount="2">
+        <mx:Move xBy="15"/>
+        <mx:Move xBy="-15"/>
+    </mx:Sequence>
+      <mx:TabNavigator width="100%" height="100%">
+			<mx:VBox label="Operation Right" width="100%" height="100%" >
+				<mx:HBox  id="hbox" width="100%" height="100%" verticalAlign="middle" horizontalAlign="center" horizontalGap="20">
+					<mx:Tree id="redTree" dataProvider="{treeData}" width="260" height="85%" labelField="@rolename" itemClick="treeClick(event)">
+					</mx:Tree>
+				<controls:TreeCheckBox id="blueTree"   dataProvider="{blueTreeData}" showRoot="false" labelField="@label" itemCheck="blueTree.onItemCheck( event )"
+					 width="260" height="85%"  checkField="@checked" />
+				<mx:VBox height="85%" verticalGap="20" paddingLeft="20"  width="230">
+						<mx:CheckBox label="Read-only" />
+						<mx:CheckBox label="Read-only-attachment" />
+						<mx:CheckBox label="Write" />
+						<mx:CheckBox label="Create" />
+						<mx:CheckBox label="Delete" />
+						<mx:CheckBox label="Upload" />
+						<mx:CheckBox label="Download" />
+		 		</mx:VBox> 
+				</mx:HBox>
+				<mx:HBox width="100%" height="50" verticalAlign="top" horizontalAlign="center" horizontalGap="40">
+					<mx:Button label="保存" click="submit()"/>
+					<mx:Button label="取消" click="init()"/>
+				<!--mx:Button label="flashTree" click="flashTree()"/-->
+				</mx:HBox>
+			</mx:VBox>
+	  </mx:TabNavigator>
+</mx:Module>

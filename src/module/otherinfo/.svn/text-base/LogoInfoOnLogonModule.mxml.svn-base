@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" 
+	width="100%" height="100%" creationComplete="init()" fontSize="14">
+	<mx:Metadata>
+		[ResourceBundle("errormsg")]
+	</mx:Metadata>
+	<mx:Style>
+		ToolTip{
+			font-size:14;
+		}
+	</mx:Style>
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.LinkButton;
+			import component.NoticeCompDetail;
+			import mx.collections.ArrayCollection;
+			import component.detailComp.NoticeDetail;
+			import component.detailComp.detail;
+			import mx.managers.PopUpManager;
+			import com.right.UserRight;
+			import mx.collections.ArrayCollection;
+			import org.utmost.service.AutoService;
+			import mx.controls.Alert;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import org.utmost.effect.PopUpEffect;
+			[Bindable]
+			private var noticeArr:ArrayCollection;
+			
+			[Bindable]
+			private var useruuid:String; 
+			[Bindable]
+			private var language:String; 
+			[Bindable]
+			private var showstate:String; 
+			[Bindable]
+			private var rootuuid:String; //category UUID
+			[Bindable]
+			private var nodeuuid:String; 
+			[Bindable]
+			private var hasProtected:Boolean=false;
+			
+			public function initLoadNotice():void{
+				useruuid=UserRight.getUserUUID();
+				AutoService.getInstance(true).pagination(1,10,"select new map(" + 
+						"b.uuid as uuid, b.last_modify_author as author, b.last_modify_date_str as datestr," + 
+						"b.title_en as en,b.no_ as no,b.title_ch as ch," + 
+						"b.download_gb_en as download_gb_en, b.download_gb_ch as download_gb_ch," + 
+						"u.funcname as funcname,u.classuuid as rootuuid, u.uuid as nodeuuid) " + 
+						"from B_COMMONDATA b,U_PORTAL_FUNC u " + 
+						"where b.func_uuid=u.uuid   order by b.last_modify_date desc",
+						function (e:ResultEvent):void{
+					    noticeArr=new ArrayCollection();
+						noticeArr=ArrayCollection(e.result);
+				});
+			}
+			
+			public function showDetail():void
+			{
+				var selectObj:Object = noticeDg.selectedItem;
+				var uuid:String = selectObj.uuid;
+				nodeuuid = selectObj.nodeuuid;
+				rootuuid = selectObj.rootuuid;
+				
+				hasProtected=(UserRight.hasMenuRight(nodeuuid, "4") == "1" ? true : false);
+				
+				var dataDetail:NoticeDetail=new NoticeDetail();
+
+				dataDetail.setuseruuid=useruuid;
+				dataDetail.setprotected=hasProtected;
+				dataDetail.setrootuuid=rootuuid;
+				dataDetail.setnodeuuid=nodeuuid;
+				dataDetail.recordUUID_=uuid;
+				
+				var detailWindow:NoticeCompDetail = PopUpManager.createPopUp(this.parentApplication as DisplayObject, NoticeCompDetail, true) as NoticeCompDetail;
+				detailWindow.myDetail.addChild(dataDetail);
+				dataDetail.closeBox.visible = false;
+				dataDetail.closeBox.includeInLayout = false;
+				PopUpManager.centerPopUp(detailWindow);
+			}
+			
+			private function init():void
+			{
+//				var timer:Timer = new Timer(5000, 1);
+//				timer.addEventListener(TimerEvent.TIMER, showDocList);
+//				timer.start();
+			}
+			
+			private function showDocList(event:TimerEvent):void
+			{
+				welcome.visible = false;
+				welcome.includeInLayout = false;
+				initDocList.includeInLayout = true;
+				initDocList.visible = true;
+				initLoadNotice();
+			}
+			
+			[Bindable]
+			[Embed(source="/img/mail-attachment.png")]
+			private var attachIcon:Class;
+			
+			public function showIcon(event:Event, attachContent:String):void{
+				var link:LinkButton = event.currentTarget as LinkButton;
+				if(link != null){
+					if(attachContent != null && attachContent != ""){
+						link.setStyle("icon", attachIcon);
+					}
+				}
+			}
+		]]>
+	</mx:Script>
+	<mx:VBox verticalGap="10" paddingLeft="0" paddingTop="10" horizontalAlign="center" verticalAlign="top"
+		width="100%" height="100%">
+		<mx:VBox id="welcome" horizontalAlign="center" verticalAlign="middle" height="100%" width="100%">
+			<mx:VBox width="100%" height="100%" verticalAlign="middle" horizontalAlign="center">
+				<mx:Text     htmlText=" Welcome to China Automotive Technology Online System"  width="650" fontSize="22"  color="#335F7D" />
+				<mx:Image source="img/logo/welcome.jpg">
+					
+				</mx:Image>
+			</mx:VBox>
+		</mx:VBox>
+		<mx:VBox id="initDocList" includeInLayout="false" visible="false" width="100%" fontSize="14">
+			<mx:DataGrid id="noticeDg" width="100%" dataProvider="{noticeArr}" rowCount="10"
+				itemDoubleClick="showDetail()" doubleClickEnabled="true" verticalScrollPolicy="off">
+				<mx:columns>
+					<mx:DataGridColumn dataField="funcname" headerText="{resourceManager.getString('errormsg','funcpath')}" itemRenderer="mx.controls.Label"  textAlign="center"/>
+					<mx:DataGridColumn dataField="no" headerText="{resourceManager.getString('errormsg','noticeno')}" itemRenderer="mx.controls.Label"  textAlign="center"/>
+					<mx:DataGridColumn dataField="en" textAlign="center"
+						headerText="{resourceManager.getString('errormsg','noticeen')}">
+						<mx:itemRenderer>
+							<mx:Component>
+								<mx:LinkButton label="{data.en}" useHandCursor="false" skin="{null}"
+									fontWeight="normal" creationComplete="outerDocument.showIcon(event, data.download_gb_en)"/>
+							</mx:Component>
+						</mx:itemRenderer>
+					</mx:DataGridColumn>
+					<mx:DataGridColumn dataField="ch" textAlign="center"
+						 headerText="{resourceManager.getString('errormsg','noticech')}">
+						<mx:itemRenderer>
+							<mx:Component>
+								<mx:LinkButton label="{data.ch}" useHandCursor="false" skin="{null}"
+									fontWeight="normal" creationComplete="outerDocument.showIcon(event, data.download_gb_ch)"/>
+							</mx:Component>
+						</mx:itemRenderer>
+					</mx:DataGridColumn>
+					<mx:DataGridColumn dataField="author" headerText="{resourceManager.getString('errormsg','noticeauthor')}" itemRenderer="mx.controls.Label"  textAlign="center"/>
+					<mx:DataGridColumn dataField="datestr" headerText="{resourceManager.getString('errormsg','noticedate')}" itemRenderer="mx.controls.Label"  textAlign="center"/>
+				</mx:columns>
+			</mx:DataGrid>
+		</mx:VBox>
+	</mx:VBox>
+</mx:Module>

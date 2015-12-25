@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow title="Set Gantt" showCloseButton="true" close="{PopUpManager.removePopUp(this);}" 
+	xmlns:mx="http://www.adobe.com/2006/mxml" width="432" height="200" 
+	xmlns:display="flash.display.*" xmlns:mycomponents="org.utmost.mycomponents.*"
+	creationComplete="init();">
+        <mx:Metadata>
+    		[ResourceBundle("dataGrid")]
+    	</mx:Metadata>
+        <mx:Script>
+        	<![CDATA[
+        		import module.ganttDataGird;
+        		import mx.rpc.events.ResultEvent;
+        		import org.utmost.service.UtmostService;
+        		import mx.formatters.*;
+        		import mx.controls.Alert;
+        		import mx.collections.ArrayCollection;
+        		import org.utmost.effect.PopUpEffect;
+        		import mx.managers.PopUpManager;
+        		
+        		[Bindable]
+	            public var cards:ArrayCollection = new ArrayCollection(
+	                [ {label:"Pre-preparation phase", data:"1"}, 
+	                  {label:"Planning phase", data:"2"}, 
+	                  {label:"Drafting phase", data:"3"},
+	                  {label:"Drafting for comments phase", data:"4"},
+	                  {label:"Drafting for approval phase", data:"5"},
+	                  {label:"Approving phase", data:"6"},
+	                  {label:"Publication phase", data:"7"} ]);
+	            
+	            public var gantts:ArrayCollection;
+	            
+	            public var gantt:Object;
+	            
+	            public var stages:Object;
+	            //format date
+	            private var df:DateFormatter=new DateFormatter();
+	            //bug fixed JIRA 65--start
+	           
+	            private function init():void{
+	            	
+	            	df.formatString="YYYY-MM-DD";
+	            	if(gantt!=null){
+	            		gantts = gantt.gantts;
+		            	makeStage();
+		            	planSD.text = df.format(stages[resourceManager.getString('dataGrid','stage.PLAN')].start_date);
+	            		planED.text = df.format(stages[resourceManager.getString('dataGrid','stage.PLAN')].end_date);
+	            	}
+	            }
+	            
+	            /**
+	             * make data for each phase,in this senario for stage[0] 
+	             * */
+	            private function makeStage():void{
+	            	stages = new Object();
+	            	for each(var g1:Object in gantts){
+	            		//if stage is overlaped ,use the one consistent with gantt's uuid
+	            		if(stages[g1.phase] != null){
+	            			if(stages[g1.phase].uuid == gantt.ganttuuid){
+	            				continue;
+	            			}
+	            		}
+	            		stages[g1.phase] = g1;
+	            	}
+	            	
+	            }
+	            //bug fixed JIRA 65--end
+	                  
+	        	
+	        	private function saveComplete(e:ResultEvent):void{
+	        		if(e.result == 0){
+	        			Alert.show("Has been modified.");
+	        		}else{
+	        			Alert.show("ERROR!");
+	        		}
+	        	}
+	        	//save plan info
+	        	private function savePlan():void{
+	        		var planObj:Object = new Object();
+	        		planObj["uuid"] = gantt["ganttuuid"];
+	        		planObj["recordid"] = gantt["recordid"];
+	        		planObj["commondata_uuid"] = gantt["commondata_uuid"];
+	        		planObj["start_date"] = planSD.text;
+	        		planObj["end_date"] = planED.text;
+	        		planObj["phase"] = "0";
+	        		
+	        		var auto:UtmostService = new UtmostService("GanttService",saveComplete);
+					auto.ro.saveGantt(planObj);
+	        	}
+	        	
+	        	private function close():void{
+	        		PopUpManager.removePopUp(this);
+	        	}
+        	
+        	]]>
+        </mx:Script>
+        <mx:VBox width="100%" height="100%" verticalGap="12">
+                <mx:HBox width="100%">
+                    	<mx:Label text="{resourceManager.getString('dataGrid','setPlan')}" fontSize="12" fontWeight="bold"/>
+                </mx:HBox>
+                <mx:HBox width="100%" paddingLeft="9">
+                        <mx:Label text="{resourceManager.getString('dataGrid','startDate')}"/>
+                        <mx:DateField formatString="YYYY-MM-DD" id="planSD" text="" yearNavigationEnabled="true"/>
+                        <mx:Label text="{resourceManager.getString('dataGrid','endDate')}"/>
+                        <mx:DateField formatString="YYYY-MM-DD" id="planED" text="" yearNavigationEnabled="true"/>
+                </mx:HBox>
+                <mx:HBox width="100%" horizontalGap="20" paddingTop="20">
+                        <mycomponents:Components_LinkButton iconType="right" label="{resourceManager.getString('dataGrid','save')}" click="savePlan()"/>
+                </mx:HBox>
+                <!--mx:HBox width="100%">
+                        <mx:Label text="阶段控制" fontSize="12" fontWeight="bold"/>
+                </mx:HBox>
+                <mx:VBox width="100%" height="100%" paddingLeft="9">
+                        <mx:HBox width="100%">
+                                <mx:Label text="选择阶段:"/>
+                                <mx:ComboBox id="cbBox" dataProvider="{cards}" change="selectedPhase()" prompt="Please select..."></mx:ComboBox>
+                        </mx:HBox>
+                        <mx:HBox width="100%">
+                                <mx:Label text="起始日期:"/>
+                                <mx:DateField id="startDate"/>
+                        </mx:HBox>
+                        <mx:HBox width="100%">
+                                <mx:Label text="终止日期:"/>
+                                <mx:DateField id="endDate"/>
+                        </mx:HBox>
+                        <mx:VBox width="100%">
+                                <mx:Label text="Information:" fontWeight="normal"/>
+                                <mx:TextArea id="information" width="100%"/>
+                        </mx:VBox>
+                        <mx:VBox width="100%" fontWeight="normal">
+                                <mx:Label text="Remark:" fontWeight="normal"/>
+                                <mx:TextArea id="remark" width="100%"/>
+                        </mx:VBox>
+                </mx:VBox>
+                <mx:HBox width="100%" horizontalAlign="center" horizontalGap="20">
+                        <mycomponents:Components_LinkButton iconType="right" label="Save" click="saveGantt()"/>
+                        <mycomponents:Components_LinkButton iconType="right" label="Return" click="close()"/>
+                </mx:HBox-->
+        	
+        </mx:VBox>
+</mx:TitleWindow>

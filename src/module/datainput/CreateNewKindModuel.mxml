@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml"   layout="absolute" width="100%" height="100%">
+<mx:Script> 
+<![CDATA[
+	import mx.collections.ArrayCollection;
+	import mx.managers.PopUpManager;
+	import mx.core.SoundAsset;
+	import com.MultiFileUpload; 
+	import mx.collections.ArrayCollection;
+	import mx.managers.PopUpManager;
+	import mx.core.SoundAsset;
+	import com.MultiFileUpload; 
+	[Bindable]
+	public var obj:Object;
+			
+	public function setObj(o:Object):void{
+		obj = o;
+	}
+     
+     [Bindable]
+	private var showword_data:ArrayCollection=new ArrayCollection(['Document No.','生效状态','Standard Title in English','Title','Standard Title in Chinese','Adopted International Standard No.','Paper','采用程度','Governor and Code','Technical Committees and code','归口单位','Drafting Committee','Department of Promulgation','Author','Plan No.','Standard Attribute','standard Sort','Suppose to Be Finished Year','Issuance Date','Pre-Execute Date','Execute Date(实施日期)','Execute Date(在产车实施日期)','摘要','Applicability，适用范围','Replaced Standard','整车还是零部件？','Mandatory or not','CCC or not','预留字段1','预留字段2','预留字段3','预留字段4','预留字段5','预留字段6','预留字段7','预留字段8','预留字段9','预留字段10']);
+      [Bindable]
+	private var showword_data1:ArrayCollection=new ArrayCollection(['Standard No.','中文标准名称','英文标准名称' ]);       
+    private function addtoLeft():void{
+     	if(notlook_word.selectedIndex!=-1){
+     		 showword_data.addItem(notlook_word.selectedItem);
+     		 showword_data1.removeItemAt(notlook_word.selectedIndex);
+     	}
+     }
+     private function addtoRight():void{
+ 	    if(allword.selectedIndex!=-1){
+ 	    	showword_data1.addItem(allword.selectedItem);
+ 	    		 showword_data.removeItemAt(allword.selectedIndex);
+ 	    	}
+     }
+	private function prevChild():void { 
+		accordion.selectedIndex--; 
+	} 
+	
+	private function nextChild():void { 
+		accordion.selectedIndex++; 
+	} 
+	private function treeDataChangeHandle(event:Event):void{
+		if(name_input.text!=""){
+			pageone_button.enabled=true;
+		}else{
+			pageone_button.enabled=false; 
+		}
+	}
+			
+            
+        
+]]> 
+</mx:Script> 
+ <mx:XMLList id="mydgData"   >
+			<node usercode="Standard No." num="1" username="No" loginname="显示"
+				 >
+			</node>
+			<node usercode="英文标准名称" num="2" username="No" loginname="显示"  >
+			</node>
+			<node usercode="中文标准名称" num="3" username="No" loginname="显示"
+				  >
+			</node>
+		</mx:XMLList>
+	<mx:Accordion id="accordion"   fontSize="12"
+		headerRenderer="org.utmost.OverRideAccordionHeader" 
+		width="100%" height="100%"> 
+		<mx:VBox id="v1" label="名称" width="100%" fontSize="12" height="100%" horizontalAlign="center" verticalAlign="middle"> 
+			<mx:HBox width="100%" height="100%" horizontalAlign="center" verticalAlign="middle"> 
+				<mx:FormItem label="类别名称:" required="true" >
+					 <mx:TextInput change="{treeDataChangeHandle(event);}" id="name_input" width="140" />
+				</mx:FormItem>
+			</mx:HBox> 
+			<mx:ControlBar horizontalAlign="right" width="100%"> 
+				<mx:HBox width="50%"  horizontalAlign="center" >
+				</mx:HBox>
+				<mx:HBox width="50%"  horizontalAlign="center" >
+					<mx:Button label="下一步" width="100" fontSize="14" id="pageone_button" enabled="false" click="nextChild();" /> 
+				</mx:HBox>
+				
+			</mx:ControlBar> 
+		</mx:VBox> 
+		<mx:VBox id="mybox" label="显示" paddingTop="5"   width="100%" height="100%">
+				<mx:DataGrid width="100%" dataProvider="{mydgData}" height="95%">
+					<mx:columns>
+						<mx:DataGridColumn dataField="@num" headerText="序号" />
+						<mx:DataGridColumn dataField="@usercode" headerText="字段名称" />
+						<mx:DataGridColumn dataField="@usercode" headerText="显示名称" />
+						<mx:DataGridColumn dataField="@username" headerText="是否保密" />
+						<mx:DataGridColumn dataField="@loginname" headerText="是否显示在简洁模式中" />
+						
+					</mx:columns>
+				</mx:DataGrid>
+		<mx:ControlBar horizontalAlign="right" width="100%"> 
+				<mx:HBox width="50%"  horizontalAlign="center" >
+					<mx:Button label="上一步"  width="100" fontSize="14"   click="prevChild();" /> 
+				</mx:HBox>
+					<mx:Button label="保存" width="100" fontSize="14"     /> 
+				<mx:HBox width="50%"  horizontalAlign="center" >
+					<mx:Button label="编辑"  width="100" fontSize="14"  click="nextChild();" /> 
+				</mx:HBox>
+		</mx:ControlBar> 
+		</mx:VBox>
+		<mx:VBox id="editbox" label="编辑" paddingTop="5"   width="100%" height="100%">
+			<mx:HBox width="100%" id="hbox1" height="100%" horizontalAlign="center" verticalAlign="middle">
+					<mx:VBox width="50%" height="100%"  horizontalAlign="right">
+						<mx:Label text="全部字段" width="200"  fontWeight="bold"/>
+						<mx:List width="200" id="allword"  dataProvider="{showword_data}"  allowMultipleSelection="true" dragMoveEnabled="true" dragEnabled="true"  height="100%">
+					</mx:List>
+					</mx:VBox>
+					<mx:VBox  height="100%" verticalGap="50" verticalAlign="middle" horizontalAlign="center">
+						<mx:Button label="==>"  click="{addtoRight()}"/>
+						<mx:Button label="&lt;==" click="{addtoLeft()}" />
+					</mx:VBox>
+					<mx:HBox width="50%" height="100%"  horizontalAlign="left">
+						<mx:VBox height="100%">
+							<mx:HBox width="200">
+							<mx:Label text="本类字段"   fontWeight="bold"/>
+							<mx:Spacer width="100%" />
+							<mx:Button label="Drop"  click="{addtoLeft();}"/>
+						</mx:HBox>
+						<mx:List width="200"  id="notlook_word"      dataProvider="{showword_data1}" dragMoveEnabled="true" dragEnabled="true" dropEnabled="true"  height="100%">
+						</mx:List>
+						</mx:VBox>
+					</mx:HBox>
+			</mx:HBox>
+			<mx:ControlBar width="100%" horizontalGap="50" horizontalAlign="center">
+				<mx:HBox width="50%"  horizontalAlign="center" >
+						<mx:Button label="上一步" width="100" fontSize="14" click="{accordion.selectedIndex--}" />
+				</mx:HBox>
+				<mx:HBox width="50%"  horizontalAlign="center" >
+					<mx:Button label="保存,下一步"   fontSize="14" click="{accordion.selectedIndex++}"/>
+				</mx:HBox>
+			</mx:ControlBar>
+		</mx:VBox>
+		<mx:VBox id="detailbox" label="详细" paddingTop="5"   width="100%" height="100%">
+			<mx:HBox width="100%" horizontalGap="40"  height="100%" horizontalAlign="center" verticalAlign="middle">
+				<mx:VBox height="100%">
+					<mx:HBox width="200" fontWeight="bold">
+						<mx:Label text="本类字段"  />
+					</mx:HBox>
+					<mx:List width="200" id="mydetai_list" dataProvider="{showword_data1}"    height="100%">
+					</mx:List>
+				</mx:VBox>
+				<mx:VBox height="100%">
+					<mx:HBox width="200">
+						<mx:Label text="字段属性"   fontWeight="bold"/>
+					</mx:HBox>
+					<mx:VBox height="100%" borderStyle="solid" verticalGap="15" verticalAlign="top" >
+					<mx:Spacer height="20" />
+						<mx:FormItem label="字段名称:" required="true">
+							<mx:TextInput width="140" enabled="false" toolTip="{mydetai_list.selectedItem.toString()}" text="{mydetai_list.selectedItem.toString()}" />
+						</mx:FormItem>
+						<mx:FormItem label="显示名称:" required="true">
+							 <mx:TextInput width="140" toolTip="{mydetai_list.selectedItem.toString()}" text="{mydetai_list.selectedItem.toString()}" />
+						</mx:FormItem>
+						<mx:FormItem label="是否保密:" required="true">
+							<mx:HBox width="140" >
+								<mx:RadioButtonGroup id="mygroup" />
+							 	<mx:RadioButton label="Yes" groupName="mygroup"  />
+							 	<mx:Spacer width="5%" />
+							 	<mx:RadioButton label="No" groupName="mygroup" selected="true"  />
+							</mx:HBox>
+						</mx:FormItem>
+						<mx:FormItem label="简洁模式:" required="true">
+							<mx:HBox width="140" >
+								<mx:RadioButtonGroup id="mygroup1" />
+							 	<mx:RadioButton label="显示" groupName="mygroup1" selected="true" />
+							 	<mx:Spacer width="5%" />
+							 	<mx:RadioButton label="不显示" groupName="mygroup1"  />
+							</mx:HBox>
+						</mx:FormItem>
+				</mx:VBox>
+				</mx:VBox>
+			</mx:HBox>
+			<mx:ControlBar width="100%"   horizontalAlign="center">
+				<mx:HBox width="50%"  horizontalAlign="center" >
+					<mx:Button label="上一步" width="100" fontSize="14" click="{accordion.selectedIndex--}" />
+				</mx:HBox>
+				<mx:HBox width="50%"  horizontalAlign="center" >
+					<mx:Button label="保存" width="100" fontSize="14" click="{accordion.selectedIndex=1}" />
+				</mx:HBox>
+			</mx:ControlBar>
+		</mx:VBox>	
+</mx:Accordion> 
+</mx:Module>
+ 

@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+///////////////////////////////////////////////////////////////////////////////
+// Licensed Materials - Property of IBM
+// 5724-Y31
+// (c) Copyright IBM Corporation 2007, 2009. All Rights Reserved.
+//
+// Note to U.S. Government Users Restricted Rights:
+// Use, duplication or disclosure restricted by GSA ADP Schedule
+// Contract with IBM Corp.
+///////////////////////////////////////////////////////////////////////////////
+-->
+
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml"
+           xmlns:local="*"
+           borderThickness="1" 
+           borderColor="0xB7BABC" 
+           borderStyle="solid" 
+           creationComplete="init();"
+>
+  <mx:Script>
+    <![CDATA[
+    	import module.chart.ilog.Task;
+    	import module.chart.ilog.Constraint;
+      import ilog.gantt.ConstraintKind;
+      import mx.events.PropertyChangeEvent;
+      import mx.events.CollectionEventKind;
+      import mx.events.CollectionEvent;
+      import mx.collections.ICollectionView;
+      import ilog.gantt.TaskItem;
+      import ilog.core.DataItem;
+      import ilog.gantt.ConstraintItem;
+      import ilog.gantt.TaskChart;
+      import mx.events.CalendarLayoutChangeEvent;
+
+      //------------------------------------------------------------------------
+      //
+      //  Constants
+      //
+      //------------------------------------------------------------------------
+
+      private const _constraintKinds:Array = [
+        ConstraintKind.START_TO_START,
+        ConstraintKind.START_TO_END,
+        ConstraintKind.END_TO_START,
+        ConstraintKind.END_TO_END
+      ];
+      
+      //------------------------------------------------------------------------
+      //
+      //  Properties
+      //
+      //------------------------------------------------------------------------
+
+      //-------------------------------
+      //  constraint
+      //-------------------------------
+
+      private var _constraint:Constraint;
+      
+      [Bindable]
+      public function get constraint():Constraint
+      {
+        return _constraint;
+      }
+      public function set constraint(value:Constraint):void
+      {
+        this._constraint = value;
+        updateState();
+        constraintItem = value ? taskChart.ganttSheet.itemToConstraintItem(value)
+                               : null;
+        if (constraintItem)
+        {
+          fromTask = Task(constraintItem.fromTask);
+          toTask = Task(constraintItem.toTask);
+        }
+        else
+        {
+          fromTask = null;
+          toTask = null;
+        }
+      }
+
+      //-------------------------------
+      //  constraintItem
+      //-------------------------------
+      
+      [Bindable]
+      private var constraintItem:ConstraintItem;
+
+      //-------------------------------
+      //  fromTask
+      //-------------------------------
+      [Bindable]
+      private var fromTask:Task;
+
+      //-------------------------------
+      //  toTask
+      //-------------------------------
+      [Bindable]
+      private var toTask:Task;
+
+      //-------------------------------
+      //  taskChart
+      //-------------------------------
+      
+      private var _taskChart:TaskChart;
+      
+      public function get taskChart():TaskChart
+      {
+        return _taskChart;
+      }
+
+      public function set taskChart(value:TaskChart):void 
+      {
+        this._taskChart = value; 
+      }
+      
+      //-------------------------------
+      //  taskchartApplication
+      //-------------------------------
+
+      public function get taskchartApplication():ChartModule
+      {
+        return parentApplication as ChartModule;
+      }
+      
+      //-------------------------------
+      //  task
+      //-------------------------------
+      
+      private var _task:Task;
+
+      [Bindable]      
+      public function get task():Task
+      {
+        return _task;
+      }
+
+      public function set task(value:Task):void
+      {
+        this._task = value;
+        updateState();
+        taskItem = value ? taskChart.ganttSheet.itemToTaskItem(value)
+                         : null;
+        updateTaskFields();
+      } 
+
+      //-------------------------------
+      //  taskItem
+      //-------------------------------
+      
+      [Bindable]
+      private var taskItem:TaskItem;
+
+      //------------------------------------------------------------------------
+      //
+      //  Event handlers
+      //
+      //------------------------------------------------------------------------
+      
+      private function init():void {
+        updateState();
+      }
+
+      private function taskDateField_changeHandler(event:CalendarLayoutChangeEvent):void
+      {
+        if (task.milestone)
+        {
+          task.startTime = adjustEndTime(new Date(event.newDate));
+          task.endTime = adjustEndTime(new Date(event.newDate));
+        }
+        else if (taskStartDateField.selectedDate > taskEndDateField.selectedDate)
+        {
+          task.startTime = adjustStartTime(new Date(event.newDate));
+          task.endTime = adjustEndTime(new Date(event.newDate));
+        }
+        else if (event.currentTarget.id == "taskStartDateField")
+        {
+          task.startTime = adjustStartTime(new Date(event.newDate));
+        }
+        else if (event.currentTarget.id == "taskEndDateField")
+        {
+          task.endTime = adjustEndTime(new Date(event.newDate));
+        }
+      }
+      
+      private function taskMilestoneCheckBox_changeHandler(event:Event):void
+      {
+        var isMilestone:Boolean = CheckBox(event.currentTarget).selected; 
+        task.milestone = isMilestone;
+
+        if (isMilestone)
+        {
+          task.startTime = adjustEndTime(new Date(task.startTime));
+          task.endTime = adjustEndTime(new Date(task.startTime));
+        }
+        else
+        {
+          task.startTime = adjustStartTime(new Date(task.startTime));
+          task.endTime = adjustEndTime(new Date(task.startTime));
+        }
+        
+        updateTaskFields();
+      }
+
+      //------------------------------------------------------------------------
+      //
+      //  Other methods
+      //
+      //------------------------------------------------------------------------
+
+      private function updateState():void
+      {
+        if (_task)
+          currentState = "task";
+        else if (_constraint)
+          currentState = "constraint";
+        else
+          currentState = null;
+      }
+
+      private function adjustStartTime(date:Date):Date
+      {
+        return taskchartApplication.adjustStartTime(date);
+      }
+      
+      private function adjustEndTime(date:Date):Date
+      {
+        return taskchartApplication.adjustEndTime(date);
+      }
+
+      private function updateTaskFields():void
+      {
+        taskEndDateField.enabled = !taskItem.isSummary && !taskItem.isMilestone;
+        taskStartDateField.enabled = !taskItem.isSummary;
+        taskMilestoneCheckBox.enabled = !taskItem.isSummary;
+      }
+    ]]>
+  </mx:Script>
+
+  <mx:states>
+    <mx:State name="constraint">
+      <mx:AddChild relativeTo="{spacer1}" position="before">
+        <mx:VBox height="100%" 
+                 verticalGap="0"
+                 left="10"
+                 top="2"
+                 right="20">
+          <mx:Label text="@Resource(bundle='taskchartsample', key='taskchartsample.properties.ConstraintFromTask')" 
+                    width="100%"
+                    fontWeight="bold"
+                    textAlign="left"
+                    />
+          <mx:Text id="constraintFromTaskLabel" 
+                    width="100%"
+                    textAlign="left"
+                    text="{fromTask.name}"
+                    toolTip="{fromTask.name}"
+                    />
+          <mx:Label text="@Resource(bundle='taskchartsample', key='taskchartsample.properties.ConstraintToTask')" 
+                    width="100%" 
+                    fontWeight="bold"
+                    textAlign="left" 
+                    />
+          <mx:Text id="constraintToTaskLabel" 
+                    width="100%"
+                    textAlign="left" 
+                    text="{toTask.name}"
+                    toolTip="{toTask.name}"
+                    />
+          <mx:Label text="@Resource(bundle='taskchartsample', key='taskchartsample.properties.ConstraintKind')"
+                    width="100%"
+                    fontWeight="bold"
+                    textAlign="left" 
+                    height="22"/>
+          <mx:ComboBox id="constraintKindCombo"
+                    labelFunction="taskchartApplication.getConstraintKindLabel"
+                    dataProvider="{_constraintKinds}"
+                    selectedIndex="{_constraintKinds.indexOf(constraintItem.kind)}"
+                    change="constraint.kind = constraintKindCombo.selectedItem as String;"
+                    >
+          </mx:ComboBox>
+        </mx:VBox>
+      </mx:AddChild>
+    </mx:State>
+    <mx:State name="task">
+      <mx:AddChild relativeTo="{spacer1}" position="before">
+        <mx:VBox height="100%" 
+                 verticalGap="0" 
+                 left="10"
+                 top="2"
+                 right="20">
+          <mx:Label text="@Resource(bundle='taskchartsample', key='taskchartsample.properties.TaskName')"
+                    fontWeight="bold"
+                    textAlign="left" 
+                    width="100%"
+                    />
+          <mx:TextArea id="taskNameLabel"
+                    width="100%"
+                    height="66"
+                    textAlign="left"
+                    text="{task.name}"
+                    toolTip="{task.name}"
+                    change="task.name = TextArea(event.currentTarget).text;"
+                    />
+          <mx:Label text="@Resource(bundle='taskchartsample', key='taskchartsample.properties.TaskFromDate')"
+                    width="100%"
+                    fontWeight="bold"
+                    textAlign="left"
+                    />
+          <mx:DateField formatString="YYYY-MM-DD" width="100%" 
+                    id="taskStartDateField" 
+                    selectedDate="{task.startTime}"                    
+                    change="taskDateField_changeHandler(event);"
+                    />
+          <mx:Label text="@Resource(bundle='taskchartsample', key='taskchartsample.properties.TaskToDate')"
+                    width="100%"
+                    fontWeight="bold"
+                    textAlign="left"
+                    />
+          <mx:DateField formatString="YYYY-MM-DD" width="100%" 
+                    id="taskEndDateField"
+                    selectedDate="{task.endTime}"
+                    change="taskDateField_changeHandler(event);"
+                    />
+          <mx:CheckBox width="100%"
+                    id="taskMilestoneCheckBox"
+                    selected="{taskItem.isMilestone}"
+                    change="taskMilestoneCheckBox_changeHandler(event);"
+                    label="@Resource(bundle='taskchartsample', key='taskchartsample.properties.TaskIsMilestone')"
+                    />
+          <mx:Label text="@Resource(bundle='taskchartsample', key='taskchartsample.properties.TaskInfo')"
+                    width="100%"
+                    fontWeight="bold"
+                    textAlign="left"
+                    />
+          <mx:TextArea id="taskInfoText" 
+                    width="100%"
+                    textAlign="left" 
+                    height="66"
+                    text="{task.info}"
+                    change="task.info = TextArea(event.currentTarget).text;"
+                    />
+        </mx:VBox>
+      </mx:AddChild>
+    </mx:State>
+  </mx:states>
+
+  <mx:Panel horizontalScrollPolicy="off" width="100%"  height="100%"
+            layout="absolute"
+            backgroundColor="0xEEEEEE" backgroundAlpha="0.7"
+            borderThicknessBottom="0"
+            borderThicknessTop="0"
+            borderThicknessLeft="0"
+            borderThicknessRight="0"
+            borderAlpha="1"
+            cornerRadius="0"
+            dropShadowEnabled="false"
+            title="@Resource(bundle='taskchartsample', key='taskchartsample.title.Item')"
+            headerColors="[0xEEEEEE, 0xFFFFFF]"
+            borderColor="0x0"
+            borderSides=""
+            headerHeight="21"
+            verticalScrollPolicy="auto">
+
+    <mx:VBox id="rightVBox"
+             height="100%" 
+             verticalGap="0" 
+             left="10"
+             top="2"
+             right="20">
+
+      <mx:Spacer height="2"/>
+      <mx:Spacer height="5" width="100%" id="spacer1"/>
+    </mx:VBox>    
+  </mx:Panel>
+
+</mx:Canvas>

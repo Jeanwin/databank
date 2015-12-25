@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" width="100%" height="90%"   xmlns:component="component.*" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+		<mx:Script>
+			<![CDATA[
+				import com.roguedevelopment.pulse.PulseEngine;
+				import mx.core.FlexSprite;
+				import org.utmost.util.ComponentUtil;
+				import mx.controls.Alert;
+				import mx.events.ListEvent;
+				private function trasSystem(event:ListEvent):void
+				{
+					var o:Object=event.itemRenderer.data;
+					var xml:XML;
+						if (o.@nodecode == "VW")
+						{
+							 ComponentUtil.setVisible(this.parentApplication.MACB,false);
+							 this.parentApplication.loadModule("module/DetailList.swf");
+						}
+						else if (o.@nodecode == "Portal")
+						{	 ComponentUtil.setVisible(this.parentApplication.MACB,false);
+							 this.parentApplication.loadModule("module/manage.swf");
+						}
+						else if (o.@nodecode == "RR")
+						{	 ComponentUtil.setVisible(this.parentApplication.MACB,false);
+							 this.parentApplication.loadModule("module/UserRoleManage.swf");
+						}else
+						{
+						Alert.show("无效的节点编码", "提示");
+						return ;
+					    }
+				}
+			]]>
+		</mx:Script>
+		<!--
+			<mx:XML id="MainTree" source="xml/MainTree.xml"/>
+		-->
+		<mx:XML id="myTreeData"   >
+			<node nodename="MainTree">
+				<node nodename="浏览系统" mode="dynamic" nodecode="VW" icon="img/resources/elixir60.png"   />
+				<node nodename="管理信息" mode="static"  nodecode="Portal" icon="img/system/tpl_portal.png"   />
+				<node nodename="用户权限" mode="userrole"  nodecode="RR" icon="img/system/pic_userrole.png"   />
+			</node>
+		</mx:XML>
+		<mx:VBox id="vbox" width="100%"  height="90%" horizontalAlign="center" verticalAlign="middle" horizontalScrollPolicy="off" verticalScrollPolicy="off" verticalGap="0"   >
+			<mx:Spacer height="50" />
+			<component:MyTileList verticalScrollPolicy="off" width="1000" horizontalScrollPolicy="off" id="tileList"     height="80%"  itemClick="trasSystem(event)" dataProvider="{myTreeData.node}" 
+				itemRenderer="component.ImageItemRenderer" columnCount="3" backgroundAlpha="0.0" borderSides="0" dragEnabled="true" focusAlpha="0.0" dragMoveEnabled="true"  dropEnabled="true">
+			</component:MyTileList>
+		</mx:VBox>
+		
+</mx:Module>

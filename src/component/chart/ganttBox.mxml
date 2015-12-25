@@ -1,0 +1,824 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" backgroundColor="#FFFFFF" horizontalScrollPolicy="off" verticalScrollPolicy="off"
+    height="30" creationComplete="init()">
+	<mx:Style>
+		.yearStyle{
+			horizontal-gap: 0;
+		}		
+		.aYearStyle{
+			 vertical-gap: 0;
+		}
+		.yearStyle{
+		 	background-color: #DDDDFF;
+		 	border-color: #66c4ff;
+			border-style: solid;
+			border-thickness: 1;
+			border-sides: "right";
+			color: #696969;	
+			vertical-align: middle;	
+		}
+		.mouthsStyle{
+			horizontal-gap: 0;
+		}
+		.mouthStyle{
+			backgroundColor: #FFFFFF;
+			border-color: #66c4ff;
+			border-style: solid;
+			border-thickness: 1;
+			border-sides: "right,bottom";
+		}
+		.fujianStyle{
+			backgroundColor: #006ba2;
+		}
+		.daysStyle{
+			backgroundColor: #DDDDDD;
+		 	horizontal-gap: 0;
+		}
+		.planStyle{
+			backgroundColor: #FFFFFF;
+		 	horizontal-gap: 0;
+		}
+		.stageLightStyle{
+			backgroundColor: #FFFFFF;
+			background-alpha: 0.5;
+		}
+		.stageStyle1{
+			backgroundColor: #F6E5BC;
+			border-color: #F6E5BC;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle2{
+			backgroundColor: #E7F3F3;
+			border-color: #E7F3F3;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle3{
+			backgroundColor: #EBCED7;
+			border-color: #EBCED7;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle4{
+			backgroundColor: #C6DFE7;
+			border-color: #C6DFE7;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle5{
+			backgroundColor: #C26D88;
+			border-color: #C26D88;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle6{
+			backgroundColor: #A8ADB3;
+			border-color: #A8ADB3;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyle7{
+			backgroundColor: #A21E4D;
+			border-color: #A21E4D;
+			border-style: solid;
+			border-thickness: 1;
+		}
+		.stageStyleNull{
+			backgroundColor: #FFFFFF;
+		}
+		.labelCenter{
+			text-align: center;
+			vertical-align: middle;
+			font-weight: bold;
+			font-size: 11;
+		}
+		.labelCenter2{
+			text-align: center;
+			vertical-align: middle;
+			font-size: 11;
+		}
+		.linkStyle{
+		  	disabledSkin:ClassReference(null);
+			downSkin:ClassReference(null);
+			overSkin:ClassReference(null);
+			upSkin:ClassReference(null);
+			focusSkin:ClassReference(null);
+		}
+</mx:Style>
+	<mx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			import module.ganttDataGird;
+			import mx.events.CloseEvent;
+			import fr.kapit.data.utils.HashMap;
+			import mx.effects.easing.Back;
+			import ascb.util.DateFormat;
+			import mx.controls.Image;
+			import component.accDownLoad;
+			import mx.core.IFlexDisplayObject;
+			import mx.managers.PopUpManager;
+			import component.fileDownLoad;
+			import com.ganttBean.Mouth;
+			import mx.containers.ApplicationControlBar;
+			import mx.controls.LinkButton;
+			import mx.effects.IAbstractEffect;
+			import mx.containers.HBox;
+			import mx.controls.Label;
+			import mx.controls.Alert;
+			import mx.collections.ArrayCollection;
+			import com.ganttBean.Gantt;
+			import com.ganttBean.GanttStage;
+			
+			private var prevData:Object = null;
+			
+			private var MOUTH_WIDTH:int = 42;
+			private var DAY_HEIGHT:int = 15;
+			
+			public var ganttObj:Gantt;
+			
+			private var ganttIndex:int;
+			
+			private var typeStr:String;
+			
+			private var isBack:Boolean = false;
+			
+			//attachment icon
+			[Bindable]
+			[Embed(source="/img/mini_icons/flag_green.gif")]
+			private var flagGreenImg:Class;
+			
+			//gantts plan and N Phases
+			private var gantts:ArrayCollection;
+			
+			private var commondata_uuid:String;
+			
+			//the current date
+			private var nowDate:Date = new Date();
+			private static const millisecondsPerDay:int = 1000 * 60 * 60 * 24;
+
+			
+			//record appendix map, the key is string of "year + month", the value is appendix list.
+			private var appendixMap:Object = new Object();
+			
+			private var frontDate:Date;	//the first day of the five years
+			private var backDate:Date;	//the last day of the five years
+			
+			private var canShowModifyButton = true;
+			
+			private function dataChangeHandler(event:Event):void{
+				init();
+			}
+			
+			private function init():void{
+				if(prevData == data) return;
+				prevData = data;
+				dateBox.removeAllChildren();
+				if(data != null && data.canShowModifyButton != null){
+					canShowModifyButton = data.canShowModifyButton;
+				}
+				commondata_uuid = this.data.commondata_uuid;
+				trace("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"+commondata_uuid);
+				typeStr = this.data.type;
+				gantts = ArrayCollection(this.data.gantts);
+				this.width = MOUTH_WIDTH * 12 * 5; //five years
+				dateBox.width = MOUTH_WIDTH * 12 * 5; //five years
+				
+				frontDate = new Date(nowDate.getFullYear()-3,nowDate.month,1,0,0,0,0);	//set first day of the five years
+				
+				makeAppendixMap(this.data.appendixs);
+				
+				if(typeStr == "date" || typeStr == null){
+					var gantt:Gantt = makeDatas(gantts);	//package GANTT object
+					makeShow(gantt);
+				}else{
+					showYear();
+				}
+				
+				this.addEventListener(FlexEvent.DATA_CHANGE, dataChangeHandler);
+			}
+			
+			/**
+			 * Generate the gantt figure
+			 * */
+			private function makeShow(gantt:Gantt):void{
+				dateBox.removeAllChildren();
+				dateBox.addChild(makeMouthsBox(gantt._startYear,gantt._startMouth,gantt._endYear,gantt._endMouth));
+				dateBox.addChild(makeDayBox(gantt));
+			}
+			
+			/**
+			 * Package the datas
+			 * */
+			private function makeDatas(list:ArrayCollection):Gantt{
+				var startDate:Date;
+				var endDate:Date;
+				var count:int = 0;
+				var lastUuid:String;
+				
+				var stageArr:ArrayCollection = new ArrayCollection();
+				
+				for each(var o:Object in list){
+					//find phase = 0,if there's more than 1 row, pick the one with the same uuid with variable data
+					if(o.phase == 0){
+						count+=1;
+						if(count > 1){
+							if(this.data.ganttuuid == lastUuid){
+								continue;
+							}
+						}
+						
+						startDate = o.start_date;
+						endDate = o.end_date;
+						lastUuid = o.uuid;
+					}else{
+						stageArr.addItem(o);
+					}
+				}
+				
+				var df:DateFormat = new DateFormat("Y.m.d");
+				
+				var startArr:Array = df.format(startDate).split(".");
+				var endArr:Array = df.format(endDate).split(".");
+				
+				var sy:int = int(startArr[0]);
+				var sm:int = int(startArr[1]);
+				var sd:int = int(startArr[2]);
+				var ey:int = int(endArr[0]);
+				var em:int = int(endArr[1]);
+				var ed:int = int(endArr[2]);
+				
+				var gantt:Gantt = new Gantt(sy,sm,sd,ey,em,ed,stageArr,startDate,endDate);
+				
+				return gantt;
+			}
+			
+			/**
+			 * pckage the month appendix MAP
+			 * */
+			private function makeAppendixMap(appendixs:ArrayCollection):void{
+				appendixMap = new Object();
+				if(appendixs != null){
+					for(var i:int=0; i<appendixs.length; i++){
+						var app:Object = appendixs.getItemAt(i);
+						var appDate:Date = new Date(app.current_date);
+						var appStr:String = appDate.getFullYear()+"-"+(appDate.month+1);
+						
+						var appList:ArrayCollection = appendixMap[appStr] as ArrayCollection;
+						if(appList==null){
+							appList = new ArrayCollection();
+						}
+						appList.addItem(app);
+						appendixMap[appStr] = appList;
+					}
+				}
+			}
+			
+			/**
+			 * Convert date interval to length
+			 * */
+			public function dateToWidth(d1:Date, d2:Date):Number{
+				
+				var flag:Boolean = false;
+				var temp:Date;
+				
+				if(d1.getTime() > d2.getTime()){
+					flag = true;
+					temp = d1;
+					d1 = d2;
+					d2 = temp;
+				}
+				
+				var df:DateFormat = new DateFormat("Y.m.d");
+				
+				var startArr:Array = df.format(d1).split(".");
+				var endArr:Array = df.format(d2).split(".");
+				
+				var sy:int = int(startArr[0]);
+				var sm:int = int(startArr[1]);
+				var sd:int = int(startArr[2]);
+				var ey:int = int(endArr[0]);
+				var em:int = int(endArr[1]);
+				var ed:int = int(endArr[2]);
+				
+				//get the date interval
+				var dateInterval:Number = getDateInterval(sy,sm,sd,ey,em,ed);
+				
+				if(flag){
+					return -(dateInterval * 42/30);
+				}else{
+					return dateInterval * 42/30;
+				}
+			}
+			
+			/**
+			 * get months BOX
+			 * */
+			public function makeMouthsBox(startYear:int, startMouth:int, endYear:int, endMouth:int):HBox{
+				var firstMouth:int = nowDate.month + 1;
+				
+				var mouthsBox:HBox = new HBox(); //all month BOX
+				mouthsBox.width = MOUTH_WIDTH * 12 * 5; //5 years
+				mouthsBox.height = 15;
+				mouthsBox.styleName = "mouthsStyle";
+				
+				var yearFlag:int = nowDate.getFullYear() - 3;
+				var mouthFlag:int = firstMouth;
+				
+				for(var i:int=0; i<60; i++){
+					
+					var mouth:Canvas = new Canvas(); // a month
+					mouth.width = MOUTH_WIDTH;
+					mouth.height = 15;
+					mouth.styleName = "mouthStyle";
+					
+					//Add a click button if in the plan.
+					if(isInDate(startYear,startMouth,endYear,endMouth,yearFlag,mouthFlag)){
+						
+						var appList:ArrayCollection = appendixMap[yearFlag+"-"+mouthFlag];
+						trace(yearFlag+"-"+mouthFlag);
+						if(appList!=null && appList.length>0){
+							//appendix img info
+							var fujianImg:Image = new Image();
+							fujianImg.source = flagGreenImg;
+							fujianImg.width = 13;
+							fujianImg.height = 13;
+							fujianImg.x = 26;
+							fujianImg.addEventListener(MouseEvent.CLICK, showAccList);
+							mouth.addChild(fujianImg);
+						}
+						var moutButton:LinkButton = new LinkButton();
+						moutButton.percentWidth = 100;
+						moutButton.height = 15;
+						moutButton.label = mouthFlag + "";
+						moutButton.data = yearFlag;
+						moutButton.addEventListener(MouseEvent.CLICK, showAccList);
+						mouth.addChild(moutButton);
+					}else{
+						var mouthLabel:Label = new Label();
+						mouthLabel.percentWidth = 100;
+						mouthLabel.height = 15;
+						mouthLabel.text = mouthFlag + "";
+						mouthLabel.styleName = "labelCenter2";
+						mouth.addChild(mouthLabel);
+					}
+					
+					mouthsBox.addChild(mouth);
+					
+					mouthFlag++;
+					
+					if(mouthFlag > 12){
+						mouthFlag = 1;
+						yearFlag++;
+					}
+				}
+				
+				return mouthsBox;
+			}
+			
+			/**
+			 * Check the date is in the specified range.
+			 * */
+			private function isInDate(startYear:int, startMouth:int, endYear:int, endMouth:int, year:int, mouth:int):Boolean{
+				
+				var sd:Date = new Date(startYear,startMouth-1,1,0,0,0,0);
+				var ed:Date = new Date(endYear,endMouth-1,1,0,0,0,0);
+				var nd:Date = new Date(year,mouth-1,1,0,0,0,0);
+				
+				if(nd >= sd && nd <= ed){
+					return true;
+				}else{
+					return false;
+				}
+			}
+			
+			/**
+			 * Get day BOX
+			 * */
+			public function makeDayBox(gantt:Gantt):Canvas{
+				
+				var dayBox:Canvas = new Canvas(); //all day BOX
+				dayBox.width = MOUTH_WIDTH * 12 * 5; //5 years
+				dayBox.height = 15;
+				dayBox.styleName = "daysStyle";
+				
+				var plan:Canvas = new Canvas();	//plan BOX
+				
+				var planWidthNum:Number = dateToWidth(gantt._startDate, gantt._endDate);
+				
+				plan.width = planWidthNum;	//the width of the plan of the five years
+				plan.percentHeight = 100;
+				plan.styleName = "planStyle";
+				
+				var frontNum:Number = dateToWidth(frontDate, gantt._startDate);	//the interval between the gantt start date with the first day
+					
+				plan.x = frontNum;
+				//Save stage order by stage.phase
+				var stageList:ArrayCollection =new ArrayCollection([null,null,null,null,null,null,null]);
+				for each(var o:Object in gantt._stageList){					
+					stageList.setItemAt(o,o.phase-1);
+				}				
+				//
+				for(var i:int=0; i<stageList.length; i++){					
+					if(stageList[i]!=null) {
+						var stageBox:VBox = makeStageBox(gantt._startDate, stageList[i],stageList);
+						plan.addChild(stageBox);
+					}
+				}
+				
+				dayBox.addChild(plan);				
+				return dayBox;
+			}
+			
+			/**
+			 * Find next phase.
+			 */ 
+			public function getNextStage(stage:Object, stageList:ArrayCollection):Object
+			{
+				var next:Object = null;
+				for(var i:int = stage.phase; i<stageList.length;i++){
+					next = stageList[i];
+					if(next!==null){
+						break;
+					}
+				}
+				return next;
+			}
+			
+			/**
+			 * genernate the stage BOX 
+			 * */
+			public function makeStageBox(planSD:Date,stageObj:Object, stageList:ArrayCollection):VBox{
+				var stage:VBox = new VBox();
+				stage.height = 25;
+				
+				var endDate:Date;
+				var startDate:Date = new Date(stageObj.start_date);
+				//
+				if(stageObj.end_date == "0"){
+					var nextStageObj:Object = getNextStage(stageObj,stageList);
+					if(nextStageObj==null){
+						endDate = nowDate;
+					}else{
+						// if the end date is null, set the end date is the next stage to begin the day before
+						endDate = new Date(new Date(nextStageObj.start_date).getTime() - millisecondsPerDay);
+					}
+				}
+				else{
+					endDate = new Date(stageObj.end_date);
+				}
+				
+				var dInterval:Number = dateToWidth(startDate, endDate);
+				stage.width = dInterval;
+				stage.styleName = "stageStyle"+stageObj.phase;
+				stage.toolTip = getStageName(stageObj.phase);
+				stage.setStyle("rollOverEffect",blurImage);
+				stage.setStyle("rollOutEffect",unblurImage);
+				
+				var frontNum:Number = dateToWidth(planSD, startDate);	//The distance between plan date with the start date
+				stage.x = frontNum;
+				
+				var stage2:Canvas = new Canvas();
+				stage2.height = 5;
+				stage2.percentWidth = 100;
+				stage2.styleName = "stageLightStyle";
+				
+				stage.addChild(stage2);
+				
+				return stage;
+			}
+			
+			/**
+			 * Get stage name According phase contents
+			 * */
+			public function getStageName(phase:Number):String{
+				
+				var str:String;
+				
+				switch(phase){
+					case 1: str = "Pre-planning"; break;
+					case 2: str = "Planning"; break;
+					case 3: str = "Drafting"; break;
+					case 4: str = "Drafting for comments"; break;
+					case 5: str = "Drafting for examination"; break;
+					case 6: str = "Drafting for approval"; break;
+					case 7: str = "Publication"; break;
+				}
+				
+				return str;
+			}
+			
+			/**
+			 * Generated year BOX display
+			 * */
+			public function showYear():void{
+				
+				var yearsBox:HBox = new HBox(); //all year BOX
+				yearsBox.width = MOUTH_WIDTH * 12 * 5; //5 year
+				yearsBox.height = 30;
+				yearsBox.styleName = "yearStyle";
+				yearsBox.horizontalScrollPolicy = "false";
+				yearsBox.verticalScrollPolicy = "false";
+				
+				var dateFlag:Date = new Date(nowDate.getFullYear()-3,nowDate.month,1,0,0,0,0);
+				
+				while(true){
+					var year:HBox = new HBox();
+					year.height = 30;
+					year.styleName = "yearStyle";
+					if(dateFlag.getFullYear() == frontDate.getFullYear()){
+						year.width = MOUTH_WIDTH * (12 - frontDate.month);	//mouth index start with "0"
+					}else{
+						year.width = MOUTH_WIDTH * 12;
+					}
+					
+					var yearLabel:Label = new Label(); // year label
+					yearLabel.text = dateFlag.getFullYear() + "";
+					yearLabel.percentWidth = 100;
+					yearLabel.styleName = "labelCenter";
+					
+					year.addChild(yearLabel);
+					
+					yearsBox.addChild(year);
+					
+					dateFlag = new Date(dateFlag.getFullYear()+1,dateFlag.month,1,0,0,0,0);
+					
+					if(dateFlag.getFullYear() > nowDate.getFullYear() + 2){
+						break;
+					}
+				}
+				
+				dateBox.addChild(yearsBox);
+			}
+			
+			public function getWidthNum():int{
+				ganttObj = this.makeData();
+				
+				var startYear:int = ganttObj._startYear;
+				var startMouth:int = ganttObj._startMouth;
+				var endYear:int = ganttObj._endYear;
+				var endMouth:int = ganttObj._endMouth;
+				
+				var mouthNum:int = getMouthNum(startYear,startMouth,endYear,endMouth);
+				
+				return mouthNum * MOUTH_WIDTH;
+			}
+			
+			public function makeData():Gantt{
+				return null;
+			}
+			
+			public function makeView():void{
+				
+				ganttObj = this.makeData();
+				
+				var startYear:int = ganttObj._startYear;
+				var startMouth:int = ganttObj._startMouth;
+				var endYear:int = ganttObj._endYear;
+				var endMouth:int = ganttObj._endMouth;
+				var dayAmountYear:int = ganttObj._dayAmount;
+				var stageList:ArrayCollection = ganttObj._stageList;
+				
+				/*the current date*/
+				var nowDate:Date = 	new Date();
+				var df:DateFormat = new DateFormat("Y.m.d");
+				var nowDateStr:String = df.format(nowDate);
+				var nowArr:Array = nowDateStr.split(".");
+				var nowYear:int = int(nowArr[0]);
+				var nowMouth:int = int(nowArr[1]);
+				var nowday:int = int(nowArr[2]);
+				
+				var y1:int = nowYear - 3; //start display date
+				var m1:int = nowMouth;
+				var d1:int = nowday;
+				var y2:int = nowYear + 2; //end display date
+				var m2:int = nowMouth - 1;
+				var d2:int = nowday;
+				
+				var yearsBox:HBox = new HBox(); //all years BOX
+				yearsBox.width = MOUTH_WIDTH * 12 * 5; //5 years
+				yearsBox.height = 30;
+				yearsBox.styleName = "yearStyle";
+				yearsBox.horizontalScrollPolicy = "false";
+				yearsBox.verticalScrollPolicy = "false";
+				
+				for(var i:int=0; i<6; i++){
+					var year:HBox = new HBox();
+					year.height = 30;
+					if(i == 0){
+						year.width = MOUTH_WIDTH * (12 - m1 + 1);
+					}else if(i == 6){
+						year.width = MOUTH_WIDTH * (m2 - 1);
+					}else{
+						year.width = MOUTH_WIDTH * 12;
+					}
+					year.styleName = "yearStyle";
+					
+					var yearLabel:Label = new Label(); // the label of year
+					yearLabel.text = y1+i + "";
+					yearLabel.percentWidth = 100;
+					yearLabel.styleName = "labelCenter";
+					
+					year.addChild(yearLabel);
+					
+					yearsBox.addChild(year);
+				}
+				
+				if(typeStr == "year"){
+					dateBox.addChild(yearsBox);
+				}
+				
+				var mouthsBox:HBox = new HBox(); //all month BOX
+				mouthsBox.width = MOUTH_WIDTH * 12 * 5; //5 years
+				mouthsBox.height = 15;
+				mouthsBox.styleName = "mouthsStyle";
+				
+				var frontMouthNum:int = getMouthNum(y1,m1,startYear,startMouth);
+				var allMouthNum:int = getMouthNum(startYear,startMouth,endYear,endMouth);
+				var mouthIndex:int = nowMouth;
+				for(var i:int=0; i<60; i++){
+					
+					//appendix icon
+					var fujianImg:Image = new Image();
+					fujianImg.source = flagGreenImg;
+					fujianImg.width = 13;
+					fujianImg.height = 13;
+					fujianImg.x = 26;
+					
+					var mouth:Canvas = new Canvas(); // a month
+					mouth.width = MOUTH_WIDTH;
+					mouth.height = 15;
+					mouth.styleName = "mouthStyle";
+					
+					var moutButton:LinkButton = new LinkButton();
+					moutButton.percentWidth = 100;
+					moutButton.height = 15;
+					moutButton.label = mouthIndex + "";
+					mouth.addChild(moutButton);
+					
+					mouthsBox.addChild(mouth);
+					
+					if(i>frontMouthNum-2 && i<(frontMouthNum+allMouthNum-1)){
+						if(this.parentApplication.isBack == "true"){
+							moutButton.addEventListener(MouseEvent.CLICK, showAccList);
+							fujianImg.addEventListener(MouseEvent.CLICK, showAccList);
+						}else{
+							var lb:Label = new Label();
+							lb.percentWidth = 100;
+							lb.percentHeight = 100;
+							lb.styleName = "labelCenter2";
+							lb.text = mouthIndex + "";
+							mouth.removeAllChildren();
+							mouth.addChild(lb);
+						}
+						
+					}else{
+						var lb:Label = new Label();
+						lb.percentWidth = 100;
+						lb.percentHeight = 100;
+						lb.styleName = "labelCenter2";
+						lb.text = mouthIndex + "";
+						mouth.removeAllChildren();
+						mouth.addChild(lb);
+					}
+					
+					if(i == 27 || i == 30 || i == 32 || i == 33){
+						moutButton.addEventListener(MouseEvent.CLICK, showAccList);
+						fujianImg.addEventListener(MouseEvent.CLICK, showAccList);
+						mouth.addChild(moutButton);
+						mouth.addChild(fujianImg);
+					}
+					
+					mouthIndex++;
+					
+					if(mouthIndex > 12){
+						mouthIndex = 1;
+					}
+				}
+				if(typeStr == "date"){
+					dateBox.addChild(mouthsBox);
+				}
+				
+				var dayBox:HBox = new HBox(); //all days BOX
+				dayBox.width = MOUTH_WIDTH * 12 * 5; //5 years
+				dayBox.height = 15;
+				dayBox.styleName = "daysStyle";
+				
+				var yearFlag:int = startYear;
+				var mouthFlag:int = startMouth;
+				var dayFlag:int = 1;
+				
+				for(var k:int=0; k<stageList.length; k++){
+					var stageObj:GanttStage = stageList.getItemAt(k) as GanttStage;
+					
+					var frontDate:int = getDateInterval(yearFlag,mouthFlag,dayFlag,stageObj._startYear, stageObj._startMouth, stageObj._startDay);	//the blank days before the stage
+					var dayAmount:int = getDateInterval(stageObj._startYear, stageObj._startMouth, stageObj._startDay,stageObj._endYear, stageObj._endMouth, stageObj._endDay);;  //the sum days of stage
+					
+					var stageFront:Canvas = new Canvas();
+					stageFront.height = 25;
+					var dIntervalFront:Number = frontDate /dayAmountYear * 100;
+					stageFront.percentWidth = dIntervalFront;
+					stageFront.styleName = "stageStyleNull";
+					
+					var stage:VBox = new VBox();
+					stage.height = 25;
+					var dInterval:Number = dayAmount /dayAmountYear * 100;
+					stage.percentWidth = dInterval;
+					stage.styleName = "stageStyle"+(k+1);
+					stage.toolTip = stageObj._stageName;
+					stage.setStyle("rollOverEffect",blurImage);
+					stage.setStyle("rollOutEffect",unblurImage);
+					
+					var stage2:Canvas = new Canvas();
+					stage2.height = 5;
+					stage2.percentWidth = 100;
+					stage2.styleName = "stageLightStyle";
+					
+					stage.addChild(stage2);
+					
+					dayBox.addChild(stageFront);
+					dayBox.addChild(stage);
+					
+					yearFlag = stageObj._endYear;
+					mouthFlag = stageObj._endMouth;
+					dayFlag = stageObj._endDay;
+				}
+				
+				var endMouthNum:int = getMouthNum(yearFlag,mouthFlag,endYear,endMouth)-1;
+				var endBox:HBox = new HBox();
+				endBox.width = endMouthNum * 40;
+				endBox.height = 15;
+				endBox.styleName = "stageStyleNull";
+				
+				dayBox.addChild(endBox);
+				
+				var daysCanvas:Canvas = new Canvas();
+				daysCanvas.percentWidth = 100;
+				daysCanvas.height = 15;
+				
+				if(typeStr == "date"){
+					daysCanvas.addChild(dayBox);
+					if(y1 < startYear){
+						var mn:int = ((startYear - y1 - 1) * 12) + (12 - m1) + (startMouth);
+						dayBox.x = mn * MOUTH_WIDTH;
+					}else if(y1 == startYear){
+						var mn1:int = startMouth - m1 - 1;
+						dayBox.x = mn1 * MOUTH_WIDTH;
+					}
+					dateBox.addChild(daysCanvas);
+				}
+			}
+			
+			private function getDateInterval(startY:int,startM:int,startD:int
+				,endY:int,endM:int,endD:int):Number{
+				
+				var mouthInterval:Number = getMouthNum(startY,startM,endY,endM);
+				
+				endD = ( endD > 30 ) ? 30 : endD;
+				
+				var dayInterval:Number = (mouthInterval * 30) - startD - (30 - endD);
+				
+				return dayInterval;
+			}
+			
+			public function getMouthNum(sy:int,sm:int,ey:int,em:int):Number{
+				
+				var mouthSum:Number = (ey-sy-1)*12;
+				
+				if((ey-sy) == 0){
+					mouthSum = em - sm + 1;
+				}else{
+					mouthSum += (13 - sm + em);
+				}
+				
+				return mouthSum<0 ? 0 : mouthSum;
+			}
+			
+			public function showAccList(e:MouseEvent):void{
+				var download:accDownLoad=accDownLoad(PopUpManager.createPopUp(this.parentApplication as DisplayObject,accDownLoad,true));
+			 	var mouthNum:String = LinkButton(e.currentTarget).label;
+			 	var yearNum:String = LinkButton(e.currentTarget).data.toString();
+			 	download.setCanShowModifyButton = canShowModifyButton;
+			 	download.initFileList(commondata_uuid, mouthNum, yearNum, this.data.ganttuuid, data["author"], data["last_modify_date_str"], data["func_uuid"]);
+			 	download.addEventListener(CloseEvent.CLOSE, function(e:Event):void{
+			 		if(parentDocument is ganttDataGird)
+			 			(parentDocument as ganttDataGird).init();
+			 	});
+			 	PopUpManager.centerPopUp(download);
+			}
+		]]>
+	</mx:Script>
+	
+	<mx:XML id="ganttData" source="/xml/ganttData.xml"/>
+	
+	<mx:Blur id="blurImage" duration="200" 
+        blurXFrom="0.0" blurXTo="10.0" 
+        blurYFrom="0.0" blurYTo="10.0"/>
+    <mx:Blur id="unblurImage" duration="200" 
+        blurXFrom="10.0" blurXTo="0.0" 
+        blurYFrom="10.0" blurYTo="0.0"/>
+
+	
+	<mx:VBox id="dateBox" fontSize="11" width="100%" height="100%" verticalGap="0" borderStyle="solid" borderThickness="1" borderColor="#036FBB" horizontalScrollPolicy="off" verticalScrollPolicy="off" backgroundColor="#DDDDDD">
+	</mx:VBox>
+</mx:Canvas>

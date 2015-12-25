@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow title="File Download" showCloseButton="true" close="{PopUpManager.removePopUp(this);}" xmlns:mx="http://www.adobe.com/2006/mxml" width="400" height="150" xmlns:display="flash.display.*" xmlns:mycomponents="org.utmost.mycomponents.*">
+        <mx:Script>
+        	<![CDATA[
+        		import org.utmost.effect.PopUpEffect;
+        		import mx.managers.PopUpManager;
+        	]]>
+        </mx:Script>
+        <mx:XMLList id="mydata">
+        	<file>
+        		<name>VWAG_Internet_en.pdf</name>
+        		<size>pdf</size>
+        		<type>543.5KB</type>
+        	</file>
+        	<file>
+        		<name>anchor.png</name>
+        		<size>png</size>
+        		<type>2KB</type>
+        	</file>
+        	<file>
+        		<name>application_form_add.png</name>
+        		<size>png</size>
+        		<type>4KB</type>
+        	</file>
+        	<file>
+        		<name>application_link.png</name>
+        		<size>png</size>
+        		<type>7KB</type>
+        	</file>
+        </mx:XMLList>
+        <mx:DataGrid id="filesDG" dataProvider="{mydata}"  width="100%" height="100%" >
+        	<mx:columns>
+        		<mx:DataGridColumn dataField="name" width="60"  headerText="File Name"/>
+        		<mx:DataGridColumn dataField="type"  width="20"  headerText="File Type"/>
+        		<mx:DataGridColumn dataField="size" width="20"   headerText="File Size"/>
+        	</mx:columns>
+        </mx:DataGrid>
+    <mx:ControlBar>
+        <mx:Spacer width="100%"/>
+            <mx:HBox>
+            	 <mycomponents:Components_LinkButton iconType="right" label="Open"  />
+               <mycomponents:Components_LinkButton iconType="bottom" label="Download" id="browseBTN" />
+            </mx:HBox>
+        </mx:ControlBar>
+</mx:TitleWindow>

@@ -1,0 +1,519 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml"
+		   creationComplete="{init();}"
+		   xmlns:mycomponents="org.utmost.mycomponents.*"
+		   width="100%"
+		   height="100%"
+		   xmlns:com="com.*">
+	<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Metadata>
+         [ResourceBundle("manageView")]
+	</mx:Metadata>
+	<mx:Script>
+		<![CDATA[
+			import com.adobe.utils.ArrayUtil;
+			import mx.controls.List;
+			import ascb.units.Unit;
+			import component.detailComp.detail;
+			import mx.collections.XMLListCollection;
+			import mx.events.CloseEvent;
+			import mx.controls.Alert;
+			import mx.managers.PopUpManager;
+			import component.BatchDownLoad;
+			import org.utmost.service.UtmostService;
+			import org.utmost.service.StaticChannelSet;
+			import mx.collections.ArrayCollection;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import com.right.UserRight;
+			import flash.net.FileReference;
+			import flash.net.URLRequest;
+			import flash.utils.setTimeout;
+			import flash.system.System;		
+			
+			[Bindable]
+			private var statetext:String;
+			private var j:uint=10;
+
+			[Bindable]
+			public var selectedNode:Object;
+			private var gridData:XMLListCollection;
+			[Bindable]
+			private var list:ArrayCollection;			
+			[Bindable]
+			private var msgdown:String;
+			[Bindable]
+			private var url:String="ERRINFO/readme.txt";
+			[Bindable]
+			private var batchDownLoad:BatchDownLoad;
+			[Bindable]
+			private var useruuid:String;
+			[Bindable]
+			private var inStr:String="";
+			[Bindable]
+			private var liStr:String="";
+			[Bindable]
+			private var totalStr:String="0";
+			[Bindable]
+			private var displayNum:int=0;
+			[Bindable]
+			private var chtotal:String="0";
+			[Bindable]
+			private var allTotal:String="0";
+			[Bindable]
+			private var show_cn:Boolean;
+			
+			[Bindable]
+			private var show_en:Boolean;
+			
+			private var leafNodes:String="";
+			private var count:String="0";
+			
+			private var isLoading:Boolean=false;
+			internal function init():void
+			{
+				useruuid=UserRight.getUserUUID();
+				down.enabled=false;
+				show_cn = true;
+				show_en = true;
+				buildTree();
+				//set visiblity of buttons based on func right.1102-downloadList,3-download
+				var showButton:String = UserRight.hasFuncRight("1102","3");
+				if("0" === showButton){
+					down.visible = false;
+				}
+			}
+
+			internal function onClickHandler():void
+			{
+				down.enabled=false;
+				createPop();
+				var ut:UtmostService=new UtmostService("BatchDownloadService", function(e:ResultEvent):void
+					{
+						var url:String=e.result as String;
+						if (url != null)
+						{
+							down.enabled=false;
+							PopUpManager.removePopUp(batchDownLoad);
+						}
+//						System.security.allowDomain("*");
+//Security.allowDomain("*");
+						var downloadURL:String= StaticChannelSet.getWebRoot() + "/download.form?method=zipDownload&url=" + url + "&useruuid=" + useruuid;
+						var request:URLRequest=new URLRequest(encodeURI(downloadURL));
+						request.method=URLRequestMethod.POST;	
+						navigateToURL(request, '_self'); 
+						down.enabled=true;
+					});
+				
+				ut.ro.zipFile(list, useruuid);				
+			}
+			private function createPop():void
+			{
+				batchDownLoad=new BatchDownLoad();
+				PopUpManager.addPopUp(batchDownLoad, this, true);
+				PopUpManager.centerPopUp(batchDownLoad);
+			}
+			private function treeChange(e:Event):void
+			{
+				selectedNode=e.currentTarget.selectedItem;
+				if (selectedNode == null)
+					return;
+				if (!selectedNode.hasOwnProperty("funcuuid"))
+					return;
+				if (UserRight.hasMenuRight(selectedNode.funcuuid, "1") == "0")
+				{
+					list=new ArrayCollection();
+					datagrid.dataProvider=list;
+					inStr=selectedNode.funcname;
+					totalStr=list.length.toString();
+					if (list != null && list.length != 0)
+					{
+						down.enabled=true;
+					}
+					else
+					{
+						down.enabled=false;
+					}
+				}
+				else
+				{
+					var u:UtmostService=new UtmostService("BatchDownloadService", function(e:ResultEvent):void
+						{
+							show_cn = true;
+							show_en = true;
+							if (e.result == null)
+							{
+								list=new ArrayCollection();
+							}
+							else
+							{
+								list=new ArrayCollection();
+								list=e.result as ArrayCollection;
+								//================================
+								leafNodes = list[list.length-2].leaves;
+								count = list[list.length-1].lCount;
+								list.removeItemAt(list.length-2);
+								list.removeItemAt(list.length-1);
+								//================================
+							}
+							//init state=0
+							if(list != null && list.length > 0){
+								for(var o:int = 0; o < list.length; o++)
+								{
+									list[o].chk = 0;
+								}
+							}
+							
+							//refreshShowFiles();
+							
+							datagrid.dataProvider=list;
+							inStr=selectedNode.funcname;
+							if(list!=null){
+								displayNum = list.length;
+							}
+							//totalStr=list.length.toString();
+							if (list != null && list.length != 0)
+							{
+								down.enabled=true;
+							}
+							else
+							{
+								down.enabled=false;
+							}
+						})
+					u.ro.getPathAndFileName(selectedNode.funcuuid, useruuid);
+					
+					
+					var u2:UtmostService=new UtmostService("BatchDownloadService", function(e:ResultEvent):void{
+						if(e.result != null){
+							var group:String=e.result as String;
+							var results:Array = group.split("-");
+							totalStr=results[0];
+							allTotal=results[0];
+							chtotal=results[1];
+						}
+					})
+					u2.ro.obtainTotal(selectedNode.funcuuid, useruuid);
+				}
+			}
+			[Bindable]
+			private var treeData:ArrayCollection;
+
+			private function buildTree():void
+			{
+				var ut:UtmostService=new UtmostService("portalFuncService", function(e:ResultEvent):void
+					{
+						treeData=new ArrayCollection();
+						treeData=ArrayCollection(e.result);
+					});
+				ut.ro.reBuildTreeByUserID(UserRight.getUserUUID(), "1");
+			}
+			
+			private function refreshShowFiles():void{
+				if(list != null){
+					list.filterFunction = changeShowFiles;
+					list.refresh();
+					//totalStr = list.length.toString();
+					loadData();
+					if(list.length ==0){
+						totalStr = "0";
+					}
+					btnAllSelected = false;
+				}
+			}
+			
+			private function loadData():void{
+				var u:UtmostService=new UtmostService("BatchDownloadService", function(e:ResultEvent):void{
+						if(e.result != null){
+							var list02:ArrayCollection = new ArrayCollection();
+							list02 = e.result as ArrayCollection;
+							
+							//=====================
+							leafNodes = list02[list02.length-2].leaves;
+							count = list02[list02.length-1].lCount;
+							list02.removeItemAt(list02.length-2);
+							list02.removeItemAt(list02.length-1);
+							//=====================
+							
+							for(var i:int=0;i < list02.length;i++){
+								list.addItem(list02[i]);
+							}
+							
+							datagrid.dataProvider=list;
+							//totalStr=list.length.toString();
+							//datagrid.verticalScrollPosition = position;
+							if (list != null && list.length != 0)
+							{
+								down.enabled=true;
+							}
+							else
+							{
+								down.enabled=false;
+							}
+							if((list.length <= 15 && list.length < parseInt(chtotal) && show_cn) 
+								|| (list.length <= 15 && list.length < (parseInt(allTotal)-parseInt(chtotal)) && show_en)){
+								loadData();
+							}
+						}
+						})
+						u.ro.obtainSecPathAndFileName(selectedNode.funcuuid,leafNodes,count);
+			}
+			
+			private function changeShowFiles(item:Object):Boolean{
+				if(show_cn && show_en){
+					totalStr=allTotal;
+					return true;
+				}else if(show_cn){
+					if(item.file_type == "GB_CH"){
+						totalStr = chtotal;
+						return true;
+					}
+				}else if(show_en){
+					if(item.file_type != "GB_CH"){
+						totalStr = (parseInt(allTotal) - parseInt(chtotal)).toString();
+						return true;
+					}
+				}
+				item.chk = 0;
+				return false;
+			}
+			
+			[Bindable]
+			public var btnAllSelected:Boolean = false;
+			
+			public function cboxChanged(e:Event, data:Object):void
+			{
+				var obj:Object;
+				obj = e.currentTarget;
+				if(obj.selected ){
+					data.chk=1;
+				}
+				else
+				{
+					data.chk=0;
+					btnAllSelected = false;
+				}
+			}
+			
+			/**
+			 * Click Event 
+			 */		
+			public function selectAll(obj:Object):void
+			{
+				var downFileList:ArrayCollection = datagrid.dataProvider as ArrayCollection;
+				btnAllSelected = !btnAllSelected;
+				
+				if(downFileList != null && downFileList.length > 0)
+				{
+					if(obj.chball.selected == true)
+					{
+						for(var i:int=0; i < downFileList.length; i++)
+						{
+							downFileList[i].chk = 1;
+						}
+					}
+					else
+					{
+						for(var j:int=0; j < downFileList.length; j++)
+						{
+							downFileList[j].chk = 0;
+						}
+					}
+					downFileList.refresh();
+				}
+			}
+			
+			public var objChb:Object = null;
+			
+			public function setObjChb(obj:Object):void
+			{
+				this.objChb = obj;
+			}
+			
+			private function toggleView():void{
+				if(vmain.visible == true){
+					vmain.includeInLayout = false;
+					vmain.visible = false;
+					
+					contentBox.percentWidth = 100;
+					toggleBtn.label = ">>";
+				}else{
+					vmain.includeInLayout = true;
+					vmain.visible = true;
+					contentBox.percentWidth = 65;
+					toggleBtn.label = "<<";
+				}
+			}
+			
+			private function contentChangeHandler(event:Event, att1:String):void{
+				this[att1] = event.currentTarget.selected;
+				refreshShowFiles();
+			}
+			
+			private function lazyLoad():void{
+				if(isLoading){
+					return;
+				}
+				var rowC:int = datagrid.rowCount-1;
+				var position:Number = datagrid.verticalScrollPosition;
+				if(displayNum==Number(totalStr)){
+					return;
+				}
+				if(position == (list.length-rowC)){
+					isLoading = true;
+					var u:UtmostService=new UtmostService("BatchDownloadService", function(e:ResultEvent):void{
+						if(e.result != null){
+							var list02:ArrayCollection = new ArrayCollection();
+							list02 = e.result as ArrayCollection;
+							//=====================
+							leafNodes = list02[list02.length-2].leaves;
+							count = list02[list02.length-1].lCount;
+							list02.removeItemAt(list02.length-2);
+							list02.removeItemAt(list02.length-1);
+							//=====================
+							for(var i:int=0;i < list02.length;i++){
+								list.addItem(list02[i]);
+							}
+							
+							datagrid.dataProvider=list;
+							if(list!=null){
+								displayNum = displayNum+list02.length;
+							}
+							//totalStr=list.length.toString();
+							datagrid.verticalScrollPosition = position;
+							if (list != null && list.length != 0)
+							{
+								down.enabled=true;
+							}
+							else
+							{
+								down.enabled=false;
+							}
+						}
+						isLoading = false;
+					});
+					
+					u.ro.obtainSecPathAndFileName(selectedNode.funcuuid,leafNodes,count);
+				}
+			}
+		]]>
+	</mx:Script>
+
+	<mx:Metadata>
+	   [ResourceBundle("BatchDownload")]
+	</mx:Metadata>
+
+
+	<mx:Sequence id="shake"
+				 target="{my_hbox}"
+				 duration="100"
+				 repeatCount="2">
+		<mx:Move xBy="15"/>
+		<mx:Move xBy="-15"/>
+	</mx:Sequence>
+	<mx:HBox width="100%"
+			 id="my_hbox"
+			 height="100%">
+		<mx:VBox id="vmain"
+				 paddingBottom="30"
+				 paddingLeft="20"
+				 width="35%"
+				 minWidth="400"
+				 height="100%"
+				 paddingTop="30"
+				 horizontalAlign="center"
+				 resizeEffect="{shake}">
+			<mx:Tree styleName="bdTree" id="mytree"
+				     click="{treeChange(event)}"
+					 showRoot="true"
+					 width="100%"
+					 height="100%"
+					 labelField="{resourceManager.getString('manageView', 'doc.category.tree.label.field')}"
+					 backgroundAlpha="0.29"
+					 dataProvider="{treeData}"
+					 />
+		</mx:VBox>
+		<mx:HBox id="contentBox" width="65%" height="100%" verticalAlign="middle">
+			<mx:LinkButton id="toggleBtn" label="&lt;&lt;" toolTip="{resourceManager.getString('manageView', 'hide.show.tooltip')}" 
+				paddingLeft="0" paddingRight="0" click="toggleView()"/>
+			<mx:VBox width="100%"
+					 id="vdownload"
+					 height="100%"
+					 paddingTop="10"
+					 horizontalAlign="center">
+				<mx:Label text="{resourceManager.getString('manageView', 'show.content.tooltip')}" textDecoration="underline" width="100%"/>
+				<mx:HBox width="100%" horizontalAlign="left">
+					<mx:CheckBox label="{resourceManager.getString('manageView', 'show.content.cn')}" selected="{show_cn}" change="contentChangeHandler(event, 'show_cn')"/>
+					<mx:CheckBox label="{resourceManager.getString('manageView', 'show.content.en')}" selected="{show_en}" change="contentChangeHandler(event, 'show_en')"/>
+				</mx:HBox>
+				<mx:Label id="msg"
+						  text="{resourceManager.getString('BatchDownload', 'in')} {inStr}{resourceManager.getString('BatchDownload', 'li')}, {resourceManager.getString('BatchDownload', 'total')}:{totalStr},{resourceManager.getString('BatchDownload', 'batchdownload_display')}:{displayNum}"
+						  width="100%"/>
+				<mx:DataGrid styleName="bdTree" height="80%"
+							 width="100%"
+							 id="datagrid" scroll="lazyLoad()">
+					<mx:columns>					
+						<mx:DataGridColumn width="20" editable="false" headerText="" sortable="false">
+							<mx:headerRenderer>
+								<mx:Component>
+									<mx:VBox horizontalAlign="center">
+										<mx:CheckBox id="chball" selected="{outerDocument.btnAllSelected}" 
+											click="outerDocument.selectAll(this)"																			
+											creationComplete="outerDocument.setObjChb(this)"/>
+									</mx:VBox>
+								</mx:Component>
+							</mx:headerRenderer>
+							<mx:itemRenderer>
+								<mx:Component>
+									<mx:VBox width="100%" horizontalAlign="center">
+										<mx:CheckBox id="cbox"
+											change="outerDocument.cboxChanged(event,data)" 										
+											selected="{int(data.chk) == 1}"/>
+									</mx:VBox>
+								</mx:Component>
+							</mx:itemRenderer>
+						</mx:DataGridColumn>
+						<!--
+						<mx:DataGridColumn headerText="{resourceManager.getString('BatchDownload','filepath')}"
+						   dataField="{resourceManager.getString('BatchDownload','filepathField')}"
+						   itemRenderer="mx.controls.Label"/>
+						-->
+						<mx:DataGridColumn headerText="NO."
+										   dataField="standard_no"
+										   itemRenderer="mx.controls.Label"/>
+						<mx:DataGridColumn headerText="{resourceManager.getString('BatchDownload','titleEn')}"
+							dataField="title_en"
+							itemRenderer="mx.controls.Label"/>
+						<mx:DataGridColumn headerText="{resourceManager.getString('BatchDownload','titleCn')}"
+							dataField="title_ch"
+							itemRenderer="mx.controls.Label"/>
+						<mx:DataGridColumn headerText="{resourceManager.getString('BatchDownload','filename')}"
+										   dataField="file_name"
+										   itemRenderer="mx.controls.Label"/>
+					</mx:columns>
+				</mx:DataGrid>
+				<mx:HBox horizontalAlign="center"
+						 verticalAlign="middle"
+						 paddingTop="10"
+						 horizontalGap="20"
+						 width="350">
+					<mycomponents:Components_LinkButton id="down"
+														iconType="right"
+														label="{resourceManager.getString('BatchDownload','download')}"
+														enabled="false"
+														click="{onClickHandler();}"/>
+				</mx:HBox>
+				<mx:HBox id="zipimg"
+						 horizontalAlign="center"
+						 verticalAlign="middle"
+						 paddingTop="10"
+						 horizontalGap="20"
+						 width="350"
+						 visible="true">
+				</mx:HBox>
+			</mx:VBox>
+		</mx:HBox>
+
+	</mx:HBox>
+
+</mx:Module>

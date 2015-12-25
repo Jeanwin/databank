@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" width="500" height="400" showCloseButton="true" close="{PopUpManager.removePopUp(this);}">
+	<mx:Script>
+		<![CDATA[
+			import org.utmost.effect.PopUpEffect;
+			import mx.core.Application;
+			import mx.managers.PopUpManager;
+			//change back ground color
+			private function backgroundColorStyleChange():void {
+				Application.application.setStyle("backgroundGradientColors",null);
+				Application.application.setStyle("backgroundImage",null);
+				
+				Application.application.setStyle("backgroundColor",cp.selectedColor);
+			}
+			private function backgroundGradientColors():void {
+				var bgcArr:Array=new Array([bgc1.selectedColor],[bgc2.selectedColor]);
+				Application.application.setStyle("backgroundColor",null);
+				Application.application.setStyle("backgroundGradientColors",bgcArr);
+				var bgaArr:Array=new Array([bga1.value],[bga2.value]);
+				Application.application.setStyle("backgroundGradientAlphas",bgaArr);
+				
+				Application.application.setStyle("themeColor",tc.selectedColor);
+				Application.application.setStyle("color",txtc.selectedColor);
+			}
+		]]>
+	</mx:Script>
+	<mx:HBox width="100%" height="100%">
+		<mx:VBox width="90%" height="100%">
+			<mx:Form width="100%">
+				<mx:FormItem label="BackgroundColor">
+					<mx:ColorPicker id="cp" selectedColor="#A79D9D" change="backgroundColorStyleChange()" enabled="true"/>
+				</mx:FormItem>
+				<mx:FormItem label="BackgroundGradientColors">
+					<mx:HBox>
+						<mx:ColorPicker id="bgc1" change="backgroundGradientColors()"/><mx:ColorPicker id="bgc2" change="backgroundGradientColors()"/>	
+					</mx:HBox>
+				</mx:FormItem>
+				<mx:FormItem label="BackgroundGradientAlphas">
+					<mx:HBox>
+						<mx:HSlider id="bga1" width="50" value="1" minimum="0" maximum="1" snapInterval="0.1" change="backgroundGradientColors()"/>
+						<mx:HSlider id="bga2" width="50" minimum="0" value="1" maximum="1" snapInterval="0.1" change="backgroundGradientColors()"/>
+						<mx:Text text="{bga1.value}"/>
+						<mx:Text text="{bga2.value}"/>
+					</mx:HBox>
+				</mx:FormItem>
+				<mx:FormItem label="ThemeColor">
+					<mx:ColorPicker id="tc" change="backgroundGradientColors()"/>
+				</mx:FormItem>
+				<mx:FormItem label="TextColor">
+					<mx:ColorPicker id="txtc" change="backgroundGradientColors()"/>
+				</mx:FormItem>
+			</mx:Form>
+		</mx:VBox>
+	</mx:HBox>
+</mx:TitleWindow>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" borderAlpha="0.9" title="Close Window" showCloseButton="true" close="{closeMe();}" width="400" height="300">
+	<mx:Script>
+		<![CDATA[
+			import org.utmost.effect.PopUpEffect;
+			import mx.controls.Image;
+			import mx.managers.PopUpManager;
+			import mx.controls.Alert;
+			public var imgSrc:String=new String("img/floderPic/1.gif");
+			private function listClickHander(event:MouseEvent):void{
+				var item_renderer:TileList = event.currentTarget as TileList;
+				imgSrc=item_renderer.selectedItem.url;
+				closeMe();
+			}
+			private function closeMe():void{
+				if(tileList.selectedIndex!=-1){
+					imgSrc=tileList.selectedItem.url;
+				}
+				dispatchEvent(new Event("ShowPictureEvent_conp"));
+				PopUpManager.removePopUp(this);
+			}
+		]]>
+	</mx:Script>
+	 <mx:TileList id="tileList" width="100%" height="100%"  doubleClickEnabled="true" doubleClick="{listClickHander(event);}"  columnCount="7"   columnWidth="60" rowHeight="60" themeColor="haloSilver" verticalScrollPolicy="on" >
+              <mx:dataProvider>
+                <mx:Array>
+                   <mx:Object  label=""  url="img/floderPic/1.gif" icon="@Embed('img/floderPic/1.gif')"/>
+                   <mx:Object  label=""  url="img/floderPic/2.gif"  icon="@Embed('img/floderPic/2.gif')"/>
+                   <mx:Object  label=""  url="img/floderPic/3.gif" icon="@Embed('img/floderPic/3.gif')"/>
+                   <mx:Object  label=""  url="img/floderPic/4.gif"  icon="@Embed('img/floderPic/4.gif')"/>
+                   <mx:Object  label=""  url="img/floderPic/5.gif" icon="@Embed('img/floderPic/5.gif')"/>
+                   <mx:Object  label=""  url="img/floderPic/6.gif" icon="@Embed('img/floderPic/6.gif')"/>
+                   <mx:Object  label=""  url="img/floderPic/1.png"  icon="@Embed('img/floderPic/1.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/2.png" icon="@Embed('img/floderPic/2.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/3.png" icon="@Embed('img/floderPic/3.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/4.png" icon="@Embed('img/floderPic/4.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/5.png" icon="@Embed('img/floderPic/5.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/6.png" icon="@Embed('img/floderPic/6.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/7.png" icon="@Embed('img/floderPic/7.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/8.png" icon="@Embed('img/floderPic/8.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/9.png" icon="@Embed('img/floderPic/9.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/10.png" icon="@Embed('img/floderPic/10.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/11.png" icon="@Embed('img/floderPic/11.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/12.png" icon="@Embed('img/floderPic/12.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/13.png" icon="@Embed('img/floderPic/13.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/14.png" icon="@Embed('img/floderPic/14.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/15.png" icon="@Embed('img/floderPic/15.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/16.png" icon="@Embed('img/floderPic/16.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/17.png" icon="@Embed('img/floderPic/17.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/18.png" icon="@Embed('img/floderPic/18.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/19.png" icon="@Embed('img/floderPic/19.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/20.png" icon="@Embed('img/floderPic/20.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/21.png" icon="@Embed('img/floderPic/21.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/22.png" icon="@Embed('img/floderPic/22.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/23.png" icon="@Embed('img/floderPic/23.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/24.png" icon="@Embed('img/floderPic/24.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/25.png" icon="@Embed('img/floderPic/25.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/26.png" icon="@Embed('img/floderPic/26.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/27.png" icon="@Embed('img/floderPic/27.png')"/>
+                   <mx:Object  label=""  url="img/floderPic/28.png" icon="@Embed('img/floderPic/28.png')"/>
+                </mx:Array>
+            </mx:dataProvider>
+              </mx:TileList>
+</mx:TitleWindow>

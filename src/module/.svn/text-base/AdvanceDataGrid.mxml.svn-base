@@ -1,0 +1,729 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml"
+		   implements="module.ModuleInterface"
+		   width="100%"
+		   height="100%"
+		   creationComplete="initPageHelperClass()"
+		   xmlns:pages="pages.*"
+		   xmlns:veiw="veiw.*" 
+		   xmlns:conmponents="conmponents.*"
+		   xmlns:component="component.*"
+		   xmlns:cutpage="component.cutpage.*"
+		   xmlns:mycomponents="org.utmost.mycomponents.*">
+	<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Metadata>
+	   [ResourceBundle("dataGrid")]
+	   [ResourceBundle("cutpage")]
+	   [ResourceBundle("downloadList")]
+	</mx:Metadata>
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Text;
+			import mx.controls.Label;
+			import mx.containers.FormItem;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumnGroup;
+			import ascb.util.DateFormat;
+			import ascb.util.StringUtilities;
+			import mx.binding.utils.ChangeWatcher;
+			import com.hillelcoren.utils.StringUtils;
+			import com.pagination.PageAction;
+			import com.pagination.PageHelper;
+			import com.right.UserRight;
+			
+			import component.detailComp.NoticeDetail;
+			import component.detailComp.detail;
+			import component.AdvancedHeaderRender;
+			import component.AdvancedItemRender;
+			import fr.kapit.node.simple.StringNode;
+			
+			import mx.collections.ArrayCollection;
+			import mx.containers.HBox;
+			import mx.controls.Alert;
+			import mx.controls.CheckBox;
+			import mx.controls.ComboBox;
+			import mx.controls.DateField;
+			import mx.controls.TextInput;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.Application;
+			import mx.events.CloseEvent;
+			import mx.formatters.DateFormatter;
+			import mx.managers.PopUpManager;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.StringUtil;
+			
+			import org.utmost.service.StaticChannelSet;
+			import org.utmost.service.UtmostService;
+			import com.AdvancedSorting; 
+			import component.downloadImage4Pop;
+			//Total row for all data
+			[Bindable]
+			private var totalRows:Number;
+			//Adjust user if has priveleges for clicking generatrepost button
+			[Bindable]
+			private var isRight:Boolean=false;
+			
+			private var flag:Boolean=false;
+			//For searching result screen No_ column
+			[Bindable]
+			public var isAllSelected:Boolean = false;
+			private var language:String;
+			//Get data from this list when user download report	
+			private var selectedItems:ArrayCollection;
+			//Issued uuid
+			private var issuedId:String = "0201";
+			private var standardId:String = "02";
+			//Get hql phase from filter condition users select on Advanced Search screen
+			private var hqlFinal:String = "";
+			private var checkBoxObj:Object = null;
+			private var funcArr:String = null;
+			[Bindable]
+			private var page:PageHelper;
+			
+			public function set $treeSelectNode(_node:Object):void
+			{
+				trace("$modulecode:" + _node);
+			}
+
+			public function set $moduletree(_tree:ArrayCollection):void
+			{
+				trace("$moduletree:" + _tree);
+			}
+			//transfer filter condition of data from advanced search screen to Advanced Data Grid screen
+			public function set $menuData(_menu:ArrayCollection):void
+			{
+				trace("$menuData:" + _menu);
+//				if(cbcolumn != null){
+//					dgs.horizontalScrollPolicy = "on";
+//					cbcolumn.width = 2;
+//					dgs.horizontalScrollPolicy = "off";
+//				}
+				tempList.removeAll();
+				//make up of hql in data of filter condition
+				hqlFinal = builderHql(_menu);
+				trace("..............hql:+" + hqlFinal);
+				if(flag){
+					refreshColumns();
+					advancedSearchTotalRows();
+				}
+				if (vb != null && vb.getChildren().length > 1)
+				{
+					//Remove detail screen
+					vb.removeChildAt(1);
+				}
+			}
+			//hql building
+			private function builderHql(validateData:ArrayCollection):String{
+				collectSelectedItem(validateData);
+				var hql:String = " ";
+				for(var i:int=0;i<validateData.length;i++){
+					var obj:Object = validateData.getItemAt(i);
+					//Control connection condition is 'or' or 'and'
+					var flag:Boolean = true;
+					if(obj is HBox){
+						var children:Array = obj.getChildren();
+						for each(var cObj:Object in children){
+							if(cObj is CheckBox){
+								if(cObj.selected){
+									if(flag){
+										if("ismandatory" == obj.id){
+											if(cObj.label == "Yes"){
+												hql += "and (b." + obj.id + "='1' )";
+											}else if(cObj.label == "No"){
+												hql += "and (b." + obj.id + "='0' )";
+											}
+										}else if("applicability" == obj.id){
+											hql += "and (b." + obj.id + " like '%" + cObj.label + "%' )";
+										}else if("power_type" == obj.id){
+											hql += "and (b." + obj.id + " like '%" + cObj.label + "%' )";
+										}else if("standard_attribute1" == obj.id){
+										    if(cObj.label=="Others"){
+										      hql += "and (b." + obj.id + "_other='1' )";
+										    }else{
+											  hql += "and (b." + obj.id + "='" + cObj.label + "' )";
+										    }
+										}else{
+											hql += "and (b." + obj.id + "='" + cObj.label + "' )";
+										}
+									}else{
+										if("ismandatory" == obj.id){
+											if(cObj.label == "Yes"){
+												var str01:String = hql.substr(0,hql.length-1);
+												str01 += "or b." + obj.id + "='1' )";
+												hql = str01;
+											}else if(cObj.label == "No"){
+												var str02:String = hql.substr(0,hql.length-1);
+												str02 += "or b." + obj.id + "='0' )";
+												hql = str02;
+											}
+										}else if("applicability" == obj.id){
+											var str03:String = hql.substr(0,hql.length-1);
+											str03 += "or b." + obj.id + " like '%" + cObj.label + "%' )";
+											hql = str03;
+										}else if("power_type" == obj.id){
+											var str04:String = hql.substr(0,hql.length-1);
+											str04 += "or b." + obj.id + " like '%" + cObj.label + "%' )";
+											hql = str04;
+										}else if("standard_attribute1" == obj.id){
+										    var str06:String = hql.substr(0,hql.length-1);
+										    if(cObj.label=="Others"){
+										      str06 += "or b." + obj.id + "_other='1' )";
+										    }else{
+											  str06 += "or b." + obj.id + "='" + cObj.label + "' )";
+										    }
+											hql = str06;
+										}else{
+											var str05:String = hql.substr(0,hql.length-1);
+											str05 += "or b." + obj.id + "='" + cObj.label + "' )";
+											hql = str05;
+										}
+									}
+									flag = false;
+								}
+							}else if(cObj is ComboBox){
+								//Replace statusm to status
+								if("statusm" == obj.id){
+									if("" != cObj.value && null != cObj.value){
+										hql += "and b.status" + "='" + cObj.value + "' ";
+									}
+								}
+							}else if(cObj is TextInput){
+								if("" != cObj.text && null != cObj.text){
+									var keyWords:String = cObj.text;
+									//Ignore upper case or lower case
+									hql += "and (UPPER(b." + obj.id + ") like '%" + StringUtil.trim(keyWords.toUpperCase()) + "%' ";
+									hql += "or UPPER(b.title_en) like '%" + StringUtil.trim(keyWords.toUpperCase()) + "%' ";
+									hql += "or UPPER(b.title_ch) like '%" + StringUtil.trim(keyWords.toUpperCase()) + "%' )";
+								}
+							}
+						}
+					}
+					if(obj is DateField){
+						var date:Date = obj.selectedDate;
+						if(null != obj.selectedDate){
+							hql += "and b." + obj.id + "<" + date.getTime() + " ";
+						}
+					}
+					if(obj is CheckBox){
+						//Set value of id is 1 if corresponding item selected
+						if(obj.selected){
+							hql += "and b." + obj.id + "='1' ";
+						}
+					}
+					if(obj is FormItem){
+						
+					}
+					if(obj is TextInput){
+					  if(obj.id=="selectedCategory"){
+						funcArr = obj.text;
+					  }
+					}
+				}
+				return hql;
+			}
+
+            /**
+			 * Collected selected item 
+			 **/
+			private function collectSelectedItem(validateData:ArrayCollection):void{
+				if(validateData != null && validateData.length > 0){
+					selectedItems =new ArrayCollection();
+					for(var i:int=0;i<validateData.length;i++){
+						var obj:Object = validateData.getItemAt(i);
+						if(obj is DateField){
+							 var date:Date = obj.selectedDate;
+							 var df:DateFormatter = new DateFormatter();
+							 df.formatString = "YYYY-MM-DD";
+							 var datestr:String =df.format(date);
+							if("execute_date"== obj.id && date !=null){
+								selectedItems.addItem(resourceManager.getString('dataGrid','implementDateForNew')+" before:"+ datestr);
+							}else if("online_auto_execute_date" == obj.id && date !=null){
+								selectedItems.addItem(resourceManager.getString('dataGrid','implementDateForIn')+" before:"+ datestr);
+							}
+						}
+						if(obj is CheckBox){
+							if(obj.selected){
+								selectedItems.addItem(obj.label);
+							}
+						}
+						
+						if(obj is HBox){
+							var children:Array = obj.getChildren();
+							for each(var cObj:Object in children){
+								if(cObj is CheckBox){
+									var str:String = getSelectedCheckBoxWithSameItemId(children);
+									if(str != null){
+										if("ismandatory" == obj.id){
+											selectedItems.addItem(resourceManager.getString('dataGrid','mandatoryOrNot')+":"+ str);	
+										}else{
+											selectedItems.addItem(str);	
+										}
+									}
+									break;
+								}else if (cObj is ComboBox){
+										if("statusm" == obj.id && cObj.value !=""){
+											selectedItems.addItem(resourceManager.getString('dataGrid','filestatus')+':'+cObj.value);
+										}
+								}else if(cObj is TextInput){
+										if("key_words" == obj.id && cObj.text !=""){
+											selectedItems.addItem(resourceManager.getString('dataGrid','keywords')+':'+cObj.text);
+										}
+								}
+							}
+						}else if(obj is FormItem){
+							var itemChildren:Array = obj.getChildren();
+							var str:String = null;
+							var otherSelected:Boolean = false;
+							for each(var itemObj:Object in itemChildren){
+								if(itemObj is HBox){
+									var subArr:Array = itemObj.getChildren();
+									for each(var subObj:Object in subArr){
+									 if(subObj is CheckBox){
+										if(subObj.selected&&subObj.label!="Others"){
+											if(str==null){
+												str = subObj.label;
+											}else{
+												str=str+","+subObj.label;
+											}
+										}else if(subObj.label=="Others"&&subObj.selected){
+											otherSelected = true;
+										}
+									 }else if(subObj is TextInput&&otherSelected){
+										str=str+","+subObj.text;
+									 }
+									}
+								}
+							}
+							selectedItems.addItem(str);
+						}
+					}
+				}
+			}
+			
+			/**
+			 * Get all selected check box value under the same item id.
+			 **/
+			private function getSelectedCheckBoxWithSameItemId(children:Array):String 
+			{
+				var str:String = null;
+				for each(var cObj:Object in children){
+					if(cObj is CheckBox && cObj.selected){
+						if(str == null){
+							str=cObj.label;
+						}else {
+							str = str +","+cObj.label;
+						}
+					}
+				}
+				return str;
+			}
+			
+			public function set $selectNodeFuncUUID(_keyWord:String):void
+			{
+				trace("key words:" + _keyWord);
+			}
+			/**
+			 *initial paging helper
+			 */
+			private function initPageHelperClass():void
+			{
+				language = Application.application.language;
+				advancedSearchTotalRows();
+				refreshColumns();
+				flag = true;
+				ChangeWatcher.watch(Application.application, "language", changeHeaderLanguage);
+			}
+			private function changeHeaderLanguage(event:Event):void{
+				language = Application.application.language;
+				refreshColumns();
+			} 
+			
+			private var list:ArrayCollection;
+			private var listTmp:ArrayCollection=new ArrayCollection();
+			//Putting all items selected
+			private var tempList:ArrayCollection = new ArrayCollection();
+			//Call java function
+			private function advancedSearchTotalRows():void
+			{
+				isAllSelected = false;
+				var utm:UtmostService=new UtmostService("SearchService", function(e:ResultEvent):void
+					{
+						if (e.result != null)
+						{
+							//var totalRows:Number = 0;
+							totalRows=e.result as Number;
+							if (totalRows == 0)
+							{
+								dgs.dataProvider=null;
+							}
+							var ut:UtmostService=new UtmostService("SearchService", function(dataevent:ResultEvent):void
+								{
+									if (dataevent.result == null)
+									{
+										list=null;
+										dgs.dataProvider=list;
+									}
+									else
+									{
+										list=new ArrayCollection();
+										list=dataevent.result as ArrayCollection;
+										listTmp.removeAll();
+										for(var i:int=0;i<list.length;i++){
+											var obj:Object = list.getItemAt(i);
+											for(var j:int=0;j<tempList.length;j++){
+												var objTemp:Object = tempList.getItemAt(j);
+												if(objTemp.uuid == obj.uuid){
+													obj.mycheckbox = true;
+												}
+											}
+											listTmp.addItem(obj);
+										}
+										dgs.dataProvider=listTmp;
+									}
+								})
+							ut.ro.advancedSearch(funcArr, hqlFinal, UserRight.getUserUUID(), 1, totalRows, true, 1);
+						}
+					})
+				utm.ro.advancedSearchTotalRows(funcArr, hqlFinal, UserRight.getUserUUID(), true, 1);
+			}
+ 			//Double click item, then display detail screen
+			public function doubleclickItem(dg:AdvancedDataGrid):void 
+			{
+				if (dg.selectedIndex >= 0)
+				{
+					if (dg.selectedItem.hasOwnProperty("uuid"))
+					{
+						if (vb.getChildren().length > 1)
+						{
+							vb.removeChildAt(1);
+						}
+						showDetail(dg.selectedItem);
+						 dg.verticalScrollPosition = dg.selectedIndex;
+						 dg.scrollToIndex(dg.selectedIndex);
+						//dg.selectedItem=null;
+					}
+				}
+			}
+
+			private function showDetail(selectItem:Object):void
+			{
+				if (vb.getChildren().length > 1)
+				{
+					vb.removeChildAt(1);
+				}
+				var dataDetail:detail=new detail();
+
+				dataDetail.setuseruuid=UserRight.getUserUUID();
+				dataDetail.setprotected=true;
+				dataDetail.setrootuuid=selectItem.classuuid;
+				dataDetail.setnodeuuid=selectItem.func_uuid;
+				dataDetail.recordUUID_=selectItem.uuid;
+
+				dataDetail.percentHeight=50;
+				dataTable.percentHeight=50;
+				vb.addChild(dataDetail);
+			}
+			//Display advanced search screen keeping items selected is selected
+			private function searchAgain():void{
+				Application.application.advanceSearchForm.visible = true;
+			}
+			//selecte one item or not(need public)
+			public function selectedItem(e:Event, data:Object):void{
+				if(e.currentTarget.selected){
+					tempList.addItem(data);
+				}else{
+					for(var i:int = 0;i<tempList.length;i++){
+						if(tempList.getItemAt(i).uuid == data.uuid){
+							tempList.removeItemAt(i);
+						}
+					}
+				}
+				trace("(item)tempList's size:" + tempList.length);
+			}
+			private var tempListT:ArrayCollection = new ArrayCollection();
+			private var tempListT2:ArrayCollection = new ArrayCollection();
+			public function selectedAll(obj:Object):void{
+				for(var i:int=0;i<listTmp.length;i++){
+					var objTmp:Object = listTmp.getItemAt(i);
+					for(var j:int=0;j<tempList.length;j++){
+						var objInL:Object = tempList.getItemAt(j);
+						if(objTmp.uuid == objInL.uuid){
+							tempList.removeItemAt(j);
+						}
+					}
+				}
+				if(obj.chb.selected){
+					tempListT.removeAll();
+					for(var j:int=0;j<listTmp.length;j++){
+						var objInL:Object = listTmp.getItemAt(j);
+						objInL.mycheckbox = true;
+						tempListT.addItem(objInL);
+						tempList.addItem(objInL);
+					}
+					//refresh the dataList and make selectAll checkBox selected
+					dgs.dataProvider = tempListT;
+					isAllSelected = true;
+				}else{ 
+					clearSelected();
+				}
+				trace("(all)tempList's size:" + tempList.length);
+			}
+			//Clear all items selected
+			private function clearSelected():void
+			{
+				tempListT2.removeAll();
+				tempList.removeAll();
+				for(var j2:int=0;j2<listTmp.length;j2++){
+					var objInL2:Object = listTmp.getItemAt(j2);
+					objInL2.mycheckbox = false;
+					tempListT2.addItem(objInL2);
+				}
+				//refresh the dataList and make selectAll checkBox selected
+				dgs.dataProvider = tempListT2;
+				isAllSelected = false;
+			}
+			
+			/**
+			 * generated excel
+			 * */
+			public function genExcel():void
+			{
+				if(tempList.length == 0){
+					Alert.show("Please selecte a item!");
+					return;
+				}
+				var utmost_gen:UtmostService=new UtmostService("GenerateExcelService", function(e:ResultEvent):void
+				{
+					var url:String=e.result as String;
+					if (url == "Error"){
+						Alert.show("Server error!");
+					}else if(url =="NoData"){
+						Alert.show("No data can be generated!");
+					}else{
+						var downloadURL:String= StaticChannelSet.getWebRoot()+ 
+						"/download.form?method=downloadExcel&url=" + url;
+						var request:URLRequest=new URLRequest(encodeURI(downloadURL));
+						request.method=URLRequestMethod.POST;	
+						navigateToURL(request, '_self');
+					}
+					tempList.removeAll();
+					clearSelected();
+				});
+				utmost_gen.ro.generatedExcel(tempList,selectedItems,Application.application.language,hqlFinal,issuedId,standardId,UserRight.getUserUUID());
+			}
+			
+			private function refreshColumns():void{
+				var colArr:Array = new Array();
+				//uuid
+				var uuid:AdvancedDataGridColumn = new AdvancedDataGridColumn();
+				uuid.dataField = "uuid";
+				uuid.visible = false;
+				uuid.itemRenderer = new ClassFactory(mx.controls.Label);
+				colArr.push(uuid);
+				if(Application.application.generateReport){
+					//checkbox
+					var cb:AdvancedDataGridColumn = new AdvancedDataGridColumn();
+					cb.sortable = false;
+					cb.editable = false;
+					cb.width = 2;
+					cb.dataField = "mycheckbox";
+					var cfgHeader:ClassFactory = new ClassFactory(AdvancedHeaderRender);
+					cfgHeader.properties = {isAllSelected:isAllSelected,_selecteAll:selectedAll};
+					cb.headerRenderer = cfgHeader;
+					var cfgItem:ClassFactory = new ClassFactory(AdvancedItemRender);
+					cfgItem.properties = {_selectedItem:selectedItem};
+					cb.itemRenderer = cfgItem;
+					colArr.push(cb);
+				}
+				//No_
+				var no_:AdvancedDataGridColumn = new AdvancedDataGridColumn();
+				no_.dataField = "standard_no";
+				no_.width = 10;
+				no_.headerText = resourceManager.getString('dataGrid','standardNo');
+				no_.itemRenderer = new ClassFactory(mx.controls.Label);
+				colArr.push(no_);
+				//title
+				if(language == "zh_CN"){
+					var title:AdvancedDataGridColumn = new AdvancedDataGridColumn();
+					title.dataField = "title_ch";
+					title.width = 33;
+					title.headerText = resourceManager.getString('dataGrid','standardName');
+					title.itemRenderer = new ClassFactory(mx.controls.Label);
+					colArr.push(title);
+				}else{
+					var title:AdvancedDataGridColumn = new AdvancedDataGridColumn();
+					title.dataField = "title_en";
+					title.width = 33;
+					title.headerText = resourceManager.getString('dataGrid','standardName');
+					title.itemRenderer = new ClassFactory(mx.controls.Label);
+					colArr.push(title);
+				}
+				//implement date
+				var implDate:AdvancedDataGridColumn = new AdvancedDataGridColumn();
+				implDate.dataField = "execute_date_str";
+				implDate.width = 20;
+				implDate.headerText = resourceManager.getString('dataGrid','implementDateForNew');
+				implDate.itemRenderer = new ClassFactory(mx.controls.Label);
+				colArr.push(implDate);
+				//implement data for in-production
+				var implDateInPro:AdvancedDataGridColumn = new AdvancedDataGridColumn();
+				implDateInPro.dataField = "online_auto_execute_date_str";
+				implDateInPro.width = 20;
+				implDateInPro.headerText = resourceManager.getString('dataGrid','implementDateForIn');
+				implDateInPro.itemRenderer = new ClassFactory(mx.controls.Label);
+				colArr.push(implDateInPro);
+				var downloadCol:AdvancedDataGridColumnGroup = new AdvancedDataGridColumnGroup();
+				downloadCol.width = 10;
+				downloadCol.headerText = resourceManager.getString('downloadList','buttonLabel3');
+				var cfg:ClassFactory = new ClassFactory(downloadImage4Pop);
+				cfg.properties = {commondata_uuid:"uuid",func_uuid:"func_uuid"};
+				downloadCol.itemRenderer = cfg;
+				colArr.push(downloadCol);
+				dgs.groupedColumns = colArr;
+			}
+			private function keepSelected():void{
+				for(var i=0;i < tempList.length;i++){
+					var tempObj:Object = tempList.getItemAt(i);
+					for(var j=0;j < listTmp.length;j++){
+						var listObj:Object = listTmp.getItemAt(j);
+						if(tempObj.uuid == listObj.uuid){
+							listObj.mycheckbox = true;
+						}
+					}
+				}
+			}
+			public function transferObj(obj:Object):void{
+				checkBoxObj = obj;
+			}
+			
+		]]>
+	</mx:Script>
+	<mx:Canvas width="100%"
+			   height="100%"
+			   id="canvas">
+			<mx:VDividedBox id="vb"
+							width="100%"
+							height="100%">
+							
+				<mx:VBox id="dataTable"
+						 width="100%"
+						 height="100%" verticalAlign="top">
+				 <!--horizontalAlign="center"-->
+				  <mx:Label height="36"  text="{resourceManager.getString('dataGrid', 'draftingForAttention')}" color="#A8ADB3"  textDecoration="underline"/>
+					<mx:AdvancedDataGrid styleName="advancedDG" id="dgs"
+										 doubleClickEnabled="true"
+										 doubleClick="doubleclickItem(dgs)"
+										 headerRelease="AdvancedSorting.advancedDataGridSort(event)" 
+										 headerHeight="50"
+										 rowHeight="30"
+										 scroll="keepSelected()"
+										 width="100%"
+										 height="100%">
+						<!--<mx:groupedColumns>
+							<mx:AdvancedDataGridColumn dataField="uuid"
+								                       visible="false"
+													   itemRenderer="mx.controls.Label"/>
+							<mx:AdvancedDataGridColumn width="2" 
+													   id="cbcolumn"
+													   sortable="false"
+													   dataField="mycheckbox"
+													   editable="false"
+												       visible="{Application.application.generateReport}">
+								<mx:headerRenderer> 
+									<mx:Component>
+										<mx:VBox horizontalAlign="center">
+										    <mx:Label text="All" />
+											<mx:CheckBox id="chb" 
+													     selected="{outerDocument.isAllSelected}" 
+													     click="{outerDocument.selectedAll(this);}"/>
+										</mx:VBox>
+									</mx:Component>
+								</mx:headerRenderer>
+								<mx:itemRenderer>
+									<mx:Component>
+										<mx:VBox horizontalAlign="center">
+											<mx:CheckBox creationComplete="{outerDocument.transferObj(this)}" id="itemchb" selected="{data.mycheckbox}" click="{outerDocument.selectedItem(event,data)}"/>
+										</mx:VBox>
+									</mx:Component>
+								</mx:itemRenderer>
+							</mx:AdvancedDataGridColumn>
+							<mx:AdvancedDataGridColumn dataField="standard_no"
+													   width="10"
+													   headerText="{resourceManager.getString('dataGrid','standardNo')}"
+													   itemRenderer="mx.controls.Label"/>
+							<mx:AdvancedDataGridColumn id="title"
+													   dataField="title_en"
+													   width="33"
+													   headerText="{resourceManager.getString('dataGrid','standardName')}"
+													   itemRenderer="mx.controls.Label"/>
+							<mx:AdvancedDataGridColumn dataField="execute_date_str"
+													   width="20"
+													   headerText="{resourceManager.getString('dataGrid','implementDateForNew')}"
+													   itemRenderer="mx.controls.Label"/>
+							<mx:AdvancedDataGridColumn dataField="online_auto_execute_date_str"
+													   width="20"
+													   headerText="{resourceManager.getString('dataGrid','implementDateForIn')}"
+													   itemRenderer="mx.controls.Label" />
+							<mx:AdvancedDataGridColumnGroup width="10"
+													        headerText="{resourceManager.getString('downloadList','buttonLabel3')}"> 
+								<mx:itemRenderer>
+									<mx:Component>
+										<component:downloadImage4Pop commondata_uuid="uuid" func_uuid="func_uuid"/>
+									</mx:Component>
+								</mx:itemRenderer>
+							</mx:AdvancedDataGridColumnGroup>
+						</mx:groupedColumns>-->
+					</mx:AdvancedDataGrid>
+					<mx:HBox horizontalAlign="center">
+					    <mx:Spacer width="45"
+								   height="0">
+						</mx:Spacer>
+						<mx:Label text="{resourceManager.getString('cutpage','count')}: {totalRows}"
+								  id="pagedetail"/>
+						<!--mx:Label text="{resourceManager.getString('cutpage','page')}: {page.currentPage}/{page.totalPages}"
+								  id="pagedetail2"/>
+						<mycomponents:Components_LinkButton id="fPage"
+															iconType="left"
+															enabled="false"
+															label="{resourceManager.getString('cutpage','home')}"
+															click="PageAction.firstAction(page)">
+
+						</mycomponents:Components_LinkButton>
+						<mycomponents:Components_LinkButton id="pPage"
+															iconType="prev"
+															enabled="false"
+															label="{resourceManager.getString('cutpage','prev')}"
+															click="PageAction.previousAction(page)">
+
+
+						</mycomponents:Components_LinkButton>
+						<mycomponents:Components_LinkButton id="nPage"
+															iconType="next"
+															enabled="false"
+															label="{resourceManager.getString('cutpage','next')}"
+															click="PageAction.nextAction(page)">
+
+
+						</mycomponents:Components_LinkButton>
+						<mycomponents:Components_LinkButton id="lPage"
+															iconType="right"
+															enabled="false"
+															label="{resourceManager.getString('cutpage','last')}"
+															click="PageAction.lastAction(page)">
+
+						</mycomponents:Components_LinkButton-->
+						<mycomponents:Components_LinkButton iconType="right"
+														label="{resourceManager.getString('dataGrid','advancedsearch')}"
+														click="{searchAgain()}"
+														id="as_button"/>
+						<mycomponents:Components_LinkButton iconType="right"
+														label="{resourceManager.getString('dataGrid','generatereport') }"
+														visible="{Application.application.generateReport}"
+														id="generate_button" click="genExcel()"/>
+						
+					</mx:HBox>
+				</mx:VBox>
+			</mx:VDividedBox>
+	</mx:Canvas>
+</mx:Module>

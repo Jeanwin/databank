@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="400" height="300">
+	<mx:Script>
+		<![CDATA[
+			[Bindable]
+			private var _isAllSelected:Boolean = false;
+			public function set isAllSelected(isAllSelected:Boolean):void{
+				_isAllSelected = isAllSelected
+			}
+			public var _selecteAll:Function = null;
+			private function set setFunction(fun:Function):void{
+				_selecteAll = fun;
+			}
+			private function callFun(obj:Object):void{
+				_selecteAll.call(null,obj);
+			}
+		]]>
+	</mx:Script>
+	<mx:VBox horizontalAlign="center" verticalGap="0">
+	    <mx:Label text="All" />
+		<mx:CheckBox id="chb" 
+				     selected="{_isAllSelected}" 
+				     click="{callFun(this);}"/>
+	</mx:VBox>
+</mx:Canvas>

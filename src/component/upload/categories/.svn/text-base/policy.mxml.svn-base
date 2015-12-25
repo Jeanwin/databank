@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" verticalGap="20" width="100%" horizontalAlign="right" creationComplete="init()"  xmlns:upload="component.upload.*">
+<mx:Script>
+	<![CDATA[
+		import mx.collections.ArrayCollection;
+		import component.upload.FileUploadUtil;
+		public var util:FileUploadUtil=new FileUploadUtil();
+		private var totalFiles:Array;
+		
+		public var _columnsArr:ArrayCollection;	//the column name and value list
+		
+		private function init():void{
+			_columnsArr = new ArrayCollection();
+			_columnsArr.addItem(download_gb_en_title);
+			_columnsArr.addItem(download_gb_ch_title);
+			_columnsArr.addItem(doc_title);
+		}
+		
+		public function get columnsArr():ArrayCollection{
+			_columnsArr = new ArrayCollection();
+			_columnsArr.addItem(download_gb_en_title);
+			_columnsArr.addItem(download_gb_ch_title);
+			_columnsArr.addItem(doc_title);
+			return _columnsArr;
+		}
+		
+		//all appendix collection
+		public function get arrFiles():Array{
+			return util.arrRealyUploadFile;
+		}
+		private function addFiles(hbox:VBox):void{
+			util.addFiles(hbox);
+		}
+		//Get all docs appendix files collection
+		public function get getAllDocs():Array{
+			return mydocs.allUploadFiles;
+		}
+		
+		/**
+		 * The function of change the number of docs appendix files
+		 * */
+		public function docsChange():void{
+        	if(mydocs.allUploadFiles.length>0){
+        		doc_title.text = "Doc";
+        	}else{
+        		doc_title.text = "";
+        	}
+        }
+	]]>
+</mx:Script>
+
+		<mx:FormItem label="Download EN" fontWeight="bold" >
+			<mx:HBox>
+				<mx:TextInput id="download_gb_en_title" width="200" text="{download_gb_en.getChildren().length==0?'':'EN'}" />
+				<mx:Button  toolTip="Add file(s)"  click="addFiles(download_gb_en)" icon="@Embed('/component/upload/assets/add.png')" width="26"/>
+			</mx:HBox>
+			<mx:VBox horizontalScrollPolicy="off" verticalScrollPolicy="off" minHeight="25" visible="{download_gb_en.getChildren().length!=0}" includeInLayout="{download_gb_en.getChildren().length!=0}" id="download_gb_en"   width="226" borderStyle="solid">
+			</mx:VBox>
+		</mx:FormItem>
+
+
+		<mx:FormItem label="Download CN" fontWeight="bold" >
+			<mx:HBox>
+				<mx:TextInput id="download_gb_ch_title" width="200"  text="{download_gb_ch.getChildren().length==0?'':'CH'}"/>
+				<mx:Button  toolTip="Add file(s)" click="addFiles(download_gb_ch)" icon="@Embed('/component/upload/assets/add.png')" width="26"/>
+			</mx:HBox>
+			<mx:VBox horizontalScrollPolicy="off" verticalScrollPolicy="off" minHeight="25" id="download_gb_ch" visible="{download_gb_ch.getChildren().length!=0}" includeInLayout="{download_gb_ch.getChildren().length!=0}"  width="226" borderStyle="solid">
+			</mx:VBox>
+		</mx:FormItem>
+
+	<mx:HBox visible="false" includeInLayout="false">
+		<mx:HBox width="50"></mx:HBox>
+		<mx:FormItem  label="DOC" fontWeight="bold" >
+			<mx:HBox>
+				<mx:TextInput id="doc_title"   width="200"  />
+				<mx:Spacer width="26" />
+			</mx:HBox>
+			<upload:FileUploadComponent id="mydocs" maxFiles="2" creationComplete="{mydocs.changeFunc = docsChange;}" width="230" />
+		</mx:FormItem>
+	</mx:HBox>
+	
+</mx:VBox>

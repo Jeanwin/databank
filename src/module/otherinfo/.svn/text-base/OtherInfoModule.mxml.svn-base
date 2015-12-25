@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" width="100%" height="100%" creationComplete="init()" xmlns:mycomponents="org.utmost.mycomponents.*">
+	<mx:Script> 
+		<![CDATA[
+			import mx.managers.PopUpManager;
+			import component.uploading;
+			import org.utmost.service.StaticChannelSet;
+			import org.utmost.util.ComponentUtil;
+			import mx.events.CloseEvent;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.AutoService;
+			import mx.collections.ArrayCollection;
+			import mx.controls.Image;
+			import mx.controls.Alert;
+			public var date:Date=new Date();
+			public var fileType:String;
+			private var fileName:String;
+			private var imageTypes:FileFilter = new FileFilter("Image (*.jpg; *.jpeg; *.gif; *.png)" ,"*.jpg; *.jpeg; *.gif; *.png");
+       	 	//add pdf file type according to JIRA 124
+       	 	private var swfTypes:FileFilter = new FileFilter("Swf/PDF(*.swf;*.flv;*.pdf)","*.swf;*.flv;*.pdf");
+			private var file: FileReference; 
+			private var sta:String;
+			private var delswf:String;
+			private var delImg:String;
+			[Bindable]
+			public var cards:ArrayCollection;
+			private var _uw:uploading;
+			private function init():void{
+				file=null;
+				 file = new FileReference();   
+                 file.addEventListener(Event.SELECT, onSelect);
+				//查询所有state=2的节点，就是所有的属性页节点
+				AutoService.getInstance().findByHql("from U_PORTAL_FUNC u where u.state='"+2+"'",function(e:ResultEvent):void{
+					cards=new ArrayCollection();
+					cards=ArrayCollection(e.result);
+					pagecb.enabled=true;
+				});
+			}
+			//按钮点击浏览时候调用的方法
+             private function uploadFile(filter:FileFilter,field:String): void{
+             		if(pagecb.selectedIndex==-1){
+             			Alert.show(resourceManager.getString("errormsg","selectone"),resourceManager.getString("errormsg","alert"));
+             			return;
+             		}
+             		sta=field;
+             		var arr:Array=new Array(filter);
+             		file.browse(arr);
+             }
+			//选择文件时选定了文件调用的方法
+             private function onSelect(e:Event): void{  
+             	if(Math.round(file.size)>1024*1024*20){
+             			Alert.show(resourceManager.getString("errormsg","filetolarge"),resourceManager.getString("errormsg","alert"));
+             	}
+             	else{
+                      Alert.yesLabel = "Yes"; 
+      				  Alert.noLabel = "No";
+             	      Alert.show("Upload " + file.name + " (total "+Math.round(file.size)+" bytes)?",   
+                            resourceManager.getString("errormsg","alert"),   
+                            Alert.YES|Alert.NO,   
+                            null,   
+                            proceedWithUpload);
+             	}
+             }
+             //选择文件后点击确定后调用的方法
+             private function proceedWithUpload(e: CloseEvent): void{
+             	 if (e.detail == Alert.YES){  
+             	 	file.addEventListener(ProgressEvent.PROGRESS, onProgress);   
+             	 	file.addEventListener(Event.COMPLETE, completeHandle); 
+                 		fileType=file.name.substring(file.name.lastIndexOf("."));
+                     	 fileName=date.time+fileType;
+                     		  date=new Date();
+                     var request:URLRequest = new URLRequest;
+					        request.url = StaticChannelSet.getWebRoot()+"/upload.form?method=upload";
+					        request.method = "GET";
+					        request.contentType = "multipart/form-data";
+                     		request.data="&fileName="+fileName;
+                     try {
+                     			file.upload(request);
+                     			_uw = uploading(PopUpManager.createPopUp(parentApplication as DisplayObject,uploading,true));
+								PopUpManager.centerPopUp(_uw);
+                     } catch (error:Error) {   
+                     	_uw.finishBtn.visible=true;
+                         Alert.show("File upload Error："+error.message.toString());   
+                     }   
+               }
+             }
+             //上传附件的进度
+            private function onProgress(event: ProgressEvent): void{ 
+               _uw.fileName.text=file.name;
+               _uw.fileNum.text="1/1";
+              var numPerc:Number=Math.round((event.bytesLoaded / event.bytesTotal) * 100);
+					_uw.proBar.setProgress(numPerc, 100);
+					_uw.proBar.validateNow();
+             }
+             //上传资料成功之后调用的方法
+             private function completeHandle(event:Event):void {
+             	_uw.finishBtn.visible=true;
+             	_uw.uploadcomp();
+             	ComponentUtil.setVisible(progress,false);
+		         	if(sta=="picture_pathname"){
+		         		img.source= StaticChannelSet.getWebRoot() + "/download.form?method=readImage&fileName="+fileName;
+		         		if(pageOjb==null)
+		         			pageOjb=new Object();
+		         			pageOjb.picture_pathname=fileName;
+             		} else if(sta=="link_appendix_filename"){
+		     			linkfile.text=fileName;
+		     			if(linkObj==null)
+		     				linkObj=new Object();
+		     				linkObj.link_appendix_filename=fileName;
+		     		}
+		     		saveinfo.enabled=true;
+		     		deleteinfo.enabled=true;
+        	 }
+        	 //获取图片的方法
+//        	 private var stream:URLStream = new URLStream();
+//			 private var bytes:ByteArray = new ByteArray();
+//			private function onLoadComplete(event:Event):void
+//			{
+//				if (stream.connected)
+//				{
+//					var b:int;
+//					try {
+//						do {
+//							b = stream.readByte();
+//							bytes.writeByte(b);
+//						} while (true);
+//					} catch (e:EOFError) {
+//					}
+//				}
+//				img.source=bytes;
+//				stream=new URLStream();
+//				bytes= new ByteArray();
+//			}
+            //delete the logo and attachment file
+            private function deleteLogoInfo():void{
+            	Alert.show(resourceManager.getString("errormsg","deletePipe"),"",3,null,doDelete);
+            }
+            private function doDelete(event:CloseEvent):void{
+            	if(event.detail==Alert.YES){
+            		AutoService.getInstance(true).deleteByHql("from B_CLASS_ATTRIBUTE_PAGE b where b.func_uuid='"+nowObj.uuid+"'",function(e:ResultEvent):void{
+            			AutoService.getInstance(true).deleteByHql("from B_CLASS_ATTRIBUTE_APPENDIX b where b.class_attribute_page_uuid='"+nowObj.uuid+"'",function(e:ResultEvent):void{
+            				img.source = "img/logo/selectImg.jpg";
+            				linktitle.text = "";
+            				linkfile.text = "";
+            				Alert.show(resourceManager.getString("errormsg","deleteSucc"));
+            			},deleteFailure);
+            		},deleteFailure);
+            	}
+            }
+            private function deleteFailure(event:Event):void{
+            	Alert.show(resourceManager.getString("errormsg","deleteFailure"));
+            }
+			//save the page info
+			private function saveLogoInfo():void{
+				trace(textInput.length+":textInput.length");
+				trace(textInput.htmlText.length+":textInput.htmlText.length");
+					saveinfo.enabled=false;
+					if(pageOjb==null)pageOjb=new Object();
+						if(titleBox.text.length>170){
+							Alert.show(resourceManager.getString("errormsg","titletoolong"),resourceManager.getString("errormsg","errtip"));
+							return;
+						}
+						if(textInput.length>3800){
+							Alert.show(resourceManager.getString("errormsg","contenttoolong"),resourceManager.getString("errormsg","errtip"));
+							return;
+						}
+							pageOjb.title=titleBox.text;
+							pageOjb.content=textInput.htmlText;
+							pageOjb.func_uuid=nowObj.uuid;
+						//添加或修改属性页记录
+						
+						AutoService.getInstance(true).saveOrUpdate("B_CLASS_ATTRIBUTE_PAGE",pageOjb,function(e:ResultEvent):void{
+							
+								if(linkObj==null)linkObj=new Object();
+								if(linktitle.text.length>20){
+										Alert.show(resourceManager.getString("errormsg","linktitle"),resourceManager.getString("errormsg","errtip"));
+										return;
+									}
+								
+								else if(linktitle.text.length==0||linktitle.text==""){//说明没有链接的标题
+								  //add a check for link label
+								  if(linkObj.link_appendix_filename!=null){
+								  	Alert.show(resourceManager.getString("errormsg","attachmentFileNoTitle"));
+								  }else{
+									return;
+								  }
+								}else if(linktitle.text.length>0&&linktitle.text.length<=20){
+									linkObj.link_title=linktitle.text;
+									linkObj.class_attribute_page_uuid=nowObj.uuid;
+									//添加或修改链接信息
+									AutoService.getInstance(true).saveOrUpdate("B_CLASS_ATTRIBUTE_APPENDIX",linkObj,function (e:ResultEvent):void{
+									Alert.show(resourceManager.getString("errormsg","savesucc"),resourceManager.getString("errormsg","alert"));
+									});
+								}
+									
+						});
+			}
+			//下拉框选中项改变时候
+			private function comboboxChangeHander(event:Event):void{
+				pageOjb=null;
+				titleBox.text="";
+				textInput.htmlText="";
+				img.source="img/logo/selectImg.jpg";
+				linktitle.text="";
+				linkfile.text="";
+				nowObj=new Object();
+			    nowObj=event.currentTarget.selectedItem;
+				if(nowObj==null)return;
+				findLogoPageByUUID(nowObj.uuid);
+				deleteinfo.enabled=true;
+			}
+			[Bindable]
+			private var nowObj:Object;
+			[Bindable]
+			private var pageOjb:Object;
+			[Bindable]
+			private var linkObj:Object;
+			//根据UUID查询一条属性页信息
+			private function findLogoPageByUUID(UUID:String):void{
+				if(UUID=="")return;
+				//取得属性页信息
+				AutoService.getInstance().findByHql("from B_CLASS_ATTRIBUTE_PAGE b where b.func_uuid='"+UUID+"'",function(e:ResultEvent):void{
+					var arr:ArrayCollection=e.result as ArrayCollection;
+					//说明这个属性页是存在的
+					if(arr!=null&&arr.length!=0){
+						 pageOjb=new Object();
+						 pageOjb=arr[0];
+						img.source= StaticChannelSet.getWebRoot() + "/download.form?method=readImage&fileName="+pageOjb.picture_pathname;
+						 titleBox.text=pageOjb.title;
+						 textInput.htmlText=pageOjb.content;
+						  delImg=pageOjb.picture_pathname;
+						  findLogoLinkByUUID(UUID);
+					}
+				});
+			}
+//			private function gotoLoadImg(file:String):void{
+//					var downLoadURL:URLRequest = new URLRequest();
+//				            downLoadURL.url = "http://"+StaticChannelSet.getAddress()+"/databankServer/download.form?method=findImgSource&path=UPLOAD&name="+file;
+//				            stream.addEventListener(Event.COMPLETE, onLoadComplete);
+//				            stream.load(downLoadURL);
+//			}
+			//取得属性页Link信息
+			private function findLogoLinkByUUID(UUID:String):void{
+						 AutoService.getInstance(false).findByHql("from B_CLASS_ATTRIBUTE_APPENDIX b where b.class_attribute_page_uuid='"+UUID+"'",function(e:ResultEvent):void{
+							 var temp:ArrayCollection=e.result as ArrayCollection;
+								if(temp!=null&&temp.length==1){
+									 linkObj=new Object();
+									 linkObj=temp[0];
+									 linktitle.text=linkObj.link_title;
+									 linkfile.text=linkObj.link_appendix_filename;
+									 delswf=linkObj.link_appendix_filename;
+								}
+						});
+			}
+		]]> 
+	</mx:Script> 
+	<mx:VBox width="100%" horizontalAlign="center" height="100%" verticalGap="9" paddingTop="15">
+		<mx:HBox width="600" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+			<mx:Label text="{resourceManager.getString('errormsg','selectone')+':'}"/>
+			<mx:ComboBox id="pagecb" prompt=" " enabled="false" dataProvider="{cards}" change="{comboboxChangeHander(event);}" width="200" itemRenderer="mx.controls.Label" labelField="funcname" />
+			<mx:Spacer width="100%" />
+			<mycomponents:Components_LinkButton  iconType="right" id="saveinfo" enabled="false" label="{resourceManager.getString('errormsg','savebut')}" click="{saveLogoInfo();}"/>
+			<mycomponents:Components_LinkButton  iconType="right" id="deleteinfo" enabled="false" label="{resourceManager.getString('errormsg','deletebut')}" click="{deleteLogoInfo();}"/>
+		</mx:HBox>
+		<mx:Canvas width="600" borderStyle="solid" borderColor="#CDE7FF" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+			<mx:HBox width="100%" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+				<mx:TextInput width="100%" id="titleBox" change="{saveinfo.enabled=true;deleteinfo.enabled=true;}"   borderStyle="none" paddingTop="3" paddingLeft="3" fontSize="11" color="#335f7d" fontWeight="bold" />
+			</mx:HBox>
+		</mx:Canvas>
+		<mx:Canvas width="600">
+			<mx:VBox id="imgBox" width="100%" minHeight="100" click="uploadFile(imageTypes,'picture_pathname')" toolTip="{resourceManager.getString('errormsg','clickpic')}" borderStyle="solid" borderColor="#CDE7FF">
+				<mx:Image maxWidth="496"  maxHeight="200" id="img"  source="img/logo/selectImg.jpg"/>
+			</mx:VBox>
+		</mx:Canvas>
+		<mx:VBox width="600" height="160"   borderColor="#CDE7FF" borderStyle="solid"   >
+			<mx:TextArea width="100%" height="100%" change="{saveinfo.enabled=true;deleteinfo.enabled=true;}" maxChars="3800"   id="textInput"  borderStyle="none" />
+		</mx:VBox>
+		<mx:VBox width="600" borderColor="#CDE7FF" borderStyle="solid" paddingTop="3" paddingLeft="9" paddingRight="9" paddingBottom="3">
+			<mx:HBox width="100%" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+				<mx:HBox width="100%" height="100%">
+					<mx:Label text="{resourceManager.getString('errormsg','linklabel')+':'}"/>
+					<mx:TextInput width="80" id="linktitle" change="{saveinfo.enabled=true;deleteinfo.enabled=true;}" />
+					<mycomponents:Components_LinkButton  iconType="right" label="{resourceManager.getString('errormsg','upload')}" click="uploadFile(swfTypes,'link_appendix_filename')"/>
+					<mx:Label text="{resourceManager.getString('errormsg','linkfile')+':'}"/>
+					<mx:TextInput width="150" id="linkfile"   enabled="false" />
+				</mx:HBox>
+			</mx:HBox>
+		</mx:VBox>
+		<mx:ProgressBar id="progress"  mode="manual"  width="600"  visible="false"  includeInLayout="false"  labelPlacement="center" height="18" />
+	</mx:VBox>
+</mx:Module>

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml"
+				title="{resourceManager.getString('config','serch')}"
+				showCloseButton="true"
+				borderAlpha="1"
+				creationComplete="{ShortcutKeyUtil.setFocusAndSubmit(this,returnName);}"
+				close="closeEvent();"
+				xmlns:mycomponents="org.utmost.mycomponents.*"
+				layout="vertical"
+				horizontalAlign="left" >
+	<mx:Metadata>
+        [ResourceBundle("config")]
+        [ResourceBundle("manageView")]
+    </mx:Metadata>
+	<mx:Script>
+		<![CDATA[
+			import com.hp.events.CommonEvent;
+			import mx.collections.ArrayCollection;
+			import mx.core.IFlexDisplayObject;
+			import org.utmost.util.ShortcutKeyUtil;
+			import org.utmost.effect.PopUpEffect;
+			import mx.managers.PopUpManager;
+			import mx.controls.Text;
+			
+			[Bindable]
+			private var _category:String = "";
+			
+			[Bindable]
+			private var _validNodes:String = "";
+			
+			private var _moduleTree:ArrayCollection;
+			
+			public function set moduleTree(mt:ArrayCollection):void{
+				this._moduleTree = mt;
+			}
+			
+			public function get moduleTree():ArrayCollection{
+				return this._moduleTree;
+			}
+			
+			public function get hasCategory():Boolean{
+				if(_category == "")
+					return false;
+				else
+					return true;
+			}
+			
+			public function get validNodes():String{
+				return _validNodes;
+			}
+
+			public function get keyWord():String
+			{
+				return key.text;
+			}
+			//submit button call this function
+			private function returnName():void
+			{
+				//dispatch 'SearchComponent_true' event
+				dispatchEvent(new Event("SearchComponent_true"));
+				closeEvent();
+			}
+
+			private function closeEvent():void
+			{
+				PopUpManager.removePopUp(this);
+			}
+			//clear text when focus on TextInput
+			public function clearText(ins:TextInput):void{
+				ins.text ="";
+			}
+			//clear handler
+			public function clearHandler():void{
+				_category = "";
+				_validNodes = "";
+			}
+			//select a category, when double click node, then node description transfer to textinput
+			public function selectCategory():void{
+				var categoryWindow:inputBoxCategory = inputBoxCategory(PopUpManager.createPopUp(this.parentApplication as DisplayObject, inputBoxCategory, true));
+				categoryWindow.treeProvider = moduleTree;
+				categoryWindow.addEventListener(CommonEvent.SEARCH_DIRECTORY_SELECTED,
+					function(event:Event):void{
+						var labelField:String = resourceManager.getString('manageView', 'doc.category.tree.label.field');
+						_category = categoryWindow.selectedItem[labelField];
+						_validNodes = categoryWindow.validNodes;
+					}
+				);
+				PopUpManager.centerPopUp(categoryWindow);
+			}
+			//key event
+			private function filterKey(event:KeyboardEvent):void{
+				if(event.keyCode == 8 || event.keyCode == 46){
+					clearHandler();
+					event.currentTarget.text = "";
+				}
+			}
+		]]>
+	</mx:Script>
+
+	<mx:Form>
+		<mx:FormItem label="{resourceManager.getString('config','search.category')}">
+			<mx:HBox width="100%" horizontalGap="0">
+				<mx:TextInput text="{_category}" editable="true" keyDown="filterKey(event)" 
+					keyUp="filterKey(event)" click="selectCategory()" textInput="event.preventDefault();"/>
+				<mx:LinkButton label="{resourceManager.getString('config','search.category.clear.tooltip')}" click="clearHandler()"
+					textDecoration="underline" paddingLeft="2" paddingRight="2"/>
+			</mx:HBox>
+		</mx:FormItem>
+		<mx:FormItem label="{resourceManager.getString('config','search.key')}">
+			<mx:HBox width="100%">
+				<mx:TextInput id="key"
+					  width="100%"
+					  restrict="^'="
+					  maxChars="1000"/>
+			</mx:HBox>
+		</mx:FormItem>
+		<mx:FormItem label="{resourceManager.getString('config','search.andOr')}"  horizontalAlign="center"  >
+				<mx:HBox>
+				<mx:HBox width="100%"  verticalAlign="middle">
+						<!--'and' and 'or' mean different, 'and' represent must contain all key words split in space ' ',
+						'or' represent at last contain one of all key words split in space ' '-->
+						<mx:RadioButtonGroup id="andOr" />
+						<mx:RadioButton label="AND"  groupName="andOr" />
+						<mx:RadioButton label="OR"  selected="true"  groupName="andOr" />
+				</mx:HBox>
+				</mx:HBox>
+		</mx:FormItem> 
+		<mx:Canvas width="100%">
+				<mx:LinkButton label="{resourceManager.getString('config','search.submit.tooltip')}" 
+					click="returnName()" textDecoration="underline" horizontalCenter="-10"/>
+		</mx:Canvas>
+		<mx:FormItem  width="100%" label="" fontWeight="bold" >
+			<mx:Label  height="35" width="250"  textAlign="left" paddingLeft="-80" text="{resourceManager.getString('config','search.searchInfo')}"/>
+		</mx:FormItem> 
+		<mx:FormItem  width="100%" label="" fontWeight="bold" >
+			<mx:Label  height="35" width="250"  textAlign="left" paddingLeft="-80" text="{resourceManager.getString('config','search.termInfo')}"/>
+		</mx:FormItem> 
+	</mx:Form> 
+
+</mx:TitleWindow>

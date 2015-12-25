@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" title="Modify user information" 
+	layout="vertical"   horizontalAlign="center" verticalAlign="top" 
+	showCloseButton="true" close="close()"  xmlns:mycomponents="org.utmost.mycomponents.*"
+    creationComplete="init();">
+	<mx:Script>
+		<![CDATA[
+			import org.utmost.service.AutoService;
+			import mx.collections.ArrayCollection;
+			import mx.events.ValidationResultEvent;
+			import mx.validators.Validator;
+			import org.utmost.service.UtmostService;
+			import mx.controls.Alert;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.effect.PopUpEffect;
+			import mx.managers.PopUpManager;
+			
+			public var user:Object;
+			
+			private var realPassword:String;
+			
+			private var companyStr:String = null;
+			
+			private var departStr:String = null;
+			
+			private var companyObj:Object;	//init company object
+			
+			private var departmentObj:Object;	//init department object
+			
+			private function init():void{
+				user.uuid = user.useruuid;
+				username.text = user.username;
+				loginname.text = user.loginname;
+				usercode.text = user.usercode;
+				email.text = user.email;
+				phone.text = user.telephone;
+				realPassword = user.password;
+				
+				companyStr = user.company;
+				departStr = user.department;
+				
+				initValidate();
+			}
+			
+			/**
+			 * modify user info
+			 * */
+			private function updateUserInfo():void{
+				user.username = username.text;
+				user.loginname = loginname.text;
+				user.usercode = usercode.text;
+				user.email = email.text;
+				user.telephone = phone.text;
+				user.password = realPassword;
+				user.state = "1";
+				
+				var orgArr:ArrayCollection = new ArrayCollection();	//depart info 
+				
+				orgArr.addItem(companyObj);
+				orgArr.addItem(departmentObj);
+				
+				var orgArrNow:ArrayCollection = new ArrayCollection();	//user depart info
+				
+				orgArrNow.addItem(comp.selectedItem);
+				orgArrNow.addItem(depart.selectedItem);
+				
+				var utmost:UtmostService = new UtmostService("UserManageUtil",function(e:ResultEvent):void{
+					if(e.result == 0){
+						close();
+					}else{
+						Alert.show("Error!");
+					}
+				});
+		     	utmost.ro.updatePortalUser(user, orgArr, orgArrNow);
+			}
+			
+			private function close():void {
+				PopUpManager.removePopUp(this);
+			}
+			[Bindable]
+            public var validatorArr:Array;
+			public function initValidate():void {
+                validatorArr = new Array();
+             }
+             
+          	public function keep(evt:MouseEvent):void {
+                var validatorErrorArray:Array = Validator.validateAll(validatorArr);
+                var isValidForm:Boolean = validatorErrorArray.length == 0;
+                if (isValidForm) {
+                  //after auth
+                 updateUserInfo();
+                } else {
+                    var err:ValidationResultEvent;
+                    var errorMessageArray:Array = [];
+                    for each (err in validatorErrorArray) {
+                       var errField:String = FormItem(err.currentTarget.source.parent).label
+                        errorMessageArray.push(errField + ": " + err.message);
+                    }
+                   Alert.show(errorMessageArray.join("\n\n"), "", Alert.OK);
+                }
+            }
+            
+            //load company info
+			[Bindable]
+			private  var compArrc:ArrayCollection;
+			private function loadComp():void{
+				AutoService.getInstance(false).findByHql("from U_PORTAL_ORG u where u.state='"+0+"'",function(e:ResultEvent):void{
+					compArrc=new ArrayCollection();
+					compArrc=ArrayCollection(e.result);
+					
+					var comuuid:String;	//company uuid
+					
+					var flag:Boolean = false;
+					
+					if(companyStr!=null){
+						var comIndex:int = -1;
+						for each(var com:Object in compArrc){
+							comIndex++;
+							if(com.orgname == companyStr){
+								comuuid = com.uuid;
+								flag = true;
+								break;
+							}
+						}
+						if(flag){
+							comp.selectedIndex = comIndex;
+						}else{
+							comp.selectedIndex = -1;
+						}
+						
+						companyObj = comp.selectedItem;
+						
+						loadDepart(comuuid);
+						companyStr = null;
+					}
+				});
+			}
+			
+			//load department info
+			[Bindable]
+			private  var departArrc:ArrayCollection;
+			private function loadDepart( parentuuid:String):void{
+				AutoService.getInstance(false).findByHql("from U_PORTAL_ORG u where u.state='"+1+"' and u.pid='"+parentuuid+"'",function(e:ResultEvent):void{
+					departArrc=new ArrayCollection();
+					departArrc=ArrayCollection(e.result);
+					
+					if(departStr!=null){
+						var departIndex:int = -1;
+						for each(var depart:Object in departArrc){
+							departIndex++;
+							if(depart.orgname == departStr){
+								break;
+							}
+						}
+						
+						var arr:Array = new Array();
+						arr.push(departIndex);
+						
+						callLater(setDepartIndex,arr);
+						departStr = null;
+					}
+				});
+			}
+			
+			private function setDepartIndex(index:int):void{
+				depart.selectedIndex = index;
+				departmentObj = depart.selectedItem;
+			}
+		]]>
+	</mx:Script>
+	 <mx:StringValidator id="usernamevd"
+	        source="{username}"  minLength="4"
+	        property="text"  tooLongError="{resourceManager.getString('errormsg','toolong')}"
+	        tooShortError="{resourceManager.getString('errormsg','tooshort')}"  invalid="{username.setStyle('backgroundColor','#EBCED7');}"
+	        required="true"  maxLength="100"  valid="{username.setStyle('backgroundColor','#FFFFFF');}"
+	        requiredFieldError="{resourceManager.getString('errormsg','notempty')}"
+	      />
+	    <mx:StringValidator id="loginnamevd"
+	        source="{loginname}"  minLength="4"
+	        property="text"  tooLongError="{resourceManager.getString('errormsg','toolong')}"
+	        tooShortError="{resourceManager.getString('errormsg','tooshort')}"  invalid="{loginname.setStyle('backgroundColor','#EBCED7');}"
+	        required="true"  maxLength="16" valid="{loginname.setStyle('backgroundColor','#FFFFFF');}"
+	        requiredFieldError="{resourceManager.getString('errormsg','notempty')}"
+	      />
+	      <mx:StringValidator id="usercodevd"
+	        source="{usercode}"  minLength="4"
+	        property="text"  tooLongError="{resourceManager.getString('errormsg','toolong')}"
+	        tooShortError="{resourceManager.getString('errormsg','tooshort')}"  invalid="{usercode.setStyle('backgroundColor','#EBCED7');}"
+	        required="true"  maxLength="16" valid="{usercode.setStyle('backgroundColor','#FFFFFF');}"
+	        requiredFieldError="{resourceManager.getString('errormsg','notempty')}"
+	      />
+	      <!--
+	      <mx:StringValidator id="passwordvd"
+	        source="{password}"  minLength="4"
+	        property="text"  tooLongError="{resourceManager.getString('errormsg','toolong')}"
+	        tooShortError="{resourceManager.getString('errormsg','tooshort')}"  invalid="{password.setStyle('backgroundColor','#EBCED7');}"
+	        required="true"  maxLength="16" valid="{password.setStyle('backgroundColor','#FFFFFF');}"
+	        requiredFieldError="{resourceManager.getString('errormsg','notempty')}"
+	      />
+	      <mx:StringValidator id="password2vd"
+	        source="{password2}"  minLength="4"
+	        property="text"  tooLongError="{resourceManager.getString('errormsg','toolong')}"
+	        tooShortError="{resourceManager.getString('errormsg','tooshort')}"  invalid="{password2.setStyle('backgroundColor','#EBCED7');}"
+	        required="true"  maxLength="16" valid="{password2.setStyle('backgroundColor','#FFFFFF');}"
+	        requiredFieldError="{resourceManager.getString('errormsg','notempty')}"
+	      />
+	      -->
+	      <mx:EmailValidator id="emailvd"
+	        source="{email}"   
+	        property="text"   required="true" 
+	         invalid="{email.setStyle('backgroundColor','#EBCED7');}"
+	         valid="{email.setStyle('backgroundColor','#FFFFFF');}"
+	        requiredFieldError="{resourceManager.getString('errormsg','notemail')}"
+	      />
+	<mx:Form  id="formID">
+		<mx:FormItem label="User Name">
+			<mx:TextInput id="username" width="220" change="{btn_save.enabled=true;}" editable="false"/>
+		</mx:FormItem>
+		<mx:FormItem label="Login Name">
+			<mx:TextInput id="loginname" restrict="0-9/a-z/A-Z/@/./_/\-" width="220" change="{btn_save.enabled=true;}" editable="false"/>
+		</mx:FormItem>
+		<mx:FormItem label="User Code">
+			<mx:TextInput id="usercode"  width="220" change="{btn_save.enabled=true;}" editable="false"/>
+		</mx:FormItem>
+		<!--
+		<mx:FormItem label="Password">
+			<mx:HBox paddingLeft="0" paddingRight="0" paddingBottom="0" paddingTop="0">
+				<mx:TextInput id="password" displayAsPassword="true"  width="220" change="{btn_save.enabled=true; user.passwordChange='true'; realPassword = password.text;}" editable="false"/>	
+			</mx:HBox>
+		</mx:FormItem>
+		<mx:FormItem label="Confirm">
+			<mx:TextInput id="password2" displayAsPassword="true"  width="220" change="{btn_save.enabled=true; user.passwordChange='true'; realPassword = password.text;}" editable="false"/>
+		</mx:FormItem>
+		-->
+		<mx:FormItem label="E-mail">
+			<mx:TextInput id="email"   width="220" change="{btn_save.enabled=true;}" editable="false"/>
+		</mx:FormItem>
+		<mx:FormItem required="false" label="Telephone">
+			<mx:TextInput id="phone"    width="220" change="{btn_save.enabled=true;}" editable="false"/>
+		</mx:FormItem>
+		<mx:FormItem required="false" label="Company">
+				<mx:ComboBox id="comp" creationComplete="{loadComp();}" change="{loadDepart(comp.selectedItem.uuid);btn_save.enabled=true;}" prompt="Please select one" selectedIndex="-1" dataProvider="{compArrc}" labelField="orgname"   width="220"/>
+		</mx:FormItem>
+		<mx:FormItem required="false" label="Department">
+			<mx:ComboBox id="depart"   prompt="Please select one" selectedIndex="-1" dataProvider="{departArrc}" change="{btn_save.enabled=true;}" labelField="orgname"  width="220"/>
+		</mx:FormItem>
+	</mx:Form>
+	<mx:ControlBar horizontalAlign="center" paddingBottom="6" paddingTop="6">
+		<mycomponents:Components_LinkButton id="btn_save" iconType="right" label="Save" click="keep(event)" enabled="false"/>
+		<mycomponents:Components_LinkButton iconType="right" label="Cancel" click="close()"/>
+	</mx:ControlBar>
+</mx:TitleWindow>

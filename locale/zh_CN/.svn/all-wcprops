@@ -1,0 +1,89 @@
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/was_catonline/!svn/ver/1393/sourcecode/trunk/databank4/locale/zh_CN
+END
+config.properties
+K 25
+svn:wc:ra_dav:version-url
+V 90
+/svn/was_catonline/!svn/ver/1369/sourcecode/trunk/databank4/locale/zh_CN/config.properties
+END
+fileDown.properties
+K 25
+svn:wc:ra_dav:version-url
+V 90
+/svn/was_catonline/!svn/ver/48/sourcecode/trunk/databank4/locale/zh_CN/fileDown.properties
+END
+monitor.properties
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/was_catonline/!svn/ver/48/sourcecode/trunk/databank4/locale/zh_CN/monitor.properties
+END
+cutpage.properties
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/was_catonline/!svn/ver/48/sourcecode/trunk/databank4/locale/zh_CN/cutpage.properties
+END
+BatchDownload.properties
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/was_catonline/!svn/ver/1372/sourcecode/trunk/databank4/locale/zh_CN/BatchDownload.properties
+END
+menubar.properties
+K 25
+svn:wc:ra_dav:version-url
+V 89
+/svn/was_catonline/!svn/ver/59/sourcecode/trunk/databank4/locale/zh_CN/menubar.properties
+END
+noticeView.properties
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/was_catonline/!svn/ver/48/sourcecode/trunk/databank4/locale/zh_CN/noticeView.properties
+END
+dataGrid.properties
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/was_catonline/!svn/ver/1393/sourcecode/trunk/databank4/locale/zh_CN/dataGrid.properties
+END
+errormsg.properties
+K 25
+svn:wc:ra_dav:version-url
+V 92
+/svn/was_catonline/!svn/ver/1120/sourcecode/trunk/databank4/locale/zh_CN/errormsg.properties
+END
+auth.properties
+K 25
+svn:wc:ra_dav:version-url
+V 88
+/svn/was_catonline/!svn/ver/1116/sourcecode/trunk/databank4/locale/zh_CN/auth.properties
+END
+contactUs.properties
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/was_catonline/!svn/ver/97/sourcecode/trunk/databank4/locale/zh_CN/contactUs.properties
+END
+downloadList.properties
+K 25
+svn:wc:ra_dav:version-url
+V 95
+/svn/was_catonline/!svn/ver/481/sourcecode/trunk/databank4/locale/zh_CN/downloadList.properties
+END
+forumView.properties
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/svn/was_catonline/!svn/ver/48/sourcecode/trunk/databank4/locale/zh_CN/forumView.properties
+END
+manageView.properties
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/was_catonline/!svn/ver/1393/sourcecode/trunk/databank4/locale/zh_CN/manageView.properties
+END

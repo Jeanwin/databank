@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" width="50%" height="100%" paddingTop="60" horizontalAlign="left" xmlns:mycomponents="org.utmost.mycomponents.*">
+		
+		<mx:Label id="msg" width="100%"/>
+		<mx:DataGrid height="235" width="347" id="datagrid" >
+			<mx:columns>
+				<mx:DataGridColumn headerText="FileName" dataField="name" itemRenderer="component.VboxDownloadItemRenderer"/>
+				<mx:DataGridColumn headerText="FilePath" dataField="path" itemRenderer="mx.controls.Label"/>
+			</mx:columns>
+		</mx:DataGrid>
+		<mx:HBox horizontalAlign="center" verticalAlign="middle" horizontalGap="20" width="350">
+			<mycomponents:Components_LinkButton iconType="bottom" label="DownLoad" id="down"/>
+			<mycomponents:Components_LinkButton iconType="right" label="Cancel" />
+		</mx:HBox>
+</mx:VBox>

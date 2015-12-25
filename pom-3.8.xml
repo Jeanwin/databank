@@ -1,0 +1,357 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.vgc</groupId>
+  <artifactId>databank4</artifactId>
+  <packaging>swf</packaging>
+  <version>latest-SNAPSHOT</version>
+  <name>databank4</name>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	<flex.version>3.2.0.3958</flex.version>
+	<flash.version>10.0</flash.version>
+	<flexmojos.version>3.8</flexmojos.version>
+  </properties>
+  <repositories>
+    <repository>
+      <id>central</id>
+      <url>https://vw.bullchina.net/nexus/content/groups/public</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>snapshot</id>
+      <url>https://vw.bullchina.net/nexus/content/groups/public</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>central</id>
+      <url>https://vw.bullchina.net/nexus/content/groups/public</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </pluginRepository>
+    <pluginRepository>
+      <id>snapshot</id>
+      <url>https://vw.bullchina.net/nexus/content/groups/public</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </pluginRepository>
+  </pluginRepositories>
+  <distributionManagement>
+    <repository>
+      <id>VW-Releases</id>
+      <name>Internal Releases</name>
+      <url>
+      https://vw.bullchina.net/nexus/content/repositories/releases</url>
+    </repository>
+    <snapshotRepository>
+      <id>VW-Snapshots</id>
+      <name>Internal Snapshots</name>
+      <url>
+      https://vw.bullchina.net/nexus/content/repositories/snapshots</url>
+    </snapshotRepository>
+  </distributionManagement>
+  <dependencies>
+  
+	<dependency>
+      <groupId>com.adobe.flex.framework</groupId>
+      <artifactId>flex-framework</artifactId>
+      <version>${flex.version}</version>
+      <type>pom</type>
+    </dependency>
+	
+	<dependency>
+	  <groupId>org.apache.flex.framework</groupId>
+	  <artifactId>datavisualization</artifactId>
+	  <version>${flex.version}</version>
+	  <type>swc</type>
+	</dependency>
+	<!--
+	<dependency>
+      <groupId>org.apache.flex</groupId>
+      <artifactId>framework</artifactId>
+      <version>${flex.version}</version>
+      <type>pom</type>
+    </dependency>
+	-->
+    <!-- Flashplayer runtime dependencies -->
+    <dependency>
+      <groupId>com.adobe.flash.framework</groupId>
+      <artifactId>playerglobal</artifactId>
+      <version>${flash.version}</version>
+      <type>swc</type>
+    </dependency>
+	<!--
+<dependency>
+  <groupId>com.adobe.flex.sdk</groupId>
+  <artifactId>datavisualization</artifactId>
+  <version>{flex.version}</version>
+  <type>swc</type>
+</dependency>-->
+    <!-- flexmojos Unit testing support -->
+    <dependency>
+      <groupId>org.sonatype.flexmojos</groupId>
+      <artifactId>flexmojos-unittest-support</artifactId>
+      <version>${flexmojos.version}</version>
+      <type>swc</type>
+      <scope>test</scope>
+    </dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>as3corelib</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>ascb</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>AutoComplete</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>CSSPlus</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>Degrafa</artifactId>
+  <version>2.11</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>DegrafaLibrary</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>Evaluator</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>flexlib</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>flexrays</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>flex_skins</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>ilog-elixir</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>ilog-elixir_rb</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>KapInspect</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>ObjectHandles</artifactId>
+  <version>1.0.0015</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>ParticleEmitter</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>SuperPrintJob</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>Visualizer</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+<dependency>
+  <groupId>com.bull.flex.lib</groupId>
+  <artifactId>WindowsClassic</artifactId>
+  <version>1.0</version>
+  <type>swc</type>
+  
+</dependency>
+	  <!--
+	<dependency>
+		<groupId>com.adobe.flexunit</groupId>
+		<artifactId>flexunit</artifactId>
+		<version>4.0-rc-1</version>
+		<type>swc</type>
+	</dependency>
+	-->
+  </dependencies>
+  <build>
+    <finalName>databank</finalName>
+    <sourceDirectory>src</sourceDirectory>
+    <plugins>	
+		<plugin>
+			<groupId>org.sonatype.flexmojos</groupId>
+			<artifactId>flexmojos-maven-plugin</artifactId>
+			<version>${flexmojos.version}</version>
+			<extensions>true</extensions>
+			 <configuration>
+				<sourceFile>./databank.mxml</sourceFile>
+				<allow-source-path-overlap>true</allow-source-path-overlap>
+				<moduleFiles> 
+				   <module>module/auth/AuthGroupFunc.mxml</module> 
+				   <module>module/auth/AuthUserGroupModule.mxml</module> 
+				   <module>module/auth/AuthGroupModule.mxml</module> 
+				   <module>module/auth/AuthUserCreateComponent.mxml</module> 
+				   <module>module/auth/AuthUserModule.mxml</module> 
+				   <module>module/auth/AuthGroupPermissions.mxml</module> 
+				   <module>module/auth/AuthUserDownLoadInfo.mxml</module> 
+				   <module>module/auth/AuthUserChangeComponent.mxml</module> 
+				   <module>module/auth/AuthUsersMonitorMudule.mxml</module> 
+				   <module>module/chart/abstractBox.mxml</module>
+				   <module>module/chart/ChartModule.mxml</module>
+				   <module>module/chart/ElixirSampleBar.mxml</module>
+				   <module>module/chart/LinkToDemoPage.mxml</module>
+				   <module>module/chart/ganttBox.mxml</module>
+				   <module>module/chart/importBox.mxml</module>
+				   <module>module/chart/show.mxml</module>
+				   <module>module/chart/DATAXML.mxml</module>
+				   <module>module/chart/ItemPanel.mxml</module>
+				   <module>module/chart/abstractBox.mxml</module>
+				   <module>module/datainput/ChangeShowWordModule.mxml</module>
+				   <module>module/datainput/CreateNewKindModuel.mxml</module>
+				   <module>module/datainput/DataInputModule.mxml</module>
+				   <module>module/datainput/DataModifyModule.mxml</module>
+				   <module>module/datainput/DataTreeNodeManageModule.mxml</module>
+				   <module>module/dataoutput/BatchDownloadModule.mxml</module>
+				   <module>module/forum/ForumAccessContainer.mxml</module>
+				   <module>module/forum/ForumCategoryList.mxml</module>
+				   <module>module/forum/ForumCategoryManagement.mxml</module>
+				   <module>module/forum/ForumTopicDetail.mxml</module>
+				   <module>module/forum/ForumTopicList.mxml</module>
+				   <module>module/forum/ForumTopicSearch.mxml</module>
+				   <module>module/link/LinkModule.mxml</module>
+				   <module>module/otherinfo/LogoInfoModule.mxml</module>
+				   <module>module/otherinfo/LogoInfoOnLogonModule.mxml</module>
+				   <module>module/otherinfo/OtherInfoModule.mxml</module>
+				   <module>module/otherinfo/SeeMoreLinkFile.mxml</module>
+				   <module>module/basicDataGrid.mxml</module>
+				   <module>module/DetailList.mxml</module>
+				   <module>module/ganttDataGird.mxml</module>
+				   <module>module/manage.mxml</module>
+				   <module>module/notice.mxml</module>
+				   <module>module/PortalModule.mxml</module>
+				   <module>module/simpleDataGirdBack.mxml</module>
+				   <module>module/PortalModule.mxml</module>
+				   <module>module/UserRoleManage.mxml</module>
+				</moduleFiles> 
+				<resourceBundlePath>${basedir}/locale/{locale}</resourceBundlePath>
+				  <compiledLocales>
+					<locale>en_US</locale>
+					<locale>zh_CN</locale>
+				  </compiledLocales>
+				  <!--
+				  <runtimeLocales>
+					<locale>en_US</locale>
+					<locale>zh_CN</locale>
+				  </runtimeLocales>
+				  -->
+			 </configuration>
+		</plugin>
+		<!--
+		<plugin>
+	        <artifactId>maven-resources-plugin</artifactId>
+	        <version>2.6</version>
+	        <executions>
+	          <execution>
+	            <id>copy-resources</id>
+	            <phase>validate</phase>
+	            <goals>
+	              <goal>copy-resources</goal>
+	            </goals>
+	            <configuration>
+	              <outputDirectory>${basedir}/target</outputDirectory>
+	              <resources>          
+					<resource>
+	                  <directory>src/img</directory>
+	                  <filtering>true</filtering>
+	                </resource>
+					<resource>
+	                  <directory>src/UPLOAD</directory>
+	                  <filtering>true</filtering>
+	                </resource>
+	              </resources>              
+	            </configuration>            
+	          </execution>
+	        </executions>
+	   </plugin>
+-->
+    </plugins>
+  </build>
+</project>

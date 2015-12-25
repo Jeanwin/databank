@@ -1,0 +1,797 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml"
+		   implements="module.ModuleInterface"
+		   width="100%"
+		   height="100%"
+		   xmlns="*"
+		   xmlns:pages="pages.*"
+		   creationComplete="{init();}"
+		   xmlns:veiw="veiw.*"
+		   xmlns:conmponents="conmponents.*"
+		   xmlns:component="component.*"
+		   xmlns:cutpage="component.cutpage.*"
+		   xmlns:mycomponents="org.utmost.mycomponents.*">
+	<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Script>
+		<![CDATA[
+			import mx.binding.utils.ChangeWatcher;
+			import com.pagination.PageAction;
+			import com.pagination.PageHelper;
+			import mx.modules.IModuleInfo;
+			import mx.modules.ModuleManager;
+			import mx.events.ModuleEvent;
+			import com.StaticFunUUID;
+			import com.TrimStr;
+			import component.detailComp.detail;
+			import ascb.units.Unit;
+			import org.utmost.service.AutoService;
+			import com.DownloadInfo;
+			import mx.controls.Image;
+			import ilog.heatmap.ValuedHeatMap;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+			import component.downLoadImage;
+			import component.downLoadLabel;
+			import org.utmost.effect.PopUpEffect;
+			import mx.core.Application;
+			import mx.events.CloseEvent;
+			import component.fileDownLoad;
+			import component.fileDown;
+			import mx.managers.PopUpManager;
+			import mx.core.ScrollPolicy;
+			import mx.controls.Alert;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumnGroup;
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
+			import mx.collections.ArrayCollection;
+			import org.utmost.service.StaticChannelSet;
+			import org.utmost.service.UtmostService;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import com.right.UserRight;
+			import com.AdvancedSorting; 
+			import component.downloadImage4Pop;
+			
+			private var list:ArrayCollection;
+			//title
+			private var listTitle:ArrayCollection;
+			//user UUID
+			[Bindable]
+			private var useruuid:String; 
+			//language
+			[Bindable]
+			private var language:String; 
+			//show state
+			[Bindable]
+			private var showstate:String; 
+			//root UUID
+			[Bindable]
+			private var rootuuid:String; 
+			//node UUID
+			[Bindable]
+			private var nodeuuid:String; 
+			[Bindable]
+			private var page:PageHelper;
+			[Bindable]
+			private var totalRows:Number;
+			[Bindable]
+			private var hasProtected:Boolean=false;
+			private static var standardUUID:String=StaticFunUUID.standardUUID;
+			//When init, put the search bar on the top of data column
+			[Bindable]
+
+			private var moduleInfo:IModuleInfo;
+
+            private var documentUUID:String = null;
+            //Call this function after this page is created
+			private function init():void
+			{
+				datacanvas.setChildIndex(view_dg, 0);
+
+				dataTable.visible=true;
+				dataTable.includeInLayout=true;
+				mvb.visible=false;
+				mvb.includeInLayout=false;
+				ChangeWatcher.watch(Application.application, "language", changeHeaderLanguage);
+			}
+			//Change language(Chinese and English)
+			private function changeHeaderLanguage(event:Event):void{
+				language = Application.application.language;
+				loadDgView();
+			}
+
+			/**
+			 *init page helper class.
+			 */
+			private function initPageHelperClass():void
+			{
+				page=new PageHelper(15, fPage, pPage, nPage, lPage);
+				page.callFunc=getFieldDataTotalRows;
+			}
+            
+            public function set $documentUUID(_uuid:String):void{
+            	documentUUID = _uuid;
+            }
+            //Implement function of interface
+			public function set $treeSelectNode(_node:Object):void
+			{
+				if (_node.rootuuid == null || _node.nodeuuid == null || _node.showstate == null || _node.language == null)
+				{
+					Alert.show("该节点配置错误", "警告");
+					return;
+				}
+				if (vb != null && vb.getChildren().length > 1)
+				{
+					vb.removeChildAt(1);
+				}
+
+				if (dataTable != null)
+				{
+					dataTable.visible=true;
+					dataTable.includeInLayout=true;
+					mvb.visible=false;
+					mvb.includeInLayout=false;
+				}
+				useruuid=UserRight.getUserUUID();
+				language=_node.language;
+				showstate=_node.showstate;
+				rootuuid=_node.rootuuid;
+				nodeuuid=_node.nodeuuid;
+				hasProtected=(UserRight.hasMenuRight(_node.nodeuuid, "4") == "1" ? true : false);
+				//Call java function to get cloumn title field
+				var ut:UtmostService=new UtmostService("DataInfoService", function(event:ResultEvent):void
+					{
+						listTitle=new ArrayCollection();
+						listTitle=event.result as ArrayCollection;
+						loadDgView();
+						initPageHelperClass();
+						//Check the current user have the permissions on the node 
+						if (UserRight.hasMenuRight(nodeuuid, "1") == "0")
+						{
+							totalRows=0;
+							page.setTotalRows(totalRows);
+							view_dg.dataProvider=null;
+						}
+						else
+						{
+							page.setDataProvider();
+						}
+					});
+				ut.ro.getFieldTitleInfo(rootuuid, nodeuuid, useruuid, hasProtected, (showstate == "simple" ? 1 : 2));
+			}
+            //private var isFirstEnter:Boolean = true;
+			private function getFieldDataTotalRows():void
+			{
+				
+				var uts:UtmostService=new UtmostService("DataInfoService", function(e:ResultEvent):void
+					{
+						if (e.result != null)
+						{
+							totalRows == 0;
+							totalRows=e.result as Number;
+							page.setTotalRows(totalRows);
+							if (totalRows == 0)
+							{
+								view_dg.dataProvider=null;
+							}
+							if(documentUUID!=null){
+									var uts1:UtmostService=new UtmostService("DataInfoService", function(e:ResultEvent):void
+									{
+										if (e.result != null)
+										{
+											var orderNum:Number = e.result as Number;
+											page.currentPage = orderNum;
+									        var uts:UtmostService=new UtmostService("DataInfoService", function(dataevent:ResultEvent):void
+									        {
+											if (dataevent != null)
+											{
+												list=new ArrayCollection();
+												list=dataevent.result as ArrayCollection;
+												view_dg.dataProvider=list;
+												  //isFirstEnter = true;
+												  var index:int = -1;
+												  for each(var item:Object in view_dg.dataProvider){
+												  	index++;
+												  	if(item!=null&&item.uuid == documentUUID){
+												  	    documentUUID = null;
+												  	    view_dg.selectedItem = item;
+												  	    view_dg.selectedIndex = index;
+												  	    
+												  	    var timer:Timer = new Timer(1000,1);
+	        	                       					 timer.addEventListener(TimerEvent.TIMER,onTime);
+	        	                       					 timer.start();
+												  	    //view_dg.verticalScrollPosition = index;
+												  	    //view_dg.scrollToIndex(index);
+												  	    break;
+												  	}
+												  }
+												  documentUUID = null;
+												}
+										});
+								  uts.ro.getFieldData(rootuuid, nodeuuid, useruuid, page.getCurrentPage(), page.getPageSize(), hasProtected, (showstate == "simple" ? 1 : 2));
+								 }
+									
+								});
+								uts1.ro.getOrderByDocumentUUID(rootuuid, nodeuuid, useruuid, hasProtected, (showstate == "simple" ? 1 : 2),documentUUID,page.getPageSize());
+							}else{
+								var uts:UtmostService=new UtmostService("DataInfoService", function(dataevent:ResultEvent):void
+								{
+									if (dataevent != null)
+									{
+										list=new ArrayCollection();
+										list=dataevent.result as ArrayCollection;
+										view_dg.dataProvider=list;
+									}
+								})
+							  uts.ro.getFieldData(rootuuid, nodeuuid, useruuid, page.getCurrentPage(), page.getPageSize(), hasProtected, (showstate == "simple" ? 1 : 2));
+							}
+						}
+					});
+				uts.ro.getFieldDataTotalRows(rootuuid, nodeuuid, useruuid, hasProtected, (showstate == "simple" ? 1 : 2));
+			}
+            private function onTime(event2:TimerEvent):void{
+            	var event:MouseEvent = new MouseEvent(MouseEvent.DOUBLE_CLICK);
+				view_dg.dispatchEvent(event);
+            }
+			public function set $moduletree(_tree:ArrayCollection):void
+			{
+				trace("_tree:" + _tree);
+			}
+
+			public function set $menuData(_menu:ArrayCollection):void
+			{
+				trace("_menu:" + _menu);
+			}
+
+			public function set $selectNodeFuncUUID(_funcuuid:String):void
+			{
+				trace("_funcuuid:" + _funcuuid);
+			}
+			
+			/**
+			 * Analysis List<HashMap>
+			 */
+			private function listtoColumns(listTitle:ArrayCollection):Array
+			{
+				var columns:Array=new Array();
+				var groupedColumns:AdvancedDataGridColumnGroup=new AdvancedDataGridColumnGroup();
+				for each (var map:Object in listTitle)
+				{
+					var str:String=map.field_name.toLowerCase();
+					if (str != null)
+					{
+						switch (str)
+						{
+							case "last_modify_date_str":
+								DownloadInfo.last_modify_date_str=map;
+								break;
+							case "func_uuid":
+								DownloadInfo.func_nodeuuid=map;
+								break;
+							case "last_modify_author":
+								DownloadInfo.last_modify_author=map;
+								break;
+							case "download_gb_en_title":
+								break;
+							case "download_gb_en":
+								break;
+							case "download_gb_en_swf":
+								todownload(groupedColumns, "gb_en");
+								break;
+							case "download_gb_ch_title":
+								break;
+							case "download_gb_ch":
+								DownloadInfo.download_gb_ch=map;
+								break;
+							case "download_gb_ch_swf":
+								break;
+							case "download_ece_r_title":
+								break;
+							case "download_ece_r":
+								break;
+							case "download_ece_r_swf":
+								break;
+							case "download_eec_title":
+								break;
+							case "download_eec":
+								break;
+							case "download_eec_swf":
+								break;
+							case "download_others_title":
+								break;
+							case "download_others":
+								break;
+							case "download_others_swf":
+								break;
+							case "doc_title":
+								break;
+							case "doc_":
+								break;
+							case "summary":
+								break;
+							case "summary_swf":
+								break;
+							case "govenor_code":
+								DownloadInfo.govenor_code=map;
+								if (DownloadInfo.govenor_code != null 
+								&& DownloadInfo.gorvernor_code_uuid != null 
+								&& DownloadInfo.last_modify_date_str != null 
+								&& DownloadInfo.func_nodeuuid != null 
+								&& DownloadInfo.last_modify_author != null)
+								{
+									DownloadInfo.gorvernor="gorvernor";
+									columns.push(toColumns(map, "gorvernor", true));
+								}
+								break;
+							case "technical_committees_code":
+								DownloadInfo.technical_committees_code=map;
+								if (DownloadInfo.technical_committees_code != null 
+								&& DownloadInfo.technical_committees_code_uuid != null 
+								&& DownloadInfo.last_modify_date_str != null 
+								&& DownloadInfo.func_nodeuuid != null 
+								&& DownloadInfo.last_modify_author != null)
+								{
+									DownloadInfo.gorvernor="technical_committees";
+									columns.push(toColumns(map, "technical_committees", true));
+								}
+								break;
+							case "gorvernor_code_uuid":
+								DownloadInfo.gorvernor_code_uuid=map;
+								if (DownloadInfo.govenor_code != null 
+								&& DownloadInfo.gorvernor_code_uuid != null 
+								&& DownloadInfo.last_modify_date_str != null 
+								&& DownloadInfo.func_nodeuuid != null 
+								&& DownloadInfo.last_modify_author != null)
+								{
+									DownloadInfo.gorvernor="gorvernor";
+									columns.push(toColumns(map, "gorvernor", true));
+								}
+								break;
+							case "technical_committees_code_uuid":
+								DownloadInfo.technical_committees_code_uuid=map;
+								if (DownloadInfo.technical_committees_code != null 
+								&& DownloadInfo.technical_committees_code_uuid != null 
+								&& DownloadInfo.last_modify_date_str != null 
+								&& DownloadInfo.func_nodeuuid != null 
+								&& DownloadInfo.last_modify_author != null)
+								{
+									DownloadInfo.gorvernor="technical_committees";
+									columns.push(toColumns(map, "technical_committees", true));
+								}
+								break;
+							case "effect_status":
+								columns.push(toColumns(map, str, true));
+								break;
+							case "standard_attribute1":
+								columns.push(toColumns(map, str, false));
+								break;
+							case "uuid":
+								columns.push(toColumns(map, str, false));
+								break;
+							
+							case "standard_attribute2":
+								columns.push(toColumns(map, str, false));
+								break;
+							case "standard_attribute3":
+								columns.push(toColumns(map, str, false));
+								break;
+							case "no_":
+								columns.push(toColumns(map, str, false));
+								break;
+							case "version_":
+								columns.push(toColumns(map, str, false));
+								break;
+							case "title_ch":
+								if (language == "zh_CN"){
+									columns.push(toColumns(map, str, true));
+								}
+								break;
+							case "title_en":
+								if (language == "en_US"){
+									columns.push(toColumns(map, str, true));
+								}
+								break;
+							default:
+								columns.push(toColumns(map, str, true));
+
+						}
+					}
+				}
+				columns.push(groupedColumns);
+				return (columns);
+			}
+
+			//To download screen
+			private function todownload(groupedColumns:AdvancedDataGridColumnGroup, sign:String):void
+			{
+				var columnsChild:AdvancedDataGridColumn=new AdvancedDataGridColumn();
+				if (language == "en_US")
+				{
+					groupedColumns.headerText="Download";
+				}
+				else if (language == "zh_CN")
+				{
+					groupedColumns.headerText="附 件";
+					
+				}
+				else
+				{
+					groupedColumns.headerText="Download";
+				}
+				//Render download image and transfer data needed
+				var cfg:ClassFactory = new ClassFactory(downloadImage4Pop);
+				cfg.properties = {commondata_uuid:"uuid",func_uuid:"func_uuid"};
+				groupedColumns.itemRenderer = cfg;
+				groupedColumns.width = 75;
+				groupedColumns.headerWordWrap=true;
+			}
+
+			
+			private function toColumns(map:Object, str:String, state:Boolean):AdvancedDataGridColumn
+			{
+				var dgColumn:AdvancedDataGridColumn=new AdvancedDataGridColumn();
+				
+				var nodeuuid:String=DownloadInfo.func_nodeuuid.field_name.toLowerCase();
+				var author:String=DownloadInfo.last_modify_author.field_name.toLowerCase();
+				var last_modify_date_str:String=DownloadInfo.last_modify_date_str.field_name.toLowerCase();
+				if (str == "gorvernor")
+				{
+					dgColumn.dataField=(DownloadInfo.govenor_code.field_name).toLowerCase();
+					dgColumn.itemRenderer=new ClassFactory(Label);
+					dgColumn.visible=state;
+					if (map.show_width != null)
+					{
+						dgColumn.width=DownloadInfo.gorvernor_code_uuid.show_width;
+					}
+					else
+					{
+						dgColumn.width=100;
+					}
+					if (language == "en_US")
+					{
+						dgColumn.headerText=DownloadInfo.gorvernor_code_uuid.show_name_en;
+					}
+					else if (language == "zh_CN")
+					{
+						dgColumn.headerText=DownloadInfo.gorvernor_code_uuid.show_name_ch;
+					}
+					else
+					{
+						dgColumn.headerText=DownloadInfo.gorvernor_code_uuid.show_name_en;
+					}
+				}
+				else if (str == "technical_committees")
+				{
+					dgColumn.dataField=(DownloadInfo.technical_committees_code.field_name).toLowerCase();
+					dgColumn.itemRenderer=new ClassFactory(Label);
+					dgColumn.visible=state;
+					if (map.show_width != null)
+					{
+						dgColumn.width=DownloadInfo.technical_committees_code_uuid.show_width;
+					}
+					else
+					{
+						dgColumn.width=100;
+					}
+					if (language == "en_US")
+					{
+						dgColumn.headerText=DownloadInfo.technical_committees_code_uuid.show_name_en;
+					}
+					else if (language == "zh_CN")
+					{
+						dgColumn.headerText=DownloadInfo.technical_committees_code_uuid.show_name_ch;
+					}
+					else
+					{
+						dgColumn.headerText=DownloadInfo.technical_committees_code_uuid.show_name_en;
+					}
+				}
+				else
+				{
+					dgColumn.dataField=(map.field_name).toLowerCase();
+					dgColumn.itemRenderer=new ClassFactory(Label);
+					dgColumn.visible=state;
+					
+					if (map.show_width != null)
+					{
+						dgColumn.width=map.show_width;
+					}
+					else
+					{
+						dgColumn.width=100;
+					}
+					if (language == "en_US")
+					{
+						dgColumn.headerText=map.show_name_en;
+					}
+					else if (language == "zh_CN")
+					{
+						dgColumn.headerText=map.show_name_ch;
+					}
+					else
+					{
+						dgColumn.headerText=map.show_name_en;
+					}
+				}
+				
+				return (dgColumn);
+			}
+
+			
+
+			
+
+			
+
+
+			//Init DataGird
+			private function loadDgView():void
+			{
+				view_dg.headerWordWrap=true;
+				if (showstate == "simple")
+				{
+					view_dg.percentWidth=100;
+					view_dg.groupedColumns=listtoColumns(listTitle);
+				}
+				else
+				{
+					view_dg.percentWidth=NaN;
+					view_dg.groupedColumns=listtoColumns(listTitle);
+				}
+				setNull();
+			}
+			//Set all null
+			public function setNull():void
+			{
+				DownloadInfo.doc=null;
+				DownloadInfo.doc_=null;
+				DownloadInfo.doc_title=null;
+				DownloadInfo.download_gb_en_swf=null;
+				DownloadInfo.download_others=null;
+				DownloadInfo.download_others_swf=null;
+				DownloadInfo.download_others_title=null;
+				DownloadInfo.ece_r=null;
+				DownloadInfo.eec=null;
+				DownloadInfo.func_nodeuuid=null;
+				DownloadInfo.gb_ch=null;
+				DownloadInfo.gb_en=null;
+				DownloadInfo.gorvernor=null;
+				DownloadInfo.gorvernor_code_uuid=null;
+				DownloadInfo.govenor_code=null;
+				DownloadInfo.last_modify_author=null;
+				DownloadInfo.last_modify_date_str=null;
+				DownloadInfo.others=null;
+				DownloadInfo.summary=null;
+				DownloadInfo.summary_swf=null;
+				DownloadInfo.summaryStr=null;
+				DownloadInfo.technical_committees=null;
+				DownloadInfo.technical_committees_code=null;
+				DownloadInfo.technical_committees_code_uuid=null;
+			}
+
+			//Show "Data loading..."
+			//Show details
+			public function showDetail(uuid:String):void
+			{
+				if (vb.getChildren().length > 1)
+				{
+					vb.removeChildAt(1);
+				}
+				var dataDetail:detail=new detail();
+
+				dataDetail.setuseruuid=useruuid;
+				dataDetail.setprotected=hasProtected;
+				dataDetail.setrootuuid=rootuuid;
+				dataDetail.setnodeuuid=nodeuuid;
+				dataDetail.recordUUID_=uuid;
+
+				dataDetail.percentHeight=50;
+				dataTable.percentHeight=50;
+				vb.addChild(dataDetail);
+			}
+
+			//Dobule click DataGrid
+			public function clickItem(dg:AdvancedDataGrid):void
+			{
+				if (dg.selectedIndex >= 0)
+				{
+					if (dg.selectedItem.hasOwnProperty("uuid"))
+					{
+						showDetail(dg.selectedItem.uuid);
+						//Cancel selected item
+					    view_dg.verticalScrollPosition = dg.selectedIndex;
+						view_dg.scrollToIndex(dg.selectedIndex);
+					//	Alert.show(view_dg.verticalScrollPosition.toString());
+						//dg.selectedItem=null;
+						//view_dg.selectedIndex = index;
+						
+					}
+				}
+			}
+			//load modify screen
+			public function modifyInfo():void
+			{
+				if (view_dg.selectedIndex >= 0)
+				{
+					loadModule();
+				}
+				else
+				{
+					Alert.show(resourceManager.getString("errormsg", "selectone"), resourceManager.getString("errormsg", "alert"));
+				}
+			}
+
+			public function loadModule():void
+			{
+				moduleInfo=ModuleManager.getModule("module/datainput/DataModifyModule.swf");
+				moduleInfo.addEventListener(ModuleEvent.READY, function(e:ModuleEvent):void
+					{
+						var mo:Object=moduleInfo.factory.create();
+						mo._funcState="3";
+						mo._classuuid=rootuuid;
+						mo._comuuid=view_dg.selectedItem.uuid;
+
+						var dmo:DisplayObject=mo as DisplayObject;
+						mvb.removeAllChildren();
+						mvb.addChild(dmo);
+
+						dmo.addEventListener(Event.REMOVED_FROM_STAGE, function(e:Event):void
+							{
+								mvb.visible=false;
+								mvb.includeInLayout=false;
+								dataTable.visible=true;
+								dataTable.includeInLayout=true;
+								PageAction.refreshAction(page);
+							});
+
+						mvb.visible=true;
+						mvb.includeInLayout=true;
+						dataTable.visible=false;
+						dataTable.includeInLayout=false;
+					});
+				moduleInfo.load();
+			}
+
+			//Click and download file
+			public function downMyFile():void
+			{
+				var download:fileDownLoad=fileDownLoad(PopUpManager.createPopUp(this, fileDownLoad, true));
+				PopUpManager.centerPopUp(download);
+			}
+
+
+			//Putting all chechboxs on front of items on main window left
+			private var validataCheckBoxArr:Array=new Array();
+			//Putting all items selected on search screen on main window left
+			private var validateDataArr:Array=new Array();
+
+			/**
+			 * Delete record
+			 * */
+			private function delCommondata():void
+			{
+
+				if (view_dg.selectedItem == null)
+				{
+					Alert.show(resourceManager.getString("errormsg", "noselect"));
+					return;
+				}
+				Alert.yesLabel=resourceManager.getString("errormsg", "yes");
+				Alert.noLabel=resourceManager.getString("errormsg", "no");
+				Alert.show(resourceManager.getString("errormsg", "suredel"), resourceManager.getString("errormsg", "alert"), 3, this, function(e:CloseEvent):void
+					{
+						if (e.detail == Alert.YES)
+						{
+							doDel();
+						}
+					});
+			}
+
+			private function doDel():void
+			{
+				var utmost_del:UtmostService=new UtmostService("InformationPublishService", function(e:ResultEvent):void
+					{
+						if (e.result == 0)
+						{
+							Alert.show(resourceManager.getString("errormsg", "delsucc"), resourceManager.getString("errormsg", "alert"));
+							PageAction.refreshAction(page);
+						}
+					});
+				utmost_del.ro.deleteCommondata(view_dg.selectedItem.uuid, "false");
+			}
+		]]>
+	</mx:Script>
+	<mx:Metadata>
+   [ResourceBundle("dataGrid")]
+   [ResourceBundle("cutpage")]
+   [ResourceBundle("manageView")]
+</mx:Metadata>
+	<mx:Fade id="fadeOut"
+			 duration="1000"
+			 alphaFrom="1.0"
+			 alphaTo="0.0"/>
+	<mx:Fade id="fadeIn"
+			 duration="1000"
+			 alphaFrom="0.0"
+			 alphaTo="1.0"/>
+	<mx:Canvas width="100%"
+			   height="100%"
+			   id="canvas">
+		<mx:VDividedBox id="vb"
+						width="100%"
+						height="100%">
+			<mx:VBox id="dataTable"
+					 width="100%"
+					 height="100%">
+					 <mx:Label height="36"  text="{resourceManager.getString('manageView', 'doc.content.attention')}" color="#A8ADB3"  textDecoration="underline"/>
+
+				<mx:HBox height="100%"
+						 width="100%">
+					<mx:Canvas width="100%"
+							   height="100%"
+							   id="datacanvas">
+						<mx:AdvancedDataGrid styleName="simpleDGHeader" id="view_dg"
+											 doubleClickEnabled="true" 
+											 doubleClick="clickItem(view_dg)"
+											 headerRelease="AdvancedSorting.advancedDataGridSort(event)" 
+											 height="95%"
+											 >
+						</mx:AdvancedDataGrid>
+					</mx:Canvas>
+				</mx:HBox>
+				<mx:HBox horizontalAlign="left"
+						 horizontalGap="5">
+					<mx:HBox horizontalGap="0">
+						<mycomponents:Components_LinkButton styleName="simpleDGHeader" iconType="right"
+															visible="{UserRight.isShowbutton(nodeuuid)}"
+															includeInLayout="{UserRight.isShowbutton(nodeuuid)}"
+															label="{resourceManager.getString('dataGrid','modify')}"
+															click="modifyInfo()"/>
+						<mycomponents:Components_LinkButton  styleName="simpleDGHeader" iconType="right"
+															visible="{UserRight.isShowbutton(nodeuuid)}"
+															includeInLayout="{UserRight.isShowbutton(nodeuuid)}"
+															label="{resourceManager.getString('dataGrid','delete')}"
+															click="delCommondata()"/>
+						<mx:Spacer width="45"
+								   height="0">
+						</mx:Spacer>
+						<mx:Label styleName="simpleDGHeader" text="{resourceManager.getString('cutpage','count')}: {page.totalRows}"
+								  id="pagedetail"/>
+						<mx:Label styleName="simpleDGHeader" text="{resourceManager.getString('cutpage','page')}: {page.currentPage}/{page.totalPages}"
+								  id="pagedetail2"/>
+						<mycomponents:Components_LinkButton styleName="simpleDGHeader" id="fPage"
+															enabled="false"
+															iconType="left"
+															label="{resourceManager.getString('cutpage','home')}"
+															click="PageAction.firstAction(page)">
+						</mycomponents:Components_LinkButton>
+						<mycomponents:Components_LinkButton styleName="simpleDGHeader" id="pPage"
+															enabled="false"
+															iconType="prev"
+															label="{resourceManager.getString('cutpage','prev')}"
+															click="PageAction.previousAction(page);">
+						</mycomponents:Components_LinkButton>
+						<mycomponents:Components_LinkButton styleName="simpleDGHeader" id="nPage"
+															enabled="false"
+															iconType="next"
+															label="{resourceManager.getString('cutpage','next')}"
+															click="PageAction.nextAction(page);">
+						</mycomponents:Components_LinkButton>
+						<mycomponents:Components_LinkButton styleName="simpleDGHeader" id="lPage"
+															enabled="false"
+															iconType="right"
+															label="{resourceManager.getString('cutpage','last')}"
+															click="PageAction.lastAction(page)">
+						</mycomponents:Components_LinkButton>
+					</mx:HBox>
+				</mx:HBox>
+			</mx:VBox>
+		</mx:VDividedBox>
+		<mx:VBox id="mvb"
+				 width="100%"
+				 height="100%"
+				 visible="false"
+				 includeInLayout="false">
+
+		</mx:VBox>
+	</mx:Canvas>
+</mx:Module>

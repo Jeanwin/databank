@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="GBK"?>
+<mx:TitleWindow title="{resourceManager.getString('errormsg','contactUs')}" showCloseButton="true" width="650" height="320" close="{close();}" xmlns:mx="http://www.adobe.com/2006/mxml"   xmlns:display="flash.display.*"
+	xmlns:mycomponents="org.utmost.mycomponents.*">
+	<mx:Metadata>
+		[ResourceBundle("errormsg")]
+		[ResourceBundle("contactUs")]
+	</mx:Metadata>
+	<mx:Model id="manager" source="/xml/contactUs.xml"/>
+	<mx:Script>
+		<![CDATA[
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import org.utmost.effect.PopUpEffect;
+			import mx.core.Application;
+			import mx.controls.Alert;
+			import mx.managers.PopUpManager;
+			private function close():void{ 
+				PopUpManager.removePopUp(this);
+			}
+			//Save information to contactus.xml file
+			//Call java funtion and info transfer by xml string
+			private function saveInfo():void{
+				var utmost:UtmostService = new UtmostService("ContactUtil",saveResultHandle);
+				//obtain form info
+				var xmlInfo:String  = "<contactUs>\n" +
+				"<name>"+ contactname.text +"</name>\n" +
+				"<position>"+ contactposition.text +"</position>\n" +
+				"<address>"+ contactaddress.text +"</address>\n" +
+				"<phone>"+ contactphone.text +"</phone>\n" +
+				"<mobile>"+ contactmobile.text +"</mobile>\n" +
+				"<fax>"+ contactfax.text +"</fax>\n" +
+				"<email>"+ contactemail.text +"</email>\n</contactUs>";
+				utmost.ro.saveContactUs(xmlInfo);
+			}
+			//Handle different info after user saves contact us info
+			private function saveResultHandle(e:ResultEvent):void{
+				if(e.result != null){
+					var success:String = e.result.isSuccess;
+					if(success == "success"){
+						Alert.show(resourceManager.getString('errormsg','savesucc'));
+						PopUpManager.removePopUp(this);
+					}else{
+						Alert.show(resourceManager.getString('errormsg','actionFailt'));
+					}
+				}else{
+					Alert.show(resourceManager.getString('errormsg','actionFailt'));
+				}
+			}
+		]]>
+	</mx:Script>
+	<!--This screen can edit or not by determining on databank form variable-->
+	<mx:Form fontSize="13">
+		<mx:FormItem label="{resourceManager.getString('contactUs','name')}">
+			<mx:TextInput id="contactname" editable="{Application.application.myEdit}" text="{Application.application.contactname}"/>
+		</mx:FormItem>
+		<mx:FormItem label="{resourceManager.getString('contactUs','position')}">
+			<mx:TextInput id="contactposition" editable="{Application.application.myEdit}" text="{Application.application.contactposition}"/>
+		</mx:FormItem>
+		<mx:FormItem label="{resourceManager.getString('contactUs','address')}">
+			<mx:TextInput id="contactaddress" editable="{Application.application.myEdit}" text="{Application.application.contactaddress}"/>
+		</mx:FormItem>
+		<mx:FormItem label="{resourceManager.getString('contactUs','phone')}">
+			<mx:TextInput id="contactphone" editable="{Application.application.myEdit}" text="{Application.application.contactphone}"/>
+		</mx:FormItem>
+		<mx:FormItem label="{resourceManager.getString('contactUs','mobile')}">
+			<mx:TextInput id="contactmobile" editable="{Application.application.myEdit}" text="{Application.application.contactmobile}"/>
+		</mx:FormItem>
+		<mx:FormItem label="{resourceManager.getString('contactUs','fax')}">
+			<mx:TextInput id="contactfax" editable="{Application.application.myEdit}" text="{Application.application.contactfax}"/>
+		</mx:FormItem>
+		<mx:FormItem label="{resourceManager.getString('contactUs','email')}">
+			<mx:TextInput id="contactemail" editable="{Application.application.myEdit}" text="{Application.application.contactemail}"/>
+		</mx:FormItem>
+		<mx:FormItem>
+			<mycomponents:Components_LinkButton iconType="right" id="contactUs" visible="{Application.application.myEdit}" 
+														label="{resourceManager.getString('contactUs','save')}" x="0" click="{saveInfo()}"/>
+		</mx:FormItem>
+	</mx:Form>
+</mx:TitleWindow> 

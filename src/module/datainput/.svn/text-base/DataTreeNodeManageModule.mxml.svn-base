@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="{initTree();}"   width="100%" height="100%"   xmlns:com="com.*" xmlns:mycomponents="org.utmost.mycomponents.*">
+		<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+		<mx:Metadata>
+			[ResourceBundle("errormsg")]
+			[ResourceBundle("manageView")]
+		</mx:Metadata>
+		<mx:Script>
+		<![CDATA[
+			import com.right.UserRight;
+			import flash.sampler.getSize;
+			import mx.resources.ResourceBundle;
+			import mx.utils.UIDUtil;
+			import org.utmost.variable.TreeVar;
+			import org.utmost.service.AutoService;
+			import org.utmost.variable.OperState;
+			import org.utmost.util.AutoUtil;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import mx.collections.ArrayCollection;
+			import component.sys.ShowPictureConp;
+			import org.utmost.effect.PopUpEffect;
+			import mx.core.Application;
+			import mx.core.IFlexDisplayObject;
+			import mx.core.UIComponent;
+			import mx.controls.Alert;
+			import mx.managers.DragManager;
+			import mx.controls.Tree;
+			import mx.controls.listClasses.ListBase;
+			import mx.events.CloseEvent;
+			import mx.events.ListEvent;
+			import mx.events.DragEvent;
+			import org.utmost.util.ComponentUtil;
+			import mx.managers.PopUpManager;
+			[Bindable]
+			private var treeData:ArrayCollection;
+			private var tableName:String="U_PORTAL_FUNC";
+			private var defaultSelectedIndex:int;
+			private var nowState:String;
+			
+			private function initTree():void{
+				var ut:UtmostService=new UtmostService("portalFuncService",function(e:ResultEvent):void{
+					btn_save.enabled=false;
+					treeData=new ArrayCollection();
+					treeData=ArrayCollection(e.result);
+					callLater(function():void {
+//						ComponentUtil.ocAllTree(tree);//全部打开/关闭tree节点
+						trace(defaultSelectedIndex+":defaultSelectedIndex    initTree");
+						tree.selectedIndex=defaultSelectedIndex;//设置Tree到上次选择状态
+						AutoUtil.clearValue(form);
+					});
+				});
+				ut.ro.reBuildTreeByOperation(UserRight.getUserUUID(),"1");
+			}
+			[Bindable]
+			public var selectedNode:Object;
+			
+			//鼠标在树的节点上按下
+			public function treeChanged(event:Event):void {
+				selectedNode=event.currentTarget.selectedItem;
+				if(selectedNode==null){
+					return;
+				}
+				btn_save.enabled=false;
+				nowState=OperState.Update;
+				functypeItem.enabled=false;
+				btn_del.enabled=true;
+				funcname.text=selectedNode.funcname;
+				funccnname.text = selectedNode.funccnname;
+				funcdesc.text=selectedNode.funcdesc;
+				funccndesc.text = selectedNode.funccndesc;
+				switch (selectedNode.nodetype){
+					case "1":
+						nodetype.selectedIndex=2;
+					break;
+					case "2":
+						nodetype.selectedIndex=1;
+					break;
+					case "3":
+						nodetype.selectedIndex=0;
+					break;
+					default : 
+					nodetype.prompt="";
+					nodetype.selectedIndex=-1;
+					return;
+				}
+				 
+			}
+			//树正在进行拖拽时候的方法，监控此时是否将拖拽的项目托离了本大类，如果脱离，则提示错误
+			private function onDragOver(event:DragEvent):void{
+				try{
+					if( event.dragInitiator is ListBase ){
+						var list:ListBase = event.dragInitiator as ListBase;
+						if(list.indexToItemRenderer(list.calculateDropIndex(event)) != null){
+								var currTree:Tree = Tree(event.currentTarget);
+								var rowIndex:int = currTree.calculateDropIndex(event);
+								var hoverTarget:Object = currTree.indexToItemRenderer(rowIndex).data;
+								var parent:Object = currTree.getParentItem(hoverTarget);
+								if(parent==null){
+									Alert.show(resourceManager.getString("errormsg","notdrag"),resourceManager.getString("errormsg","alert"));
+								}					
+						}else{
+							Alert.show(resourceManager.getString("errormsg","notdrag"),resourceManager.getString("errormsg","alert"));
+						}
+					}
+				}catch(err:Error){
+					Alert.show(resourceManager.getString("errormsg","notdrag"),resourceManager.getString("errormsg","alert"));
+				}
+				
+			}
+			//当拖拽结束时
+			private function onTreeDragDrop(event:DragEvent):void{
+				btn_savedrag.enabled=true;
+//				tree.selectedItem=selectedNode;
+				nodetype.selectedIndex=0;
+				funcname.text="";
+				funccnname.text="";
+				funcdesc.text="";
+				funccndesc.text="";
+				nodetype.prompt="";
+				nodetype.selectedIndex=-1;
+				btn_save.enabled=false;
+				btn_del.enabled=false;
+				
+			}
+			
+			
+			private var updateBeans:ArrayCollection;
+			private var index:int = 0;
+			//保存修改后的顺序调用的方法
+			private function saveOrder(coll:ArrayCollection):void{
+					btn_savedrag.enabled=false;
+					updateBeans=new ArrayCollection();
+				var updateBeansArr:ArrayCollection=reBuildIndex(coll);
+			AutoService.getInstance().updateAll(tableName,updateBeansArr,function(e:ResultEvent):void{
+				initTree();
+				});
+			}
+			private function reBuildIndex(coll:ArrayCollection):ArrayCollection{
+				for each(var item:Object in coll)
+				{		var obj:Object=new Object();
+						obj=item;
+						//uuid
+						obj.uuid=item.funcuuid;
+						//下标
+						obj.funcindex=index;
+						//判断父节点是否有变化
+						obj.pid=item.funcpid;
+						if(tree.getParentItem(item)!=null){
+							if(tree.getParentItem(item).funcuuid!=item.funcpid){
+								obj.pid=tree.getParentItem(item).funcuuid;
+								obj.funcpid=tree.getParentItem(item).funcuuid;
+							}
+						}
+						//将需要修改的节点放入一个集合
+						updateBeans.addItem(item);
+						index++;
+						if(item.hasOwnProperty("children"))
+						{
+							reBuildIndex(item.children as ArrayCollection);
+						}
+					}
+					return updateBeans;
+			}
+			private function addnewCategory(maxindex:int):void{
+						var node:Object=new Object();
+					 	node=InitClassField.getNewCategory();
+						 node.funcname=funcname.text;
+						 node.funccnname=funccnname.text;
+						 node.funcdesc=funcdesc.text;
+						 node.funccndesc=funccndesc.text;
+						 node.funcindex=maxindex+1;
+						 setTreeIndex();
+					 AutoService.getInstance().save(tableName,node,function(e:ResultEvent):void {
+							trace("save:"+e.result);
+							//当添加一个大类成功后，继续初始化本类字段数据
+							AutoService.getInstance(false).saveAll("B_CLASS_FIELD",InitClassField.getNewClassFields(node.uuid),function(e:ResultEvent):void{
+								Alert.show(resourceManager.getString("errormsg","savenodesucc"),resourceManager.getString("errormsg","alert"));
+								initTree();
+							});
+						});
+			}
+			//添加目录树的新节点，需要传对哪个节点添加数据，
+			private function save():void{
+				setTreeIndex();
+				//ISMAIN:0,否  1，是   Boolean逻辑 
+				//FUNCTYPE:1,前台  2，后台  
+				//STATE:0：过期；1：在用； 2：属性页；3：信息展示页；4：甘特图
+				if(funcname.length==0||funcname.length>200) {
+					MyValidate.validateTextInput(funcname,resourceManager.getString("errormsg","module.en.name.required"),false);
+					return;
+				}else{
+					MyValidate.validateTextInput(funcname,"",true);
+				}
+				if(funccnname.length==0||funccnname.length>200) {
+					MyValidate.validateTextInput(funccnname,resourceManager.getString("errormsg","module.cn.name.required"),false);
+					return;
+				}else{
+					MyValidate.validateTextInput(funccnname,"",true);
+				}
+				if(funcdesc.length>200) {
+					MyValidate.validateTextInput(funcdesc,resourceManager.getString("errormsg","module.en.description.required"),false);
+					return;
+				}else{
+					MyValidate.validateTextInput(funcdesc,"",true);
+				}
+				if(funccndesc.length>200) {
+					MyValidate.validateTextInput(funccndesc,resourceManager.getString("errormsg","module.cn.description.required"),false);
+					return;
+				}else{
+					MyValidate.validateTextInput(funccndesc,"",true);
+				}
+				btn_save.enabled=false;
+				if(nowState==OperState.Create) {
+					//不通用
+					var node:Object=new Object();
+					//如果要添加的是大类
+					if(nodetype.selectedItem=="Category"){
+						AutoService.getInstance(true).findByHql("select max(funcindex) from U_PORTAL_FUNC",function(e:ResultEvent):void{
+								var indexarr:ArrayCollection=new ArrayCollection();
+									  indexarr=ArrayCollection(e.result);
+									  if(indexarr.length==1){
+									  		addnewCategory(int(indexarr[0]));
+									  }else{
+									  trace("查询最大下标失败。。。。。");
+									  }
+						});
+					}else {
+						//否则就是添加的节点或者叶子
+						if(selectedNode==null){
+							Alert.show(resourceManager.getString("errormsg","selectone"),resourceManager.getString("errormsg","alert"));
+							return;
+						}
+						if(selectedNode.nodetype=="3"){
+							Alert.show(resourceManager.getString("errormsg","cannotadd"),resourceManager.getString("errormsg","errtip"));
+							return;
+						};
+							 node.uuid=UIDUtil.createUID();
+							 node.pid=selectedNode.funcuuid;
+							 node.funcname=funcname.text;
+							 node.funccnname=funccnname.text;
+							 node.funcdesc=funcdesc.text;
+							 node.funccndesc=funccndesc.text;
+							 //注意，添加的节点的根节点的UUID和当前选中节点的这个属性是一样的
+							 node.classuuid=selectedNode.classuuid;
+							 node.functype="1";
+							 //判断是不是属性页节点,classuuid=01是What's hot 大类
+							 if(selectedNode.classuuid=="01"){
+							 	node.state="2";
+							 	//判断是不是甘特图节点
+							 }else if (selectedNode.classuuid=="0202"){
+							 	node.state="4";
+							 }else{
+							 	node.state="3";
+							 }
+							 //设置新添加的项目的下标
+							 node.funcindex="0";
+							 if(nodetype.selectedItem=="Node"){
+							 	node.nodetype="3";
+							 }else{
+							 	node.nodetype="2";
+							 }
+							 setTreeIndex();
+						AutoService.getInstance().saveFuncRightByFunc(tableName,node,function(e:ResultEvent):void {
+							trace("save:"+e.result);
+							Alert.show(resourceManager.getString("errormsg","savenodesucc"),resourceManager.getString("errormsg","alert"));
+							initTree();
+						});	 
+					}
+				}else if(nowState==OperState.Update) {
+					if(selectedNode==null){
+						Alert.show(resourceManager.getString("errormsg","selectone"),resourceManager.getString("errormsg","alert"));
+						return;
+					}
+					trace(selectedNode.uuid);
+						selectedNode.uuid=selectedNode.funcuuid;
+						selectedNode.pid=selectedNode.funcpid;
+						selectedNode.funcname=funcname.text;
+						selectedNode.funccnname=funccnname.text;
+						selectedNode.funcdesc=funcdesc.text;
+						selectedNode.funccndesc=funccndesc.text;
+						setTreeIndex();
+					AutoService.getInstance().update(tableName,selectedNode,function(e:ResultEvent):void {
+						trace("update:"+e.result);
+						Alert.show(resourceManager.getString("errormsg","savesucc"),resourceManager.getString("errormsg","alert"));
+						initTree();
+					});
+				}else {
+					trace("error!!!");
+				}
+			}
+			//删除Tree的某个节点及其下面所有节点的方法，递归寻找到当前要删除的节点的集合
+			private function del():void {
+				if(selectedNode==null){
+					Alert.show(resourceManager.getString("errormsg","selectone"),resourceManager.getString("errormsg","alert"));
+					return;
+				}
+				defaultSelectedIndex=tree.selectedIndex-1;
+				btn_save.enabled=false;
+				btn_del.enabled=false;
+				var alert:Alert = Alert.show(resourceManager.getString("errormsg","delnodes"), resourceManager.getString("errormsg","alert"), Alert.YES | Alert.NO,null,function(e:CloseEvent):void {
+					switch(e.detail) {
+						case Alert.YES:
+							if(tree.selectedItem.hasOwnProperty("isdelete")&&tree.selectedItem.isdelete=="0"){
+									Alert.show(resourceManager.getString("errormsg","cannotdel"),resourceManager.getString("errormsg","errtip"));
+							}else{
+								var ut:UtmostService=new UtmostService("TreeService",function(event:ResultEvent):void {	
+									Alert.show(resourceManager.getString("errormsg","delsucc"),resourceManager.getString("errormsg","alert"));
+									initTree();
+								});
+								ut.ro.deleteTree(TreeVar.getDelObject(tableName,tree.selectedItem.funcuuid.toString()));
+							}
+						break;
+						case Alert.NO:
+						break;	
+					}
+				});
+			}
+			private function setTreeIndex():void {
+				defaultSelectedIndex=tree.selectedIndex;
+				trace(defaultSelectedIndex+":defaultSelectedIndex");
+			}
+			//点击“+”按钮
+			private function clearReadyToAddNode():void{
+				nowState=OperState.Create;
+				functypeItem.enabled=true;
+				setTreeIndex();
+				AutoUtil.clearValue(form);
+				btn_del.enabled=false;
+				btn_save.enabled=true;
+				nodetype.selectedIndex=0;
+				
+			}
+	
+		]]>
+	</mx:Script>
+	
+	<mx:Metadata>
+        [ResourceBundle("auth")]
+    </mx:Metadata>
+    <mx:TabNavigator width="100%" height="100%">
+		<mx:VBox width="100%" label="Module" height="100%" >
+			<mx:HBox width="100%" id="my_hbox" height="100%">
+				<mx:VBox width="50%" height="100%" paddingBottom="30" paddingTop="30" horizontalAlign="right">
+				<com:SpringLoadedTree styleName="mcTree" id="tree" width="350" height="100%"
+						autoCloseOpenNodes="{true}" 
+						autoCloseOnDrop="{false}" 
+						autoOpenTimerMS="{200}" 
+						autoCloseTimerMS="{200}" 
+						showOpeningIndication="{true}" 
+						doubleClick="{ComponentUtil.ocSelectTree(event)}"
+						autoCloseOnExit="{false}" 
+						backgroundAlpha="0.29"  
+						dataProvider="{treeData}"
+						mouseDown="treeChanged(event)"
+						dragEnabled="true" 
+						dragOver="onDragOver(event)"
+						dragDrop="{onTreeDragDrop(event);}"
+						dragMoveEnabled="true"
+						dropEnabled="true"
+						labelField="{resourceManager.getString('manageView', 'doc.category.tree.label.field')}" wordWrap="true"
+						  variableRowHeight="true"
+						/>
+			</mx:VBox>
+			<mx:VBox width="50%" height="100%" paddingTop="60">
+				<mx:Button id="add_button" label="+" click="clearReadyToAddNode()" fontFamily="Arial" fontSize="14" paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0" fontWeight="bold"/>
+					<mx:Form id="form" width="100%" paddingLeft="50">
+						<mx:FormItem label="uuid" includeInLayout="false" visible="false">
+							<mx:TextInput id="uuid"/>
+						</mx:FormItem>
+						<mx:FormItem label="pid" includeInLayout="false" visible="false">
+							<mx:TextInput id="pid"/>
+						</mx:FormItem>
+						<mx:FormItem label="funccode" includeInLayout="false" visible="false">
+							<mx:TextInput id="funccode"/>
+						</mx:FormItem>
+						<mx:FormItem label="functype" includeInLayout="false" visible="false">
+							<mx:TextInput id="functype"/>
+						</mx:FormItem>
+						<mx:FormItem label="funcindex" includeInLayout="false" visible="false">
+							<mx:TextInput id="funcindex"/>
+						</mx:FormItem>
+						<mx:FormItem label="state" includeInLayout="false" visible="false">
+							<mx:TextInput id="state"/>
+						</mx:FormItem>
+						<mx:FormItem id="functypeItem" required="false" enabled="false" label="{resourceManager.getString('errormsg','nodetype')}" >
+							<mx:ComboBox id="nodetype" prompt=" "  selectedIndex="-1" width="200" >
+							<mx:Array> 
+								<mx:String  >Node</mx:String>
+								<mx:String  >Folder</mx:String>
+								<mx:String  >Category</mx:String>
+							</mx:Array>
+							</mx:ComboBox>
+						</mx:FormItem>
+						<mx:FormItem required="true" label="{resourceManager.getString('errormsg','module.en.name')}"  >
+							<mx:TextInput id="funcname" change="{btn_save.enabled=true}" toolTip="{resourceManager.getString('errormsg','module.en.name.required')}"  width="200"/>
+						</mx:FormItem>
+						<mx:FormItem required="true" label="{resourceManager.getString('errormsg','module.cn.name')}"  >
+							<mx:TextInput id="funccnname" change="{btn_save.enabled=true}" toolTip="{resourceManager.getString('errormsg','module.cn.name.required')}"  width="200"/>
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('errormsg','module.en.description')}">
+							<mx:TextArea change="{btn_save.enabled=true}" toolTip="{resourceManager.getString('errormsg','module.en.description.required')}"   width="200" id="funcdesc"/>
+						</mx:FormItem>
+						<mx:FormItem label="{resourceManager.getString('errormsg','module.cn.description')}">
+							<mx:TextArea change="{btn_save.enabled=true}" toolTip="{resourceManager.getString('errormsg','module.cn.description.required')}"   width="200" id="funccndesc"/>
+						</mx:FormItem>
+					</mx:Form>
+					<mx:HBox width="100%" verticalAlign="middle" horizontalGap="35" >
+						<mx:Spacer width="20%"/>
+						<mycomponents:Components_LinkButton iconType="right"  id="btn_save" enabled="false"  label="{resourceManager.getString('auth','save')}" click="{save()}" />
+						<mycomponents:Components_LinkButton iconType="right" id="btn_del" label="{resourceManager.getString('auth','delete')}"  click="{del();}" enabled="false"/>
+					</mx:HBox>
+					<mx:HBox width="100%"  verticalAlign="bottom"  horizontalGap="35" >
+						<mx:Spacer width="20%" height="100"/>
+						<mycomponents:Components_LinkButton iconType="right"  id="btn_savedrag" enabled="false"   label="{resourceManager.getString('errormsg','saveorder')}" click="{index=0;saveOrder(tree.dataProvider as ArrayCollection);}"   />
+					</mx:HBox>
+			</mx:VBox>
+		</mx:HBox>
+		</mx:VBox>
+	</mx:TabNavigator>
+</mx:Module>

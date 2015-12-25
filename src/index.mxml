@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>  
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="{init()}" preloader="org.utmost.mycomponents.MyPreloader" horizontalScrollPolicy="off"  paddingTop="3" paddingBottom="5" layout="absolute"  horizontalAlign="center" xmlns:com="com.*" xmlns:kapit="fr.kapit.*"  xmlns:code="http://code.google.com/p/flexlib/">  
+    <mx:Style   source="skins/whiteblack3/style.css"/>
+	<mx:Script>
+		<![CDATA[
+			import org.utmost.service.StaticChannelSet;
+			import flash.net.navigateToURL; 
+			import org.utmost.service.UtmostService;
+			import com.right.UserRight;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.AutoService;
+			import mx.collections.ArrayCollection; 
+			import mx.controls.Alert;
+			import org.utmost.util.Memory;
+			import ascb.util.NumberFormat;
+			import component.login;
+			import mx.managers.BrowserManager;
+			import mx.core.IFlexDisplayObject;
+			import mx.managers.PopUpManager;
+			import mx.events.ResizeEvent;
+			import org.utmost.util.ComponentUtil;
+			import module.ModuleInterface;
+			import mx.events.ModuleEvent;
+	        private function init():void{
+	           BrowserManager.getInstance().setTitle("CAT Online");
+//	           ComponentUtil.setVisible(MACB,false);
+	           memoryMonitor();
+	       	   showLogin();
+	       	   callLater(function():void {
+					currentLanguage="en_US"
+				
+				});
+	        }
+	        //显示登录
+	        private function showLogin():void{
+	        	var obj:IFlexDisplayObject=PopUpManager.createPopUp(this, login, false);
+				obj.addEventListener("LoginComponent_user",function(e:Event):void {
+//					ComponentUtil.setVisible(MACB,false);
+					UserRight.scope="view";
+					loginSussecc();
+				});
+				PopUpManager.centerPopUp(obj);
+				this.addEventListener(ResizeEvent.RESIZE,function(e:Event):void{
+					PopUpManager.centerPopUp(obj);
+				});
+	        }
+	        //登录成功,也通用于用户管理页面返回到信息管理页面
+	        public function loginSussecc():void{
+	        	var ut:UtmostService=new UtmostService("portalFuncService",function(e:ResultEvent):void{
+						var tree:ArrayCollection=new ArrayCollection();
+						tree=ArrayCollection(e.result);
+//						trace(tree.length+"");
+						Application.application.$modulesystreeForChild=tree;
+						var uts:UtmostService=new UtmostService("portalFuncService",function(e:ResultEvent):void{
+							var menu:ArrayCollection=new ArrayCollection();
+							menu=ArrayCollection(e.result);
+							Application.application.$menuDataForChild=menu;
+							Application.application.loadModule("module/manage.swf");
+							});	
+							//索取前台功能导航:用户ID,操作序号：1目录树，2导航菜单，前台
+						uts.ro.getViewUserMenu(UserRight.getUserUUID(),"2","1");
+					});
+					//目录树
+					ut.ro.reBuildTreeByUserID(UserRight.getUserUUID(),"1");
+	        }
+	        public var $modulesystreeForChild:ArrayCollection;
+	        public var $menuDataForChild:ArrayCollection;
+	        private function readyModule(e:ModuleEvent):void {
+	        	var mobj:ModuleLoader=e.target as ModuleLoader;
+	        	var child:ModuleInterface=mobj.child as ModuleInterface;
+	        	if(child!=null) {
+	        		child.$moduletree=$modulesystreeForChild;
+	        		child.$menuData=$menuDataForChild;
+	        	}
+	        	$modulesystreeForChild=null;
+	        	$menuDataForChild=null;
+	        }
+	         public function loadModule(name:String):void {
+	        	removeModule();
+	            currentModule.url = name;
+	        }
+	        //取消模板
+	        public function removeModule():void {
+	            currentModule.url = null;
+	        }
+	        public function logout():void{
+	        	navigateToURL(new URLRequest(StaticChannelSet.getWebRoot()+"/login.htm"),"_self");
+	        }
+	         [Bindable]
+	        public var memoryCount:String;
+	        [Bindable]
+	        public var memoryCountDP:Array=[];
+	        private var nf:NumberFormat=new NumberFormat("###.00");
+	        private var nfDP:NumberFormat=new NumberFormat("###");
+	        private function memoryMonitor():void {
+	        	setInterval(function():void {
+	        		var n:String=nf.format(System.totalMemory/1024/1024);
+	        		var nDP:String=nfDP.format(System.totalMemory/1024/1024);
+	        		//memory.text="VM "+n+" MB";
+	        		memoryCount="VM "+n+" MB";
+	        		if(memoryCountDP.length>25) {
+	        			memoryCountDP.shift();
+	        		}
+	        		memoryCountDP.push(Number(nDP));
+	        	},1000);
+	        	
+	        	setInterval(function():void {
+	        		//System.gc();
+	        		Memory.gc();
+	        	},1000*60);
+	        }
+	        public function set currentLanguage(language:String):void {
+	        	if(language=="zh_CN")
+	        	{
+	        		Application.application.setStyle("fontSize",12);
+	        	}
+	        	else{
+	        		Application.application.setStyle("fontSize",10);
+	        	}
+				setLocale(language);
+			}
+			 //国际化
+			 public var language:String="en_US";
+	    	 public function setLocale(language:String):void {
+	    	 	resourceManager.localeChain=[language];
+	    	 	this.language=language;
+	    	 }
+		]]>
+	</mx:Script>
+   <mx:Dissolve id="ablur"  duration="600" alphaFrom="1.0" alphaTo="0.0" />
+   		<mx:VBox width="100%" horizontalAlign="center" height="100%" >
+	  		 		<mx:VBox width="1000" backgroundColor="#FFFFFF" borderSides="bottom" borderStyle="solid">
+						<mx:HBox width="1000" height="101" horizontalAlign="center">
+							<mx:Image source="img/logo/vwlogo.jpg"   width="178" height="101" />
+						</mx:HBox>
+	   			</mx:VBox>
+				<mx:ModuleLoader id="currentModule"  width="1000" height="100%" ready="readyModule(event)"   >
+				</mx:ModuleLoader>
+	   	</mx:VBox>
+	<kapit:KapInspect/>
+	
+	
+	
+	
+	<!--处理CSS未引用警告-->
+	<mx:HBox includeInLayout="false" visible="false">
+		<mx:ButtonBar/>
+		<mx:ColorPicker/>
+		<mx:DateChooser/>
+		<mx:DateField/>
+		<mx:DividedBox/>
+		<mx:HSlider/>
+		<mx:MenuBar/>
+		<mx:VSlider/>
+		<mx:ToggleButtonBar/>
+		<mx:TextArea/>
+		<mx:TabBar/>
+		<mx:RadioButton/>
+		<mx:NumericStepper/>
+		<mx:Image/>
+		<mx:PopUpButton/>
+		<mx:PopUpMenuButton/>
+		<mx:LinkButton/>
+		<mx:Accordion/>
+		<mx:DataGrid/>
+		<mx:HorizontalList/>
+		<mx:HRule/>
+		<mx:ProgressBar/>
+		<mx:TabNavigator/>
+		<mx:TileList/>
+		<mx:VRule/>
+		<code:WindowShade/>
+	</mx:HBox>
+</mx:Application>
+

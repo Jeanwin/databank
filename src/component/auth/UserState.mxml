@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" horizontalAlign="center" width="100%">
+	<mx:Script>
+		<![CDATA[
+			override public function set data(value:Object):void{
+				if(value != null){
+					super.data = value;
+					if(value.state == "1"){
+						userState.text=resourceManager.getString('auth','stateEnable');
+					}else{
+						userState.text=resourceManager.getString('auth','stateDisable');
+					}
+				}
+			}
+		]]>
+	</mx:Script>
+	<mx:Label id="userState" width="100%" textAlign="center"/>
+</mx:HBox>

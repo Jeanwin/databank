@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml"
+				title="{resourceManager.getString('monitor','downloadmonitoring')}"
+				creationComplete="init()"
+				layout="vertical"
+				width="800"
+				height="300"
+				horizontalAlign="center"
+				verticalAlign="top"
+				showCloseButton="true"
+				close="close()"
+				xmlns:mycomponents="org.utmost.mycomponents.*">
+	<mx:Script>
+		<![CDATA[
+			import com.pagination.PageAction;
+			import com.pagination.PageHelper;
+			import mx.controls.Alert;
+			import org.utmost.effect.PopUpEffect;
+			import org.utmost.service.UtmostService;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+
+			private var list:ArrayCollection;
+			[Bindable]
+			public var uuid:String;
+			[Bindable]
+			private var page:PageHelper;
+			[Bindable]
+			private var totalRows:Number;
+
+			public function set setLogid(uuid:String):void
+			{
+				this.uuid=uuid;
+			}
+
+			private function init():void
+			{
+				page=new PageHelper(8, fPage, pPage, nPage, lPage);
+				page.callFunc=getDownloadTotalRows;
+				page.setDataProvider();
+				
+			}
+			private function getDownloadTotalRows():void{
+				var uts:UtmostService=new UtmostService("MonitorService", function(e:ResultEvent):void
+					{
+						if (e != null)
+						{
+							totalRows==0;
+							totalRows=e.result as Number;
+							page.setTotalRows(totalRows);
+							if(totalRows==0){
+								adg.dataProvider=null;
+							}
+							var ut:UtmostService=new UtmostService("MonitorService", function(dataevent:ResultEvent):void
+								{
+									if (dataevent != null)
+									{
+										list=new ArrayCollection();
+										list=dataevent.result as ArrayCollection;
+										adg.dataProvider=list;
+									}
+								});
+							ut.ro.getDownloadInfo(page.currentPage, page.pageSize, uuid);
+						}
+					});
+				uts.ro.getDownloadTotalRows(uuid);
+			}
+			
+			private function close():void
+			{
+				PopUpManager.removePopUp(this);
+			}
+			//replace null
+			private function replaceNull(item:Object,event:AdvancedDataGridColumn):String{
+				var auth:String = item.last_modify_author;
+				if(auth == "null" || auth == "NULL"){
+					return "";
+				}else{
+					return item.last_modify_author;
+				}
+			}
+		]]>
+	</mx:Script>
+
+	<mx:Metadata>
+        [ResourceBundle("auth")]
+   [ResourceBundle("cutpage")]
+</mx:Metadata>
+
+	<mx:VBox height="100%"
+			 width="100%">
+		<mx:AdvancedDataGrid width="100%"
+							 height="100%"
+							 id="adg">
+			<mx:columns>
+				<mx:AdvancedDataGridColumn dataField="downloadfilepath"
+										   textAlign="center"
+										   itemRenderer="mx.controls.Label"
+										   width="200"
+										   headerText="{resourceManager.getString('auth','downloadPath')}"/>
+				<mx:AdvancedDataGridColumn dataField="downloadtimestr"
+										   itemRenderer="mx.controls.Label"
+										   textAlign="center"
+										   width="70"
+										   headerText="{resourceManager.getString('auth','downloadTime')}"/>
+				<mx:AdvancedDataGridColumn dataField="last_modify_author"
+										   itemRenderer="mx.controls.Label"
+										   textAlign="center"
+										   width="50"
+										   labelFunction="replaceNull"
+										   headerText="{resourceManager.getString('auth','updatedBy')}"/>
+				<mx:AdvancedDataGridColumn dataField="last_modify_date_str"
+										   itemRenderer="mx.controls.Label"
+										   textAlign="center"
+										   width="70"
+										   headerText="{resourceManager.getString('auth','updatedTime')}"/>
+			</mx:columns>
+		</mx:AdvancedDataGrid>
+
+	</mx:VBox>
+	<mx:ControlBar horizontalAlign="center"
+				   paddingBottom="6"
+				   paddingTop="6">
+		<mx:HBox horizontalGap="20">
+			<mx:Spacer width="100%"
+					   height="0">
+			</mx:Spacer>
+			<mx:Label text="{resourceManager.getString('cutpage','count')}: {page.totalRows}"
+					  id="pagedetail"/>
+			<mx:Label text="{resourceManager.getString('cutpage','page')}: {page.currentPage}/{page.totalPages}"
+					  id="pagedetail2"/>
+			<mycomponents:Components_LinkButton id="fPage"
+													iconType="left"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','home')}"
+													click="PageAction.firstAction(page)">
+				</mycomponents:Components_LinkButton>
+				<mycomponents:Components_LinkButton id="pPage"
+													iconType="prev"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','prev')}"
+													click="PageAction.previousAction(page)">
+				</mycomponents:Components_LinkButton>
+				<mycomponents:Components_LinkButton id="nPage"
+													iconType="next"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','next')}"
+													click="PageAction.nextAction(page)">
+				</mycomponents:Components_LinkButton>
+				<mycomponents:Components_LinkButton id="lPage"
+													iconType="right"
+													enabled="true"
+													label="{resourceManager.getString('cutpage','last')}"
+													click="PageAction.lastAction(page)">
+				</mycomponents:Components_LinkButton>
+			<mycomponents:Components_LinkButton iconType="right"
+												label="{resourceManager.getString('auth','close')}"
+												click="close()"/>
+		</mx:HBox>
+	</mx:ControlBar>
+</mx:TitleWindow>

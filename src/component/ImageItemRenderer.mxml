@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox   xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:reflector="org.utmost.effect.*"  verticalScrollPolicy="off" horizontalScrollPolicy="off" width="280" height="80%" paddingBottom="15" horizontalAlign="center" verticalAlign="middle" paddingLeft="15" paddingRight="15" paddingTop="15">
+	<mx:Parallel id="expand">
+		<mx:Glow id="glowImage" alphaFrom="1.0" alphaTo="0.0" blurXFrom="0.0" blurXTo="100.0" blurYFrom="0.0" blurYTo="100.0" color="0x3380DD"/>
+		<mx:Sequence>
+			<mx:Resize widthTo="210" heightTo="110" duration="150"/>
+			<mx:Resize widthTo="250" heightTo="150" duration="400"/>
+		</mx:Sequence>
+	</mx:Parallel>
+	<mx:Parallel id="contract">
+		<mx:Resize widthFrom="{vbox.width}" heightFrom="{vbox.height}" widthTo="230" heightTo="130"/>
+	</mx:Parallel>
+	<!--
+	<reflector:Reflector  id="myReflector" target="{vbox}" alpha="0.5" falloff="0.5" blurAmount="0.5"/>
+	-->
+	<mx:VBox id="vbox"   horizontalAlign="center" verticalAlign="middle" width="230" height="130" dropShadowEnabled="true" dropShadowColor="#3C3A40" shadowDirection="center" shadowDistance="10" cornerRadius="15" borderStyle="solid" mouseOut="mOut()" mouseOver="mOver()"  verticalScrollPolicy="off" horizontalScrollPolicy="off" rollOverEffect="{expand}" rollOutEffect="{contract}" styleName="ImageItemRenderer">
+		<mx:Script>
+			<![CDATA[
+				import org.utmost.effect.Reflector;
+				import mx.controls.Alert;
+				
+				private function mOut():void
+				{
+					//itxt.setStyle("fontSize",18);
+//				 vbox.setStyle("backgroundColor","");
+				}
+				private function mOver():void
+				{
+					//itxt.setStyle("fontSize",23);
+//					vbox.setStyle("backgroundColor", "#CCCCCC");
+				}
+			]]>
+		</mx:Script>
+		<mx:Image source="{data.@icon}" maintainAspectRatio="true" width="70" height="70" scaleContent="true" alpha="1"/>
+		<mx:Label id="itxt" text="{data.@nodename}" fontSize="18" fontWeight="bold" textAlign="center" fontFamily="Georgia" color="#060201" enabled="true"/>
+	</mx:VBox>
+	<reflector:Reflector  id="myReflector" target="{vbox}" alpha="0.15" falloff="0.4" blurAmount="0.8"/>
+</mx:VBox>

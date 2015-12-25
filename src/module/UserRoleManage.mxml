@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>  
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" minHeight="300"     creationComplete="{init() }"  layout="absolute" width="100%" height="100%" xmlns:com="com.*" xmlns:local="*" xmlns:component="component.*">  
+    <mx:Metadata>
+   		[ResourceBundle("menubar")]
+   		[ResourceBundle("manageView")]
+	</mx:Metadata>
+   <mx:Script>
+   	<![CDATA[
+   		import mx.controls.Tree;
+   		import com.hp.events.CommonEvent;
+   		import mx.collections.ArrayCollection;
+   		import mx.core.Application;
+   		import mx.controls.Alert;
+   		import org.utmost.util.ComponentUtil;
+   		import mx.events.ModuleEvent;
+		    
+	    public var menubarList:ArrayCollection;
+	    
+		private function initApp():void {
+			var childTree:Tree = this.systree.getTree();
+			for each(var item:XML in childTree.dataProvider)
+				childTree.callLater(function():void{childTree.expandChildrenOf(item,true);});
+		}
+	     
+   		private function init():void{
+   			initApp();
+   			this.addEventListener(CommonEvent.PANEL_TREE_MENU_DATA_PROVIDOR_CHANGE, function(event:Event):void{initApp();});
+   			myLoadModule("module/auth/AuthUserModule.swf");
+   				
+   			var system:Object = new Object();
+   			var childrenList:ArrayCollection=new ArrayCollection();
+   			var re:Object=new Object();
+   			re.funcpath="userrightreturn";
+   			re.funcdesc="Main menu";
+   			re.funcname="回主菜单";
+   			var lg:Object=new Object();
+   			lg.funcpath="logOut";
+   			lg.funcdesc="Logout";
+   			lg.funcname="退出";
+   			childrenList.addItem(re);
+   			childrenList.addItem(lg);
+   			system.funcdesc="System";
+   			system.funcname="系统";
+   			system.children=childrenList;
+   			menubarList=new ArrayCollection();
+			menubarList.addItem(system);  	
+   		}
+   		//system tree should be call this function after init complete
+   		private function systreeCreationComlete():void{
+        	systree.addEventListener("ClickLinksEvent",function ():void{
+        		myLoadModule("module/link/LinkModule.swf");
+   				ComponentUtil.setVisible(systree,true);
+   				sysPanel.title="Links";
+        	});
+        }
+			private function treeItemClick(e:MouseEvent):void
+			{
+				var o:Object=systree.getTree().selectedItem;
+				if(o != null)
+					myLoadModule(o.@module);
+				
+			}
+			public function myLoadModule(newUrl:String):void{
+				if(newUrl=="")return;
+				if(newUrl==manageModule.url)return;
+				if(manageModule.url!=""){
+					manageModule.unloadModule();
+					manageModule.loadModule(newUrl);
+				}else{
+					manageModule.loadModule(newUrl);
+				}
+				
+				
+			}
+			private function readyModule(e:ModuleEvent):void {
+	        	var mobj:ModuleLoader=e.target as ModuleLoader;
+	        	if(systree.getTree().selectedItem!=null&&systree.getTree().selectedItem.@two!=undefined) {
+//	        		(mobj.child as Object).$two=systree.getTree().selectedItem.@two.toString();
+	        	}
+	       		//ComponentUtil.setVisible(pbar,false);
+	        }
+	         private function moduleCreationComplete():void {
+	        	forModuleCreationComplete(treeData.children(),0);
+	        }
+	         private function forModuleCreationComplete(_xmllist:XMLList,_count:int):void {
+	         	//This function auto loading other module after ModuleLoader load finish 
+	        	if(_xmllist==null)
+	        		return;
+	        	_count++;
+	        	var xl:XMLList=_xmllist;
+	        	for(var i:int=0;i<xl.length();i++) {
+	        		var ixml:XML=xl[i];
+	        		if(ixml.hasOwnProperty("@module")&&ixml.@module!="null"&&ixml.@module!="") {
+	        			trace(i+" ixml.@module:"+ixml.@module);
+	        			manageModule.loadModule(ixml.@module);
+	        			callLater(function():void{
+	        				systree.getTree().selectedIndex=_count;
+	        				sysPanel.title=systree.getTree().selectedItem.@nodename;
+	        			});
+	        			return;
+	        		}
+	        		forModuleCreationComplete(xl.children(),_count);
+	        		return;//wanglm
+	        	}
+	        }
+	        [Embed('/img/buttonicon/m1img.png')]
+      		private const upLinkButton:Class;
+      		
+      		[Embed('/img/buttonicon/m2img.png')]
+      		private const bottomLinkButton:Class;
+	        [Bindable] 
+			private var layoutState:String="M1";
+			
+   	]]>
+   </mx:Script>
+       <mx:XML id="treeData" source="xml/PortalTree.xml" />
+	        	<mx:HDividedBox id="hdbox" width="100%" height="100%" paddingBottom="10" paddingLeft="10" paddingRight="10" paddingTop="12">
+					<component:PanelTree id="systree" labelField="{resourceManager.getString('manageView', 'use.role.management.menu.label')}" creationComplete="{systreeCreationComlete()}"  dataProvider="{treeData}" clickTree="treeItemClick"  width="220" height="100%"  resizeEffect="Resize"/>
+					<mx:Panel id="sysPanel" width="100%" height="100%" layout="vertical">
+						<mx:ModuleLoader id="manageModule" width="100%" height="100%"  resizeEffect="Resize" ready="readyModule(event)" creationComplete="moduleCreationComplete()">
+						</mx:ModuleLoader>
+				</mx:Panel>
+			</mx:HDividedBox>
+</mx:Module>  
+

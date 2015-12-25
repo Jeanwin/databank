@@ -1,0 +1,448 @@
+<?xml version="1.0" encoding="utf-8"?>  
+<mx:Application pageTitle="CAT Online" resize="resizeHandler()" 
+	xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="{init()}" 
+	preloader="org.utmost.mycomponents.MyPreloader"
+	paddingTop="3" paddingBottom="5" layout="absolute"  
+	horizontalAlign="center" xmlns:com="com.*" xmlns:kapit="fr.kapit.*"  
+	xmlns:code="http://code.google.com/p/flexlib/">  
+    <mx:Style   source="/skins/whiteblack3/style.css"/>
+    <mx:Metadata>
+    	[ResourceBundle("menubar")]
+    	[ResourceBundle("downloadList")]
+    </mx:Metadata>
+	<mx:Script> 
+		<![CDATA[
+			import component.AdvanceSearch;
+			import mx.containers.TitleWindow;
+			import flash.net.navigateToURL;
+			import org.utmost.service.StaticChannelSet;
+			import mx.events.MenuEvent;
+			import mx.controls.Menu;
+			import mx.controls.LinkButton;
+			import component.ContactUs;   
+			import component.about;			
+			import org.utmost.service.UtmostService;
+			import com.right.UserRight;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.AutoService;
+			import mx.collections.ArrayCollection; 
+			import mx.controls.Alert;
+			import org.utmost.util.Memory;
+			import ascb.util.NumberFormat;
+			import component.login;
+			import mx.managers.BrowserManager;
+			import mx.core.IFlexDisplayObject;
+			import mx.managers.PopUpManager;
+			import mx.events.ResizeEvent;
+			import org.utmost.util.ComponentUtil;
+			import module.ModuleInterface;
+			import mx.events.ModuleEvent;
+			import com.adobe.net.URI;
+			import component.downloadList;
+			[Bindable]
+			public var applicationViewWidth:int = 1000;
+			[Bindable]
+			public static var sysMenuFontSize:int = 13;
+			
+	        private function init():void{
+				resizeHandler();
+	        	Application.application.setStyle("fontSize",12);
+	           BrowserManager.getInstance().setTitle("CAT Online");
+//	           ComponentUtil.setVisible(MACB,false);
+	           memoryMonitor();
+	       	   showLogin();
+	       	   //Set databank for UserRight in order to be call from download list window
+	       	   UserRight.grandpa = this;
+	       	   callLater(function():void {
+					currentLanguage="en_US"
+				
+				});
+	        }
+	        
+	        private function resizeHandler():void{
+	        	
+				var expectedScreenWidth:int = Capabilities.screenResolutionX - 30;
+				if(expectedScreenWidth > 1000)
+					applicationViewWidth = expectedScreenWidth;
+				else
+					applicationViewWidth = 1000;
+					
+        		if(applicationViewWidth > 1035 && applicationViewWidth <=1090)
+        			sysMenuFontSize = 14;
+        		else if(applicationViewWidth > 1090 && applicationViewWidth <=1150)
+        			sysMenuFontSize = 15;
+        		else if(applicationViewWidth > 1150 && applicationViewWidth <=1220)
+        			sysMenuFontSize = 16;
+        		else if(applicationViewWidth > 1220 && applicationViewWidth <=1260)
+        			sysMenuFontSize = 17;
+        		else if(applicationViewWidth > 1260 && applicationViewWidth <=1300)
+        			sysMenuFontSize = 18; 
+        		else if(applicationViewWidth > 1300)
+        			sysMenuFontSize = 19; 
+	        }
+	        
+	        private function showLogin():void{
+	        	var obj:IFlexDisplayObject=PopUpManager.createPopUp(this, login, false);
+				obj.addEventListener("LoginComponent_user",function(e:Event):void {
+//					ComponentUtil.setVisible(MACB,false);
+					UserRight.scope="back";
+					loginSussecc();
+				});
+				PopUpManager.centerPopUp(obj);
+				this.addEventListener(ResizeEvent.RESIZE,function(e:Event):void{
+					PopUpManager.centerPopUp(obj);
+				});
+	        }
+	        //The same use in return
+	        public function loginSussecc():void{
+	        	trace("user login successfully!");
+	        	var ut:UtmostService=new UtmostService("portalFuncService",function(e:ResultEvent):void{
+						var tree:ArrayCollection=new ArrayCollection();
+						tree=ArrayCollection(e.result);
+//						trace(tree.length+"");
+						Application.application.$modulesystreeForChild=tree;
+						var uts:UtmostService=new UtmostService("portalFuncService",function(e:ResultEvent):void{
+							var menu:ArrayCollection=new ArrayCollection();
+							menu=ArrayCollection(e.result);
+							var menuL:Array = menu.toArray();
+							trace("menu length:" + menuL.length);
+							//set visiblity of buttons based on func right.1102-downloadList,3-download
+							var flag:String = UserRight.hasFuncRight("1102","3");
+							if("1" === flag){
+								showCount();
+							}
+							Application.application.$menuDataForChild=menu;
+							Application.application.loadModule("module/manage.swf");
+							});	
+							//navigator
+						uts.ro.reBuildTreeByUserID(UserRight.getUserUUID(),"2");
+					});
+					//functional tree
+					ut.ro.reBuildTreeByUserID(UserRight.getUserUUID(),"1");
+					//showWelcome();	  
+					
+			}
+			
+	        public var $modulesystreeForChild:ArrayCollection;
+	        public var $menuDataForChild:ArrayCollection;
+	        private function readyModule(e:ModuleEvent):void {
+	        	var mobj:ModuleLoader=e.target as ModuleLoader;
+	        	var child:ModuleInterface=mobj.child as ModuleInterface;
+	        	if(child!=null) {
+	        		child.$moduletree=$modulesystreeForChild;
+	        		child.$menuData=$menuDataForChild;
+	        	}
+	        	$modulesystreeForChild=null;
+	        	$menuDataForChild=null;
+	        }
+	         public function loadModule(name:String):void {
+	        	removeModule();
+	            currentModule.url = name;
+	        }
+	        
+	        public function removeModule():void {
+	            currentModule.url = null;
+	        }
+	        public function logout():void{
+/* 	        	init();
+	        	removeModule(); */
+	        	ExternalInterface.call("closeIE");
+	        }
+	        [Bindable]
+	        public var myEdit:Boolean = false;
+	        [Bindable]
+	        public var generateReport:Boolean = false;
+	        
+	        public var advanceSearchForm:AdvanceSearch;
+	        [Bindable]
+	        public var memoryCount:String;
+	        [Bindable]
+	        public var memoryCountDP:Array=[];
+	        private var nf:NumberFormat=new NumberFormat("###.00");
+	        private var nfDP:NumberFormat=new NumberFormat("###");
+	        private function memoryMonitor():void {
+	        	setInterval(function():void {
+	        		var n:String=nf.format(System.totalMemory/1024/1024);
+	        		var nDP:String=nfDP.format(System.totalMemory/1024/1024);
+	        		//memory.text="VM "+n+" MB";
+	        		memoryCount="VM "+n+" MB";
+	        		if(memoryCountDP.length>25) {
+	        			memoryCountDP.shift();
+	        		}
+	        		memoryCountDP.push(Number(nDP));
+	        	},1000);
+	        	
+	        	setInterval(function():void {
+	        		//System.gc();
+	        		Memory.gc();
+	        	},1000*60);
+	        }
+	        public function set currentLanguage(language:String):void {
+	        	/* if(language=="zh_CN")
+	        	{
+	        		Application.application.setStyle("fontSize",12);
+	        	}
+	        	else{
+	        		Application.application.setStyle("fontSize",10);
+	        	} */
+				setLocale(language);
+			}
+			
+			 [Bindable]
+			 public var language:String="en_US";
+	    	 public function setLocale(language:String):void {
+	    	 	resourceManager.localeChain=[language];
+	    	 	this.language=language;
+	    	 	if(UserRight.getloginUserInfo() != null){
+	    	  		showCount();
+	    	  	}
+	    	 }
+	    	 
+	    	 public function showCount():void{
+		    	var ut:UtmostService = new UtmostService("DownloadListService",function(e:ResultEvent):void{
+		    			listLabel.label = "DL: "+e.result.toString();
+						});
+					ut.ro.getCount(UserRight.getUserUUID());
+	    	}
+	    	 
+	    	 private function showcontact():void{
+	    	 	setUri();
+	    	 	obtainContactInfo();
+				var obj:IFlexDisplayObject=PopUpManager.createPopUp(this as DisplayObject, ContactUs, true);
+				PopUpManager.centerPopUp(obj);
+	    	 }
+	    	 private function setUri():void{
+	    	 	var uri:URI=new URI(Application.application.url);
+	    	 	var remoteURL:String= uri.authority + ":" + uri.port;
+	    	 	StaticChannelSet.setUri(StaticChannelSet.getWebRoot() + "/flamingo/amf");
+				StaticChannelSet.setAddress(remoteURL);
+				AutoService.getInstance(true);
+	    	 }
+	    	[Bindable]
+	    	public var contactname:String;
+	    	[Bindable]
+	    	public var contactposition:String;
+	    	[Bindable]
+	    	public var contactaddress:String;
+	    	[Bindable]
+	    	public var contactphone:String;
+	    	[Bindable]
+	    	public var contactmobile:String;
+	    	[Bindable]
+	    	public var contactfax:String;
+	    	[Bindable]
+	    	public var contactemail:String;
+	    	private function obtainContactInfo():void{
+	    		Application.application.contactname = "";
+				Application.application.contactposition = "";
+				Application.application.contactaddress = "";
+				Application.application.contactphone = "";
+				Application.application.contactmobile = "";
+				Application.application.contactfax = "";
+				Application.application.contactemail = "";
+				var utmost:UtmostService = new UtmostService("ContactUtil",giveContactInfo);
+				utmost.ro.obtainContactInfo();
+			}
+			
+			private function giveContactInfo(e:ResultEvent):void{
+				if(e.result != null){
+					var contactXML:String = e.result.xml;
+					var xml:XML = new XML(contactXML);
+					
+					Application.application.contactname = xml.name;
+					Application.application.contactposition = xml.position;
+					Application.application.contactaddress = xml.address;
+					Application.application.contactphone = xml.phone;
+					Application.application.contactmobile = xml.mobile;
+					Application.application.contactfax = xml.fax;
+					Application.application.contactemail = xml.email;
+					
+				}else{
+					Alert.show("Obtain contact information fail!",null,Alert.OK,null,null);
+				}
+			}
+	    	 
+	    	 private var myMenu:Menu;
+	    	 private function showLanguageMenu(event:Event):void{
+	    	 	var myButton:LinkButton = event.target as LinkButton;
+	    	 	if(myButton != null){
+    	 			var menuData:ArrayCollection = new ArrayCollection([
+    	 				{label:resourceManager.getString('menubar', 'chinese'), language:'zh_CN'},
+    	 				{label:resourceManager.getString('menubar', 'english'), language:'en_US'}
+    	 			]);
+					myMenu = Menu.createMenu(this, menuData, true);
+					myMenu.addEventListener(MenuEvent.ITEM_CLICK, function(event:MenuEvent):void{
+						Application.application.currentLanguage = event.item.language;
+					});
+					var menuPosition:Point = new Point(myButton.x, myButton.y + myButton.height);
+					menuPosition = buttonContainer.localToGlobal(menuPosition);
+					myMenu.styleName = "myMenu";
+					myMenu.show(menuPosition.x, menuPosition.y);
+	    	 	}
+	    	 }
+	    	 
+	    	 private function downloadManual():void{
+	    	 	var downloadUrl:String = StaticChannelSet.getWebRoot();
+	    	 	if(language == "zh_CN"){
+	    	 		downloadUrl += "/manual/CAT_Online_System_User_Manual_CN.pdf";
+	    	 	}else{
+	    	 		downloadUrl += "/manual/CAT_Online_System_User_Manual_EN.pdf";
+	    	 	}
+	    	 	var request:URLRequest = new URLRequest(encodeURI(downloadUrl));
+	    	 	request.method = URLRequestMethod.POST;
+	    	 	navigateToURL(request, "_blank");
+	    	 }
+	    	 
+	    	public function showList():void{
+	    	  	if(UserRight.getloginUserInfo() != null){
+	    	  		var obj:IFlexDisplayObject=PopUpManager.createPopUp(this as DisplayObject, downloadList, true);
+					PopUpManager.centerPopUp(obj);
+	    	  	}else{
+	    	  		Alert.show("Please login first");
+	    	  	}
+				
+			}
+			
+			
+    	 
+<!--  	 private function changeLan(e:MouseEvent):void{
+	    	 	Application.application.currentLanguage = e.currentTarget.name;
+	    	 	showWelcome();
+	    	 }
+	    	 
+	    	 private function showWelcome():void{
+	    	 	if(UserRight.getloginUserInfo() != null){
+	    	 		welcomeInfo.text = resourceManager.getString('menubar', 'welcome') + UserRight.getloginUserInfo().username;
+	    	 		welcomeInfo.styleName = "welcome";
+	    	 	}
+	    	 }
+	    	 
+	    	 public var rightMenuData:Array = [  
+             	{label: "Download List(#)",children:[
+             		{label: "Download List(#)"}
+             	]},  
+             	{label: "Help", children: [  
+                    {label: "User Manual"},  
+                    {label: "Contact"}, 
+                    {label: "About"}   
+              	]}
+             ]
+             
+             private function showAbout():void{
+             	var obj:IFlexDisplayObject=PopUpManager.createPopUp(this as DisplayObject, about, true);
+				PopUpManager.centerPopUp(obj);
+             }
+             
+             private function res(e:MenuEvent):void{
+	    	 	if("Contact" == e.item.label){
+	    	 		showcontact();
+	    	 	}else if("User Manual" == e.item.label){
+	    	 		downloadManual();
+	    	 	}else if("About" == e.item.label){
+	    	 		showAbout();
+	    	 	}else if("Download List(#)" == e.item.label){
+	    	 		Alert.show(currentModule.url);
+	    	 	}
+	    	 }
+	    	 
+-->
+		]]>
+	</mx:Script>
+	<mx:Style>
+		.myMenu{
+			font-weight:bold;
+			font-family:Verdana;
+			color:#7F8789;
+			background-color:#FFFFFF;
+		   	background-alpha: 1;
+		   	borderStyle: solid;
+			borderThickness: 1;
+			borderColor: #cccccc;
+			text-roll-over-color: #FFFFFF;
+			theme-color:#949494;
+		}
+<!--		.welcome{
+			font-weight:bold;
+			font-family:Verdana;
+			color:#7F8789;
+		}
+-->
+	</mx:Style>
+   <mx:Dissolve id="ablur"  duration="600" alphaFrom="1.0" alphaTo="0.0" />
+   		<mx:VBox width="100%" horizontalAlign="center" height="100%" >
+			<mx:VBox width="{applicationViewWidth}" backgroundColor="#FFFFFF" borderSides="bottom" borderStyle="solid">
+				<mx:Canvas width="100%" height="101">
+					<mx:Image top="0" horizontalCenter="0" source="img/logo/vwlogo.jpg" width="178" height="101" />
+					<mx:HBox id="buttonContainer" right="10" bottom="5" width="100%" horizontalGap="0" 
+						horizontalAlign="right" verticalAlign="middle" fontSize="14">
+<!--					<mx:Label id="welcomeInfo"/>
+						<mx:HBox paddingRight="10" bottom="0">
+							<mx:Image
+									source="img/language/zh_CN.png" 
+									width="16" height="11" 
+									name="zh_CN"
+									click="changeLan(event);" 
+									buttonMode="true"/>
+							<mx:Image
+									source="img/language/en_US.png" 
+									width="16" height="11"  
+									name="en_US"
+									click="changeLan(event);"
+									buttonMode="true" 
+									/>
+						</mx:HBox>
+						<mx:MenuBar labelField="label" 
+									dataProvider="{rightMenuData}"
+									itemClick="res(event)"/>-->
+						<mx:LinkButton id="listLabel"
+									   click="showList();"/>
+						<mx:LinkButton label="{resourceManager.getString('menubar', 'language')}"
+							click="showLanguageMenu(event);"/>
+						
+						<mx:LinkButton label="{resourceManager.getString('menubar', 'contactus')}"
+							click="showcontact()"/>
+						<mx:LinkButton label="{resourceManager.getString('menubar', 'user.manual')}"
+							click="downloadManual()"/>
+					</mx:HBox>
+					<mx:Image source="@Embed(source='img/logo/logo_left.png')" left="10" bottom="1"/>
+				</mx:Canvas>
+   			</mx:VBox>
+			<mx:ModuleLoader id="currentModule"  width="{applicationViewWidth}" height="100%" ready="readyModule(event)"   >
+			</mx:ModuleLoader>
+	   	</mx:VBox>
+	<kapit:KapInspect/>
+	
+	
+	
+	
+	<!--deal with waring on not included CSS-->
+	<mx:HBox includeInLayout="false" visible="false">
+		<mx:ButtonBar/>
+		<mx:ColorPicker/>
+		<mx:DateChooser/>
+		<mx:DateField/>
+		<mx:DividedBox/>
+		<mx:HSlider/>
+		<mx:MenuBar/>
+		<mx:VSlider/>
+		<mx:ToggleButtonBar/>
+		<mx:TextArea/>
+		<mx:TabBar/>
+		<mx:RadioButton/>
+		<mx:NumericStepper/>
+		<mx:Image/>
+		<mx:PopUpButton/>
+		<mx:PopUpMenuButton/>
+		<mx:LinkButton/>
+		<mx:Accordion/>
+		<mx:DataGrid/>
+		<mx:HorizontalList/>
+		<mx:HRule/>
+		<mx:ProgressBar/>
+		<mx:TabNavigator/>
+		<mx:TileList/>
+		<mx:VRule/>
+		<code:WindowShade/>
+	</mx:HBox>
+</mx:Application>
+

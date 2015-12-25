@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow title="2009-09-16 Attached List" showCloseButton="true" close="{PopUpManager.removePopUp(this);}" xmlns:mx="http://www.adobe.com/2006/mxml" width="400" height="250" xmlns:display="flash.display.*" xmlns:mycomponents="org.utmost.mycomponents.*">
+        <mx:Script>
+        	<![CDATA[
+        		import com.right.UserRight;
+        		import mx.events.CloseEvent;
+        		import org.utmost.service.StaticChannelSet;
+        		import mx.controls.DateField;
+        		import mx.formatters.DateFormatter;
+        		import com.FilesUpload;
+        		import mx.collections.ArrayCollection;
+        		import org.utmost.service.UtmostService;
+        		import mx.controls.Alert;
+        		import mx.rpc.events.ResultEvent;
+        		import org.utmost.effect.PopUpEffect;
+        		import mx.managers.PopUpManager;
+        		
+        		[Bindable]
+        		private var files:ArrayCollection;
+        		//all files's name
+        		private var fileNames:ArrayCollection;
+        		
+        		private var _comuuid:String;	//commondata_uuid
+        		
+        		private var _yearNum:String;
+        		
+        		private var _mouthNum:String;
+        		
+        		private var _ganttuuid:String;	//gantt_uuid
+        		
+        		private var _author:String;
+        		//last modify date
+        		private var _lastModify:String;
+        		//node uuid
+        		private var _funcuuid:String;
+        		
+        		private var loadingBox:uploading;	//loading window
+        		
+        		//Can display modify button
+        		private var canShowModifyButton:Boolean = true;
+        		
+        		public function set setCanShowModifyButton(canShowModifyButton:Boolean):void{
+        			this.canShowModifyButton = canShowModifyButton;
+        		}
+        		
+        		/**
+        		 * Set function button display or not
+        		 * */
+        		private function setButton():void{
+        			deleteBtn.visible = true;
+    				uploadBtn.visible = true;
+    				downloadBtn.visible = true;
+    				/**
+    				 * Comment out this area to make all button visible.
+    				 * Save the code for another day when the requirement is clear.
+        			if(canShowModifyButton)
+	        			if(UserRight.isShowbutton(_funcuuid)){	//Judging user has modify or not
+	        				deleteBtn.visible = true;
+	        				uploadBtn.visible = true;
+	        			}
+	        		var showButton:String = UserRight.hasFuncRight("1102","3");
+					if("1" === showButton){
+						downloadBtn.visible = true;
+					}else{
+						downloadBtn.visible = false;
+					}
+					 * * */
+        		}
+        		
+        		/**
+        		 * Confirm upload
+        		 * */
+        		public function upload():void{
+        			var file:FileReference =new FileReference();
+        			
+        			var files:ArrayCollection = new ArrayCollection();
+        			
+        			file.addEventListener(Event.SELECT, function(e:Event):void{
+        				var obj:Object=new Object();
+						obj["kind"]="gantt";
+						obj["name"]=file.name;
+						
+						var arr:ArrayCollection = new ArrayCollection();
+						arr.addItem(obj);
+        				
+        				files.addItem(file);
+        				
+        				var utmost:UtmostService=new UtmostService("CommonTools",function(e:ResultEvent):void{
+        					
+        					var refFiles:ArrayCollection = ArrayCollection(e.result);
+        					
+        					var uploadFileNames:ArrayCollection = new ArrayCollection();
+        					
+        					fileNames = new ArrayCollection();
+        					
+        					for each(var fo:Object in refFiles){
+        						fileNames.addItem(fo["gantt"]);
+        						uploadFileNames.addItem(fo["gantt"]);
+        					}
+        					
+        					var _uploadURL:URLRequest = new URLRequest;
+        					//set method is upload, will call java upload method
+					        _uploadURL.url = StaticChannelSet.getWebRoot()+"/upload.form?method=upload";
+					        //type of transfer data(two type:'GET' and 'POST')
+					        _uploadURL.method = "GET";
+					        //set form type 'multipart/form-data', meaning document file upload
+					        _uploadURL.contentType = "multipart/form-data";
+					        
+					        //Open loading window
+					        loadingBox = uploading(PopUpManager.createPopUp(parentApplication as DisplayObject,uploading,true));
+					        
+					        var filesUpload:FilesUpload = new FilesUpload(files, uploadFileNames, _uploadURL, uploadCompleteHandle, uploadErrorHandle, loadingBox);
+							
+							PopUpManager.centerPopUp(loadingBox);
+							
+							filesUpload.upload();
+							
+        				});
+        				//Born file name
+        				utmost.ro.parseFileName(arr,"Standards");
+        			});
+        			//open a browse page, then can select file need to upload
+        			file.browse();
+        		}
+        		
+        		/**
+        		 * Upload success
+        		 * */
+        		private function uploadCompleteHandle():void{
+					submitFile();
+				}
+				
+				/**
+				 * Upload fail
+				 * */
+				private function uploadErrorHandle():void{
+					if(loadingBox!=null){
+						loadingBox.finishBtn.visible = true;
+					}
+					Alert.show(resourceManager.getString('errormsg','uploadFailt'));
+				}
+				
+				/**
+				 * Submit attachment to gantt attachment table
+				 * */
+				private function submitFile():void{
+					for each(var fileName:String in fileNames){
+						var gaObj:Object = new Object();
+						gaObj["gantt_uuid"] = _ganttuuid;
+						gaObj["commondata_uuid"] = _comuuid;
+						gaObj["current_date"] = _yearNum+"/"+_mouthNum;
+						gaObj["file_name"] = fileName;
+						
+						var auto:UtmostService = new UtmostService("GanttService",submitCompleteHandle);
+						auto.ro.addGanttAppendix(gaObj);
+					}
+				}
+				
+				/**
+				 * Submit attachment to gantt attachment table success handle function
+				 * */
+				private function submitCompleteHandle(e:ResultEvent):void{
+					if(e.result == 0){
+						initFileList(_comuuid,_mouthNum,_yearNum,_ganttuuid,_author,_lastModify,_funcuuid);
+					}else{
+						Alert.show(resourceManager.getString('errormsg','actionFailt'));
+					}
+					if(loadingBox!=null){	//No matter success or not, modify button useable
+						loadingBox.finishBtn.visible = true;
+					}
+				}
+        		
+        		/**
+        		 * Initial attachment list
+        		 * */
+        		public function initFileList(comuuid:String, mouthNum:String, yearNum:String, ganttuuid:String, author:String, lastModify:String, funcuuid:String):void{
+        			
+        			_comuuid = comuuid;
+        			
+        			_ganttuuid = ganttuuid;
+        			
+        			_yearNum = yearNum;
+        			
+        			_mouthNum = mouthNum;
+        			
+        			_author = author;
+        			
+        			_lastModify = lastModify;
+        			
+        			_funcuuid = funcuuid;
+        			
+        			var auto:UtmostService = new UtmostService("GanttService",resultHandle);
+					auto.ro.queryGanttAppendixByDate(comuuid, yearNum, mouthNum);
+        		}
+        		
+        		public function resultHandle(e:ResultEvent):void{
+        			files = e.result as ArrayCollection;
+        		}
+        		
+        		/**
+        		 * Transfer type of long to type of string
+        		 * Label function will call this function
+        		 * */
+        		private function getDateLabel(item:Object,event:DataGridColumn):String{
+        			//set date display format  YYYY-MM-DD
+					var df:DateFormatter = new DateFormatter();
+					df.formatString = "YYYY-MM-DD";
+					return df.format(new Date(item.current_date));
+				}
+				
+				/**
+        		 *Get extend name based on file name
+        		 * */
+        		private function getTypeLabel(item:Object,event:DataGridColumn):String{
+					var b:String = item.file_name;
+					var str:String = b.substring(b.lastIndexOf(".")+1, b.length);
+					return str;
+				}
+				
+				private function onClickHandler():void{
+					if(filesDG.selectedItem==null){
+						Alert.show(resourceManager.getString("errormsg", "selectone"));
+						return;
+					}
+					Alert.show(resourceManager.getString('fileDown', 'sure'), "", 3, this, alertClickHandler);
+				}
+	
+				private function alertClickHandler(event:CloseEvent):void
+				{
+					if (event.detail == Alert.YES)
+					{
+						var filename:String=filesDG.selectedItem.file_name;
+						var fielduuid:String=_funcuuid;
+						var author:String=_author;
+						var last_modify_date_str:String=_lastModify;
+						var useruuid:String=UserRight.getUserUUID();
+						//set method is download representing calling java method download
+						//need to get info in java contained in downloadURL
+						var downloadURL:String=StaticChannelSet.getWebRoot() + "/download.form?method=download&path=UPLOAD&name=" + filename + "&uuid=" + fielduuid + "&author=" + author + "&useruuid=" + useruuid + "&last_modify_date_str=" + last_modify_date_str;
+						var request:URLRequest=new URLRequest(encodeURI(downloadURL));
+						//set transfer type is post(two type: 'POST' AND 'GET')
+						request.method=URLRequestMethod.POST;
+						//is not open new window
+						navigateToURL(request, '_self');
+					}
+				}
+				//Remove file
+				private function deleteFile():void{
+					
+					if(filesDG.selectedItem==null){
+						Alert.show(resourceManager.getString("errormsg", "selectone"));
+						return;
+					}
+					//Call java function
+					var auto:UtmostService = new UtmostService("GanttService",function(e:ResultEvent):void{
+						if(e.result == 0){
+							Alert.show("One attachment is deleted.");
+							initFileList(_comuuid,_mouthNum,_yearNum,_ganttuuid,_author,_lastModify,_funcuuid);
+						}
+					});
+					auto.ro.deleteFile(filesDG.selectedItem.uuid, filesDG.selectedItem.file_name);
+				}
+        	]]>
+        </mx:Script>
+       	<mx:Metadata>
+		   	[ResourceBundle("errormsg")]
+	     	[ResourceBundle("fileDown")]
+		</mx:Metadata>
+        <mx:DataGrid id="filesDG" dataProvider="{files}" width="100%" height="100%" >
+        	<mx:columns>
+        		<mx:DataGridColumn dataField="file_name" width="55"  headerText="File Name"/>
+        		<mx:DataGridColumn dataField="file_name"  width="20" labelFunction="getTypeLabel" headerText="File Type"/>
+        		<mx:DataGridColumn dataField="current_date" width="25" labelFunction="getDateLabel" headerText="Date"/>
+        	</mx:columns>
+        </mx:DataGrid>
+    <mx:ControlBar>
+        <mx:Spacer width="100%"/>
+            <mx:HBox creationComplete="{setButton();}">
+            	<mycomponents:Components_LinkButton id="deleteBtn" visible="false" iconType="right" label="Delete" click="deleteFile()"  />
+            	<mycomponents:Components_LinkButton id="uploadBtn" visible="false" iconType="right" label="Upload" click="upload()"  />
+            	<mycomponents:Components_LinkButton id="downloadBtn" visible="true" iconType="right" label="Download" click="onClickHandler()" />
+            </mx:HBox>
+        </mx:ControlBar>
+</mx:TitleWindow>

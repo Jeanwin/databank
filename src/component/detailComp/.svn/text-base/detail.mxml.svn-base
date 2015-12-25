@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml"
+		   creationComplete="{initData();}"
+		   width="100%"
+		   height="100%"
+		   backgroundColor="#FFFFFF">
+	<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Script>
+		<![CDATA[
+			import mx.containers.HBox;
+			import mx.core.Application;
+			import mx.controls.Alert;
+			import org.utmost.service.UtmostService;
+			import mx.rpc.events.ResultEvent;
+			import mx.collections.ArrayCollection;
+			import component.detailComp.DetailRow;
+
+			[Bindable]
+			private var dataObj:Object;
+			//Detail title(eg: No.(title):DB 14-2002(value))
+			[Bindable]
+			private var title:ArrayCollection; 
+			//current system language(Chinese or English)
+			[Bindable]
+			private var language:String=Application.application.language;
+			[Bindable]
+			private var useruuid:String;
+			
+			public function set setuseruuid(_useruuid:String):void
+			{
+				useruuid=_useruuid;
+			}
+			[Bindable]
+			private var rootuuid:String;
+
+			public function set setrootuuid(_rootuuid:String):void
+			{
+				rootuuid=_rootuuid;
+			}
+			[Bindable]
+			private var nodeuuid:String;
+
+			public function set setnodeuuid(_uuid:String):void
+			{
+				nodeuuid=_uuid;
+			}
+			[Bindable]
+			private var recordUUID:String;
+
+			public function set recordUUID_(_recordUUID:String):void
+			{
+				recordUUID=_recordUUID;
+			}
+			//If have privileges check field protected
+			[Bindable]
+			private var hasProtected:Boolean=false; 
+
+			public function set setprotected(_hasProtected:Boolean):void
+			{
+				hasProtected=_hasProtected;
+			}
+			//Initial detail data(Call java function to get all title and single data)
+			private function initData():void
+			{
+				var ut:UtmostService=new UtmostService("DataInfoService", function(event:ResultEvent):void
+					{
+						title=new ArrayCollection();
+						title=event.result as ArrayCollection;
+						//Judge current user can/can't check this node 
+						var uts:UtmostService=new UtmostService("DataInfoService", function(dataevent:ResultEvent):void
+							{
+								var dataList:ArrayCollection=new ArrayCollection();
+								dataList=dataevent.result as ArrayCollection;
+								trace("................data list:" + dataList);
+								if (dataList == null || dataList.length != 1)
+								{
+									initRows();
+								}
+								else
+								{
+									dataObj=new Object();
+									dataObj=dataList[0];
+									initRows();
+								}
+							});
+						uts.ro.getSingleData(rootuuid, nodeuuid, useruuid, hasProtected, 2, recordUUID);
+					});
+				ut.ro.getSingleDataTitle(rootuuid, nodeuuid, useruuid, hasProtected, 2, recordUUID);
+			}
+			//Correspond title and value
+			private function initRows():void
+			{
+				if (title == null)
+					return;
+				if (dataObj == null)
+					dataObj=new Object();
+				//is or isn't new line
+				var states:int=1; 
+				//change/not change current line color
+				var bgc:int=1; 
+				var hbox:HBox=new HBox();
+				var last_modify_author:DetailRow=new DetailRow();
+				var last_modify_date_str:DetailRow=new DetailRow();
+				var remark:DetailRow = new DetailRow();
+				hbox.percentWidth=100;
+				for (var i:int=0; i < title.length; i++)
+				{
+					if(title[i] != null){
+						//Temporary putting remark data in variable remark for display in last row
+						if(title[i].field_name.toLowerCase() == "remark_"){
+							if (language == "en_US")
+							{ 
+								remark.setll=title[i].show_name_en;
+							}
+							else
+							{ 
+								remark.setll=title[i].show_name_ch;
+							}
+							remark.setlt=dataObj[title[i].field_name.toLowerCase()];
+							continue;
+						}
+						if(title[i].field_name.toLowerCase() == "last_modify_author"){
+							if (language == "en_US")
+							{ 
+								last_modify_author.setll=title[i].show_name_en;
+							}
+							else
+							{ 
+								last_modify_author.setll=title[i].show_name_ch;
+							}
+							last_modify_author.setlt=dataObj[title[i].field_name.toLowerCase()];
+							continue;
+						}
+						if(title[i].field_name.toLowerCase() == "last_modify_date_str"){
+							if (language == "en_US")
+							{ 
+								last_modify_date_str.setll=title[i].show_name_en;
+							}
+							else
+							{ 
+								last_modify_date_str.setll=title[i].show_name_ch;
+							} 
+							last_modify_date_str.setlt=dataObj[title[i].field_name.toLowerCase()];
+							continue;
+						}
+						var row:DetailRow=new DetailRow();
+						//These items are not display in detail
+						if (title[i].field_name.toLowerCase() == "last_modify_date" 
+						|| title[i].field_name.toLowerCase() == "summary_swf" 
+						|| title[i].field_name.toLowerCase() == "doc_title"
+						|| title[i].field_name.toLowerCase() == "download_others"  
+						|| title[i].field_name.toLowerCase() == "download_others_swf" 
+						|| title[i].field_name.toLowerCase() == "download_others_title" 
+						|| title[i].field_name.toLowerCase() == "download_fmvss_swf" 
+						|| title[i].field_name.toLowerCase() == "download_fmvss_title"
+						|| title[i].field_name.toLowerCase() == "download_eec_swf" 
+						|| title[i].field_name.toLowerCase() == "download_eec_title" 
+						|| title[i].field_name.toLowerCase() == "download_ece_r_swf" 
+						|| title[i].field_name.toLowerCase() == "download_ece_r_title" 
+						|| title[i].field_name.toLowerCase() == "download_gb_ch_swf" 
+						|| title[i].field_name.toLowerCase() == "download_gb_ch_title" 
+						|| title[i].field_name.toLowerCase() == "download_gb_en_swf" 
+						|| title[i].field_name.toLowerCase() == "download_gb_en_title" 
+						|| title[i].field_name.toLowerCase() == "online_auto_execute_date" 
+						|| title[i].field_name.toLowerCase() == "pre_execute_date" 
+						|| title[i].field_name.toLowerCase() == "execute_date" 
+						|| title[i].field_name.toLowerCase() == "func_uuid" 
+						|| title[i].field_name.toLowerCase() == "recordid" 
+						|| title[i].field_name.toLowerCase() == "uuid"
+						|| title[i].field_name.toLowerCase() == "no_"
+						|| title[i].field_name.toLowerCase() == "version_"
+						|| title[i].field_name.toLowerCase() == "standard_attribute1"
+						|| title[i].field_name.toLowerCase() == "standard_attribute2"
+						|| title[i].field_name.toLowerCase() == "standard_attribute3" 
+						|| title[i].field_name.toLowerCase() == "title_chinese" 
+						|| title[i].field_name.toLowerCase() == "title_english" 
+						|| title[i].field_name.toLowerCase() == "adopt_national_standard_no" 
+						|| title[i].field_name.toLowerCase() == "summary" 
+						)
+						{
+							continue;
+						}
+						if (language == "en_US")
+						{ 
+							row.setll=title[i].show_name_en;
+						}
+						else
+						{ 
+							row.setll=title[i].show_name_ch;
+						} 
+						if(title[i].field_name.toLowerCase() == "ismandatory"){
+							instead1Or0(dataObj,title[i],row);
+						}else if(title[i].field_name.toLowerCase() == "isccc"){
+							instead1Or0(dataObj,title[i],row);
+						}else if(title[i].field_name.toLowerCase() == "isbulletin"){
+							instead1Or0(dataObj,title[i],row);
+						}else if(title[i].field_name.toLowerCase() == "is_national_emi"){
+							instead1Or0(dataObj,title[i],row);
+						}else if(title[i].field_name.toLowerCase() == "is_local_emi"){
+							instead1Or0(dataObj,title[i],row);
+						}else if(title[i].field_name.toLowerCase() == "gorvernor_code_uuid"){
+							if(dataObj["govenor_code"]=="Others"){
+								row.setlt = dataObj["govenor_code"]+"-"+dataObj["gorvernor_code_uuid_others"];
+							}else{
+							    row.setlt = dataObj["govenor_code"];
+							}
+						}else if(title[i].field_name.toLowerCase() == "technical_committees_code_uuid"){
+							row.setlt = dataObj["technical_committees_code"];
+						}else{
+							row.setlt=dataObj[title[i].field_name.toLowerCase()];
+						}
+						hbox.addChild(row);
+						trace("...label:" + row.getll);
+						//states:new line or not(2:new line 1:not new line) 
+						if (states == 2)
+						{
+							bgc=(bgc == 1 ? 2 : 1);
+							rowsbox.addChild(hbox);
+							hbox=new HBox();
+							hbox.percentWidth=100;
+							//set row background color
+							if (bgc == 2)
+								hbox.setStyle("backgroundColor", "#F3F3F3");
+						}
+						states=(states == 1 ? 2 : 1);
+					}
+				}
+				if(null != remark.getll && "" != remark.getll){
+					hbox.addChild(remark);
+					rowsbox.addChild(hbox);
+					if (states == 2)
+					{ 
+						bgc=(bgc == 1 ? 2 : 1);
+						rowsbox.addChild(hbox);
+						hbox=new HBox();
+						hbox.percentWidth=100;
+						if (bgc == 2)
+							hbox.setStyle("backgroundColor", "#F3F3F3");
+					}
+					states=(states == 1 ? 2 : 1);
+				}
+				if(null != last_modify_author.getll && "" != last_modify_author.getll){
+					hbox.addChild(last_modify_author);
+					if (states == 2)
+					{ 
+						bgc=(bgc == 1 ? 2 : 1);
+						rowsbox.addChild(hbox);
+						hbox=new HBox();
+						hbox.percentWidth=100;
+						if (bgc == 2)
+							hbox.setStyle("backgroundColor", "#F3F3F3");
+					}
+					states=(states == 1 ? 2 : 1);
+				}
+				if(null != last_modify_date_str.getll && "" != last_modify_date_str.getll){
+					hbox.addChild(last_modify_date_str);
+					if (states == 2)
+					{
+						bgc=(bgc == 1 ? 2 : 1);
+						rowsbox.addChild(hbox);
+						hbox=new HBox();
+						hbox.percentWidth=100;
+						if (bgc == 2)
+							hbox.setStyle("backgroundColor", "#F3F3F3");
+					}
+					states=(states == 1 ? 2 : 1);
+				}
+			}
+			private function instead1Or0(dataObj:Object,title:Object,row:DetailRow):void{
+				if(null != dataObj[title.field_name.toLowerCase()]){
+					var  temp01:String = dataObj[title.field_name.toLowerCase()].toString();
+					if(temp01 != null && temp01 != ""){
+						if(temp01 == "1")
+							row.setlt = "Yes";
+						else if(temp01 == "0")
+							row.setlt = "No";
+						else
+							row.setlt=dataObj[title.field_name.toLowerCase()];
+					}
+				}else{
+					row.setlt=dataObj[title.field_name.toLowerCase()];
+				}
+			}
+			private var _listCanvasDetail:Canvas=null;
+			public function set listCanvasDetail(listCanvas:Canvas):void{
+				_listCanvasDetail = listCanvas;
+			}
+			private var _ganttCanvasDetail:Canvas=null;
+			public function set ganttCanvasDetail(ganttCanvas:Canvas):void{
+				_ganttCanvasDetail = ganttCanvas;
+			}
+			//close and clear all
+			public function close():void
+			{
+				dataObj=null;
+				title=null;
+				useruuid=null;
+				rootuuid=null;
+				nodeuuid=null;
+				recordUUID=null;
+				this.parent.removeChild(this);
+				if(null != _listCanvasDetail){
+					_listCanvasDetail.verticalScrollPolicy = "off";
+				}
+				if(null != _ganttCanvasDetail){
+					_ganttCanvasDetail.verticalScrollPolicy = "off";
+				}
+			}
+		]]>
+	</mx:Script>
+	<mx:Metadata>
+		[ResourceBundle("dataGrid")]
+	</mx:Metadata>
+	<mx:VBox x="10"
+			 y="20"
+			 width="95%"
+			 verticalGap="15">
+		<mx:HBox width="100%"
+				 horizontalAlign="right">
+			<mx:LinkButton label="X"
+						   height="20"
+						   click="close()"/>
+		</mx:HBox>
+		<mx:VBox styleName="detail" id="rowsbox"
+				 width="100%"
+				 verticalGap="15">
+
+		</mx:VBox>
+	</mx:VBox>
+</mx:Canvas>

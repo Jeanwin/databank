@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml"
+				creationComplete="{init();}"
+				xmlns:mycomponents="org.utmost.mycomponents.*"
+				layout="vertical"
+				width="400"
+				height="240"
+				title=""
+				horizontalAlign="center"
+				verticalAlign="top"
+				verticalScrollPolicy="off"
+				paddingTop="0"
+				verticalGap="30"
+				xmlns:local="*"
+				visible="false">
+	<mx:Script> 
+		<![CDATA[
+			import org.utmost.util.UtmostLSO;
+			import org.utmost.util.UtmostLSOBean;
+			import com.right.UserRight;
+			import mx.collections.ArrayCollection;
+			import fr.kapit.data.utils.HashMap;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import org.utmost.service.AutoService;
+			import org.utmost.service.StaticChannelSet;
+			import mx.core.Application;
+			import org.utmost.util.ShortcutKeyUtil;
+			import mx.managers.PopUpManager;
+			import mx.controls.Alert;
+			import com.adobe.net.URI;
+
+			private function init():void
+			{
+				//设置了isPopUp=false那么这个TittleWindow就不可以拖动了
+				this.isPopUp=false;
+//				initLSO();
+				ShortcutKeyUtil.setFocusAndSubmit(this, checkLogin);
+				//初始化URI指向
+				checkLogin();
+			}
+/*
+			private function initLSO():void
+			{
+				var ul:UtmostLSO=new UtmostLSO();
+				var bean:Object=ul.defaultObj();
+				if (bean != null)
+				{
+					loginname.text=bean.username;
+					password.text=bean.password;
+					cbName.selected=bean.saveName;
+					cbPwd.selected=bean.savePwd;
+				}
+			}
+
+			private function saveLSO():void
+			{
+				var ulb:UtmostLSOBean=new UtmostLSOBean();
+				var ul:UtmostLSO=new UtmostLSO();
+				if (cbName.selected)
+				{
+					ulb.saveName=true;
+					ulb.username=loginname.text;
+				}
+				if (cbPwd.selected)
+				{
+					ulb.savePwd=true;
+					ulb.password=password.text;
+				}
+				ul.saveLSO(ulb)
+			}
+*/
+			private function checkLogin():void
+			{
+				setUri();
+				var userName:String = ExternalInterface.call("getUsername");
+				if(userName==null||userName.length==0||userName=="null"){
+				  this.visible = true;
+				  userName = loginname.text;
+				  if(userName==null||userName.length==0){
+				  	return;
+				  }
+				}
+				var utmost:UtmostService=new UtmostService("RightService", loginResultHandle);
+				utmost.ro.login(userName, password.text); 
+//		     	if(loginname.text=="admin"&&password.text=="admin"){
+//		     		Alert.show("Login name or password incorrect!");
+//		     	}else{
+//		     		bool=true;
+//		     	close();
+//		     	}
+			}
+
+			/*
+			   private function quickLogin():void{
+			   shake.play();
+
+			   }
+			 */
+
+			private function loginResultHandle(e:ResultEvent):void
+			{
+				if (e.result != null)
+				{
+					UserRight.role=e.result.role;
+					UserRight.funcs=e.result.funcList;
+					UserRight.menus=e.result.menuList;
+					UserRight.userInfo=e.result.user;
+					UserRight.scope="manage";
+					if(UserRight.role.length > 0){
+						var obj:Object = UserRight.role.getItemAt(0);
+						if("Admin" == obj.rolename){
+							trace("This user is admin...");
+							Application.application.myEdit = true;
+						}
+					}
+					var useruuid:String=UserRight.getUserUUID();
+					var downloadURL:String=StaticChannelSet.getWebRoot() + "/login.form?method=login&&useruuid=" + useruuid;
+					var request:URLRequest=new URLRequest(encodeURI(downloadURL));
+					request.method=URLRequestMethod.POST;
+					try{sendToURL(request);}catch (e:Error){}
+//					saveLSO();
+					ablur.play();
+				}
+				else
+				{
+					Alert.show("Login name is incorrect, please contact Administrator!", null, Alert.OK, null, closeIE);
+				}
+			}
+
+			private function setUri():void
+			{
+
+				//var url:String=BrowserManager.getInstance().url;
+				//trace("url:"+url);
+				var uri:URI=new URI(Application.application.url);
+				trace("uri.authority:" + uri.authority);
+				trace("uri.port:" + uri.port);
+				trace("uri.path:" + uri.path);
+				var remoteURL:String= uri.authority + ":" + uri.port;
+//				var remoteURL:String="localhost:7082";
+//				if(uri.authority!=null&&uri.authority!="") {
+//					remoteURL=uri.authority;
+//					if(uri.port!=null&&uri.port!="") {
+//						remoteURL+=":"+uri.port;
+//					}
+//				}
+				trace("remoteURL:" + remoteURL);
+				//StaticChannelSet.setAddress(uritxt.text);
+				//StaticChannelSet.setUri("http://"+uritxt.text+"/UtmostTPL/flamingo/amf");
+				StaticChannelSet.setUri(StaticChannelSet.getWebRoot() + "/flamingo/amf");
+				StaticChannelSet.setAddress(remoteURL);
+				AutoService.getInstance(true);
+			}
+
+			private function close():void
+			{
+				PopUpManager.removePopUp(this);
+				dispatchEvent(new Event("LoginComponent_user"));
+			}
+			
+			private function closeIE(event:Object):void{
+//				ExternalInterface.call("closeIE");
+				Application.application.logout();
+            }  
+		]]>
+	</mx:Script>
+
+	 <mx:Dissolve id="ablur" target="{this}" effectEnd="{close();}" duration="300" alphaFrom="1.0" alphaTo="0.0" />
+	<mx:HBox width="100%" >
+		<mx:Label text="CAT Online" fontSize="16" fontWeight="bold"/>
+	</mx:HBox>
+	<mx:VBox verticalGap="20">
+		<mx:HBox>
+			<mx:VBox verticalGap="10">
+				<mx:HBox>
+					<mx:Label text="Account"
+							  width="80"/>
+					<mx:TextInput id="loginname"
+								  maxChars="60"/>
+				</mx:HBox>
+				<mx:HBox>
+					<mx:Label text="Password"
+							  width="80"/>
+					<mx:TextInput id="password"
+								  displayAsPassword="true"
+								  maxChars="60"/>
+				</mx:HBox>
+			</mx:VBox>
+		</mx:HBox>
+		<mx:HBox width="100%"
+				 horizontalAlign="center"
+				 verticalAlign="middle">
+			<mx:HBox width="50%"
+					 horizontalAlign="center"
+					 verticalAlign="middle">
+				<mx:CheckBox id="cbName"
+							 label="Remember account"/>
+				<mx:Spacer width="5"
+						   height="30"/>
+				<mx:CheckBox id="cbPwd"
+							 label="Remember password"
+							 includeInLayout="false"
+							 visible="false"/>
+			</mx:HBox>
+			<mx:HBox width="50%"
+					 horizontalAlign="center"
+					 verticalAlign="middle">
+				<mycomponents:Components_LinkButton iconType="right"
+													label="Login"
+													click="{checkLogin()}"
+													fontSize="11"/>
+			</mx:HBox>
+		</mx:HBox>
+
+
+	</mx:VBox>
+	<!--mx:Button label="权限测试" click="LoginService.findPurview('wlm')"/-->
+	<mx:ControlBar horizontalAlign="center"
+				   paddingBottom="0"
+				   paddingTop="0">
+		<mx:HBox width="100%"
+				 horizontalAlign="center">
+			<!--mx:Button label="Development" fontSize="13" click="quickLogin()"/-->
+			<!-- icon="@Embed('assets/arrow_icon_blue.png')" -->
+		</mx:HBox>
+	</mx:ControlBar>
+	<mx:Sequence id="shake"
+				 target="{this}"
+				 duration="100"
+				 repeatCount="2"
+				 effectEnd="close()">
+		<mx:Move xBy="30"/>
+		<mx:Move xBy="-30"/>
+	</mx:Sequence>
+</mx:TitleWindow>

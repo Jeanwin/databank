@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.CheckBox;
+			import mx.collections.ArrayCollection;
+			
+			private var users:ArrayCollection; 	//All user collection
+			
+			private var boxArr:ArrayCollection;	//checkBox objects
+			
+			private var role:Object;	//current selected
+			
+			/**
+			 * Set user collection for show
+			 * */
+			public function setList(list:ArrayCollection, roleObj:Object):void{
+				
+				initData();
+				
+				users = list;
+				
+				role = roleObj;
+				
+				boxArr = new ArrayCollection();
+				
+				//user iteration
+				for(var i:int=0; i<list.length; i++){
+					
+					var user:Object = list.getItemAt(i);
+					
+					var check:CheckBox = new CheckBox();
+					check.percentWidth = 100;
+					check.label = user.username;
+					check.toolTip = user.usercode;
+					check.data = user.useruuid;
+					
+					if(user.exist == "true"){
+						check.selected = true;
+					}
+					
+					boxArr.addItem(check);	//add to checkbox
+					box.addChild(check);	//add to vvox		
+				}
+			}
+			
+			/**
+			 * Data initialization
+			 * */
+			public function initData():void{
+				users = null;
+				boxArr = null;
+				box.removeAllChildren();
+			}
+			
+			/**
+			 * Get multiple check results
+			 * */
+			public function getCheckResult():Object{
+				
+				var result:Object = new Object();
+				
+				var delList:ArrayCollection = new ArrayCollection();
+				var addList:ArrayCollection = new ArrayCollection();
+				
+				for(var i:int=0; i<users.length; i++){
+					
+					var check:CheckBox = boxArr.getItemAt(i) as CheckBox;
+					var user:Object = users.getItemAt(i);
+					
+					if(user.exist == "true"){
+						if(check.selected == false){
+							var ref:Object = new Object();
+							ref.uuid = user.refuuid;
+							ref.roleuuid = role.uuid;
+							ref.rolecode = role.rolecode;
+							ref.rolename = role.rolename;
+							ref.useruuid = user.useruuid;
+							ref.usercode = user.usercode;
+							ref.username = user.username;
+							delList.addItem(ref);
+						}
+					}else{
+						if(check.selected == true){
+							var ref:Object = new Object();
+							ref.roleuuid = role.uuid;
+							ref.rolecode = role.rolecode;
+							ref.rolename = role.rolename;
+							ref.useruuid = user.useruuid;
+							ref.usercode = user.usercode;
+							ref.username = user.username;
+							addList.addItem(ref);
+						}
+					}
+					
+				}
+				
+				result.delList = delList;
+				result.addList = addList;
+				
+				return result;
+			}
+		]]>
+	</mx:Script>
+	
+	<mx:VBox id="box" width="100%" height="100%" verticalGap="0" paddingLeft="33" borderStyle="solid" borderColor="#B7BABC" horizontalScrollPolicy="off">
+	</mx:VBox>
+</mx:Canvas>

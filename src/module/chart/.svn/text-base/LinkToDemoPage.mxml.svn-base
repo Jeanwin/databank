@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+///////////////////////////////////////////////////////////////////////////////
+// Licensed Materials - Property of IBM
+// 5724-Y31
+// (c) Copyright IBM Corporation 2007, 2009. All Rights Reserved.
+//
+// Note to U.S. Government Users Restricted Rights:
+// Use, duplication or disclosure restricted by GSA ADP Schedule
+// Contract with IBM Corp.
+///////////////////////////////////////////////////////////////////////////////
+-->
+
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:filters="flash.filters.*"
+  xmlns:menu="mx.controls.menuClasses.*" xmlns:local="*"
+  creationComplete="init()">
+  <mx:Script>
+    <![CDATA[
+      import mx.resources.ResourceManager;
+      [Embed(source="/img/resources/back.png",
+          scaleGridTop="6", scaleGridBottom="17", 
+          scaleGridLeft="6", scaleGridRight="258")]
+      [Bindable]
+      public var backCls:Class;
+      private function getString(key:String):String {
+        var s:String;
+        try {    
+          s = ResourceManager.getInstance().getString("elixirsamplebar", "samplebar."+key);
+        } catch (e:Error) {
+          s = null;
+        }
+        return s == null ? key : s;
+      }  
+    ]]>
+  </mx:Script>
+      <mx:HBox width="100%"  bottom="10" paddingTop="1" horizontalGap="0" id="hb">
+        <mx:LinkButton id="menuButton" label="@Resource(bundle='elixirsamplebar',key='samplebar.linkdemos')"
+          click="{ElixirSampleBar.goToURL(getString('demourl'))}" skin="DemoButtonSkin"
+          icon="@Embed(source='/img/resources/plus.png')" textAlign="left" 
+          cornerRadius="4" height="100%" fontSize="15"
+          textSelectedColor="0xFFFFFF" textRollOverColor="0xFFFFFF" 
+          fillAlphas="[]" color="0xFFFFFF" />      
+  
+        <mx:LinkButton label="@Resource(bundle='elixirsamplebar',key='samplebar.download')"
+          icon="@Embed(source='/img/resources/download.png')" textAlign="left" cornerRadius="4" 
+          click="{ElixirSampleBar.goToURL(getString('downurl'))}" height="100%"
+          fontSize="15" skin="DemoButtonSkin"
+          fillAlphas="[]" color="0xFFFFFF" textRollOverColor="0xFFFFFF" textSelectedColor="0xFFFFFF"/>
+      </mx:HBox>
+</mx:Canvas>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<actionScriptProperties mainApplicationPath="databank.mxml" version="3">
+  <compiler additionalCompilerArguments="-locale=en_US,zh_CN -source-path=../locale/{locale}   -services &quot;services-config.xml&quot;" copyDependentFiles="true" enableModuleDebug="true" generateAccessible="false" htmlExpressInstall="true" htmlGenerate="true" htmlHistoryManagement="false" htmlPlayerVersion="9.0.0" htmlPlayerVersionCheck="true" outputFolderLocation="C:/trunk/800_projects/800.30_CatOnline/svn/trunk/40_Src/databankServer/WebContent/vw" outputFolderPath="bin-debug" sourceFolderPath="src" strict="true" useApolloConfig="false" verifyDigests="true" warn="true">
+    <compilerSourcePath/>
+    <libraryPath defaultLinkType="1">
+      <libraryPathEntry kind="4" path=""/>
+      <libraryPathEntry kind="1" linkType="1" path="libs"/>
+    </libraryPath>
+    <sourceAttachmentPath/>
+  </compiler>
+  <applications>
+    <application path="databank.mxml"/>
+  </applications>
+  <modules>
+    <module application="src/databank.mxml" destPath="module/ganttDataGird.swf" optimize="false" sourcePath="src/module/ganttDataGird.mxml"/>
+    <module application="src/databank.mxml" destPath="module/link/LinkModule.swf" optimize="false" sourcePath="src/module/link/LinkModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/simpleDataGirdBack.swf" optimize="false" sourcePath="src/module/simpleDataGirdBack.mxml"/>
+    <module application="src/databank.mxml" destPath="module/basicDataGrid.swf" optimize="false" sourcePath="src/module/basicDataGrid.mxml"/>
+    <module application="src/databank.mxml" destPath="module/otherinfo/LogoInfoOnLogonModule.swf" optimize="true" sourcePath="src/module/otherinfo/LogoInfoOnLogonModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/notice.swf" optimize="false" sourcePath="src/module/notice.mxml"/>
+    <module application="src/databank.mxml" destPath="module/chart/ChartModule.swf" optimize="false" sourcePath="src/module/chart/ChartModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/forum/ForumCategoryManagement.swf" optimize="true" sourcePath="src/module/forum/ForumCategoryManagement.mxml"/>
+    <module application="src/databank.mxml" destPath="module/datainput/DataModifyModule.swf" optimize="false" sourcePath="src/module/datainput/DataModifyModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/auth/AuthUserModule.swf" optimize="false" sourcePath="src/module/auth/AuthUserModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/PortalModule.swf" optimize="false" sourcePath="src/module/PortalModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/auth/AuthUsersMonitorMudule.swf" optimize="false" sourcePath="src/module/auth/AuthUsersMonitorMudule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/auth/AuthGroupModule.swf" optimize="false" sourcePath="src/module/auth/AuthGroupModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/datainput/DataTreeNodeManageModule.swf" optimize="false" sourcePath="src/module/datainput/DataTreeNodeManageModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/forum/ForumTopicList.swf" optimize="true" sourcePath="src/module/forum/ForumTopicList.mxml"/>
+    <module application="src/databank.mxml" destPath="module/forum/ForumTopicSearch.swf" optimize="true" sourcePath="src/module/forum/ForumTopicSearch.mxml"/>
+    <module application="src/databank.mxml" destPath="module/otherinfo/OtherInfoModule.swf" optimize="false" sourcePath="src/module/otherinfo/OtherInfoModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/forum/ForumAccessContainer.swf" optimize="true" sourcePath="src/module/forum/ForumAccessContainer.mxml"/>
+    <module application="src/databank.mxml" destPath="module/datainput/ChangeShowWordModule.swf" optimize="false" sourcePath="src/module/datainput/ChangeShowWordModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/auth/AuthGroupFunc.swf" optimize="false" sourcePath="src/module/auth/AuthGroupFunc.mxml"/>
+    <module application="src/databank.mxml" destPath="module/datainput/CreateNewKindModuel.swf" optimize="false" sourcePath="src/module/datainput/CreateNewKindModuel.mxml"/>
+    <module application="src/databank.mxml" destPath="module/forum/ForumCategoryList.swf" optimize="true" sourcePath="src/module/forum/ForumCategoryList.mxml"/>
+    <module application="src/databank.mxml" destPath="module/manage.swf" optimize="false" sourcePath="src/module/manage.mxml"/>
+    <module application="src/databank.mxml" destPath="module/dataoutput/BatchDownloadModule.swf" optimize="false" sourcePath="src/module/dataoutput/BatchDownloadModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/auth/AuthGroupPermissions.swf" optimize="false" sourcePath="src/module/auth/AuthGroupPermissions.mxml"/>
+    <module application="src/databank.mxml" destPath="module/otherinfo/LogoInfoModule.swf" optimize="false" sourcePath="src/module/otherinfo/LogoInfoModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/chart/show.swf" optimize="false" sourcePath="src/module/chart/show.mxml"/>
+    <module application="src/databank.mxml" destPath="module/forum/ForumTopicDetail.swf" optimize="true" sourcePath="src/module/forum/ForumTopicDetail.mxml"/>
+    <module application="src/databank.mxml" destPath="module/UserRoleManage.swf" optimize="false" sourcePath="src/module/UserRoleManage.mxml"/>
+    <module application="src/databank.mxml" destPath="module/DetailList.swf" optimize="false" sourcePath="src/module/DetailList.mxml"/>
+    <module application="src/databank.mxml" destPath="module/AdvanceDataGrid.swf" optimize="true" sourcePath="src/module/AdvanceDataGrid.mxml"/>
+    <module application="src/databank.mxml" destPath="module/datainput/DataInputModule.swf" optimize="false" sourcePath="src/module/datainput/DataInputModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/auth/AuthUserGroupModule.swf" optimize="false" sourcePath="src/module/auth/AuthUserGroupModule.mxml"/>
+    <module application="src/databank.mxml" destPath="module/NoticeContent.swf" optimize="false" sourcePath="src/module/NoticeContent.mxml"/>
+  </modules>
+  <buildCSSFiles/>
+</actionScriptProperties>

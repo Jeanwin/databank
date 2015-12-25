@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" horizontalGap="20"    xmlns:cutpage="component.*"   xmlns:mycomponents="org.utmost.mycomponents.*">
+<mx:Metadata>
+        [ResourceBundle("cutpage")]
+</mx:Metadata>
+            <mx:Spacer  width="40"   height="0"> </mx:Spacer> 
+            <mx:Label  text="{resourceManager.getString('cutpage','count')+':15'}"   id="pagedetail"  /> 
+            <mx:Label  text="{resourceManager.getString('cutpage','page')+':1/1'}"   id="pagedetail2"  />
+             <mycomponents:Components_LinkButton iconType="left" label="{resourceManager.getString('cutpage','home')}"     /> 
+            <mycomponents:Components_LinkButton iconType="prev" label="{resourceManager.getString('cutpage','prev')}"    /> 
+            <mycomponents:Components_LinkButton iconType="next"  label="{resourceManager.getString('cutpage','next')}"     /> 
+            <mycomponents:Components_LinkButton iconType="right"  label="{resourceManager.getString('cutpage','last')}"    /> 
+            <!--mx:NumericStepper  id="inputpage" stepSize="1"   minimum="0"   maximum="0"   cornerRadius="0" /> 
+            <mx:LinkButton  label="{resourceManager.getString('cutpage','jump')}"    /> 
+            <mx:Label  text="{resourceManager.getString('cutpage','everypage')}"   id="pagedetail0"  />
+            <mx:NumericStepper  id="inputpage0" stepSize="1"   minimum="0"   maximum="0"   cornerRadius="0" />
+            <mx:Label  text="{resourceManager.getString('cutpage','art')}"   id="pagedetail1"  />
+            <mx:LinkButton  label="{resourceManager.getString('cutpage','change')}"     /--> 
+</mx:HBox>

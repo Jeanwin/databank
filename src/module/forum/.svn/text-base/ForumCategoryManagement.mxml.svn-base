@@ -1,0 +1,409 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Module xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" width="100%" height="100%"
+	creationComplete="init()">
+	<mx:Style   source="/skins/whiteblack3/style_font.css"/>
+	<mx:Metadata>
+		[ResourceBundle("manageView")]
+	</mx:Metadata>
+	<mx:Script>
+		<![CDATA[
+			import mx.events.CloseEvent;
+			import module.datainput.MyValidate;
+			import mx.managers.DragManager;
+			import mx.events.DragEvent;
+			import com.right.UserRight;
+			import mx.rpc.events.FaultEvent;
+			import mx.resources.ResourceBundle;
+			import mx.rpc.events.ResultEvent;
+			import org.utmost.service.UtmostService;
+			import mx.events.ListEvent;
+			import mx.controls.Alert;
+			import mx.collections.ArrayCollection;
+			import mx.controls.Tree;
+			import mx.core.mx_internal;
+			use namespace mx_internal;
+			
+			[Bindable]
+			private var typeTree:ArrayCollection;
+			
+			[Bindable]
+			private var isActive:Boolean = true;
+			
+			[Bindable]
+			private var formItemEnable:Boolean = false;
+			
+			[Bindable]
+			private var btnSaveEnable:Boolean = false;
+			
+			[Bindable]
+			private var btnDelEnable:Boolean = false;
+			
+			[Bindable]
+			private var btnOrderEnable:Boolean = false;
+			
+			private function andOperation(oper1:Boolean, oper2:Boolean=true):Boolean{
+				return oper1 && oper2;
+			}
+			
+			private function init():void{
+				var utmost:UtmostService = new UtmostService("CategoryUtil", 
+					function(event:ResultEvent):void{
+						typeTree = event.result as ArrayCollection;
+						if(typeTree.length > 0)
+							treeComp.callLater(function():void{treeComp.expandItem(typeTree.getItemAt(0), true);});
+					}
+				);
+				utmost.ro.getForumCategoryList();
+			}
+			
+			private function selectElement():void{
+				if(!isActive) return;
+				if(treeComp.selectedItem != null)
+				{
+					formItemEnable = true;
+					typePid.text = "";
+					if(treeComp.selectedIndex != 0
+						&& treeComp.selectedItem.pid != null 
+						&& treeComp.selectedItem.pid != "")
+					{
+						typeUuid.text = treeComp.selectedItem.uuid;
+						typePid.text = treeComp.selectedItem.pid;
+						typeEnName.text = treeComp.selectedItem.en_name;
+						typeCnName.text = treeComp.selectedItem.cn_name;
+						typeEnDesc.text = treeComp.selectedItem.en_desc;
+						typeCnDesc.text = treeComp.selectedItem.cn_desc;
+						btnDelEnable = true;
+						btnSaveEnable = false;
+					}
+					else
+					{
+						typeUuid.text = treeComp.selectedItem.uuid;
+						typePid.text = treeComp.selectedItem.pid;
+						typeEnName.text = treeComp.selectedItem.en_name;
+						typeCnName.text = treeComp.selectedItem.cn_name;
+						typeEnDesc.text = treeComp.selectedItem.en_desc;
+						typeCnDesc.text = treeComp.selectedItem.cn_desc;
+						btnDelEnable = false;
+						btnSaveEnable = false;
+					}
+				}
+			}
+			
+			private function insertElement():void{
+				if(treeComp.selectedIndex == -1){
+					Alert.show(resourceManager.getString('manageView', 
+						'management.category.tree.unselected'),
+						resourceManager.getString('manageView', 'alert.title'));
+				}else{
+					var selectedItem:Object = treeComp.selectedItem;
+					if(selectedItem.pid == null
+						|| selectedItem.pid == ""
+						|| treeComp.getParentItem(selectedItem).pid == null
+						|| treeComp.getParentItem(selectedItem).pid == ""){
+						clearElement();
+						typePid.text = selectedItem.uuid;
+						btnSaveEnable = false;
+						btnDelEnable = false;
+					}else{
+						Alert.show(resourceManager.getString('manageView', 
+							'management.category.tree.not.parent'),
+							resourceManager.getString('manageView', 'alert.title'));
+					}
+				}
+			}
+			
+			private function clearElement():void{
+				typeUuid.text = "";
+				typePid.text = "";
+				typeEnName.text = "";
+				typeCnName.text = "";
+				typeEnDesc.text = "";
+				typeCnDesc.text = "";
+			}
+			
+			private var currentNode:Object;
+			private var savedNode:Object;
+			private function saveElement():void{
+				isActive = false;
+				
+				if(typeEnName.length == 0 || typeEnName.length > 200)	{
+					MyValidate.validateTextInput(typeEnName, 
+						resourceManager.getString("manageView", "management.category.form.enname.required"),
+						false);
+					isActive = true;
+					return;
+				}else{
+					MyValidate.validateTextInput(typeEnName,"", true);
+				}
+				
+				if(typeCnName.length == 0 || typeCnName.length > 200){
+					MyValidate.validateTextInput(typeCnName, 
+						resourceManager.getString("manageView", "management.category.form.cnname.required"),
+						false);
+					isActive = true;
+					return;
+				}else{
+					MyValidate.validateTextInput(typeCnName, "", true);
+				}
+				
+				if(typeEnDesc.length > 200){
+					MyValidate.validateTextInput(typeEnDesc,
+						resourceManager.getString("manageView", "management.category.form.endesc.tips"),
+						false);
+					isActive = true;
+					return;
+				}else{
+					MyValidate.validateTextInput(typeEnDesc, "", true);
+				}
+				
+				if(typeCnDesc.length > 200){
+					MyValidate.validateTextInput(typeCnDesc,
+						resourceManager.getString("manageView", "management.category.form.cndesc.tips"),
+						false);
+					isActive = true;
+					return;
+				}else{
+					MyValidate.validateTextInput(typeCnDesc, "", true);
+				}
+				
+				var currentNode:Object = treeComp.selectedItem;
+				if(currentNode != null)
+				{
+					savedNode = 
+						{
+							uuid:typeUuid.text,
+							pid:typePid.text,
+							en_name:typeEnName.text, 
+							cn_name:typeCnName.text, 
+							en_desc:typeEnDesc.text, 
+							cn_desc:typeCnDesc.text,
+							last_modifior_uuid:UserRight.getUserUUID()
+						};
+						
+					var utmost:UtmostService = new UtmostService("CategoryUtil", 
+						function(event:ResultEvent):void{
+							var uuid:String = event.result as String;
+							savedNode.uuid = uuid;
+							if(uuid == currentNode.uuid){
+								for(var field:String in savedNode){
+									currentNode[field] = savedNode[field];
+								}
+								treeComp.dataProvider.itemUpdated(currentNode);
+							}else{
+								savedNode.uuid = uuid;
+								typeUuid.text = uuid;
+								if(currentNode.children == null)
+									currentNode.children = new ArrayCollection();
+								currentNode.children.addItem(savedNode);
+								//treeComp.dataProvider.itemUpdated(currentNode);
+								treeComp.selectedItem = savedNode;
+							}
+							
+							Alert.show(resourceManager.getString('manageView', 
+								'management.category.save.success'),
+								resourceManager.getString('manageView', 'alert.title'));
+							btnSaveEnable = false;
+							isActive = true;
+						},
+						function(event:FaultEvent):void{
+							Alert.show(resourceManager.getString('manageView', 
+								'management.category.save.failure'),
+								resourceManager.getString('manageView', 'alert.title'));
+							isActive = true;
+						}
+					);
+					utmost.ro.saveOrUpdateCategory(savedNode);
+				}
+				else
+				{
+					Alert.show(resourceManager.getString('manageView', 
+						'management.category.tree.unselected'),
+						resourceManager.getString('manageView', 'alert.title'));
+					isActive = true;
+				}
+			}
+			
+			private function deleteElement():void
+			{
+				Alert.yesLabel = resourceManager.getString("manageView", "management.category.delete.confirm.yes");
+				Alert.noLabel = resourceManager.getString("manageView", "management.category.delete.confirm.no");
+				
+				Alert.show(resourceManager.getString('manageView', 'management.category.delete.confirm'), 
+					resourceManager.getString('manageView', 'alert.title'),
+					1|2, this, doDelete);
+			}
+			
+			private function doDelete(event:CloseEvent):void{
+				if(event.detail != Alert.YES)
+					return;
+				isActive = false;
+				currentNode = treeComp.selectedItem;
+				if(currentNode != null)
+				{
+					if(currentNode.uuid == typeUuid.text){
+						if(currentNode.pid == null || currentNode.pid == ""){
+							Alert.show(resourceManager.getString('manageView', 
+								'management.category.tree.root.no.delete'),
+								resourceManager.getString('manageView', 'alert.title'));
+							isActive = true;
+						}
+						
+						var utmost:UtmostService = new UtmostService("CategoryUtil",
+							function(event:ResultEvent):void{
+								var parentNode:Object = treeComp.getParentItem(currentNode) as Object;
+								parentNode.children.removeItemAt(parentNode.children.getItemIndex(currentNode));
+								clearElement();
+								btnDelEnable = false;
+								btnSaveEnable = false;
+								formItemEnable = false;
+								Alert.show(resourceManager.getString('manageView', 
+									'management.category.delete.success'),
+									resourceManager.getString('manageView', 'alert.title'));
+								isActive = true;
+							},
+							function(event:FaultEvent):void{
+								
+								Alert.show(resourceManager.getString('manageView', 
+									'management.category.delete.failure'),
+									resourceManager.getString('manageView', 'alert.title'));
+								isActive = true;
+							}
+						);
+						utmost.ro.deleteCategory(currentNode.uuid, UserRight.getUserUUID());
+					}else{
+						Alert.show(resourceManager.getString('manageView', 
+							'management.category.delete.no.need'),
+							resourceManager.getString('manageView', 'alert.title'));
+						isActive = true;
+					}
+				}
+				else
+				{
+					Alert.show(resourceManager.getString('manageView', 'management.category.tree.unselected'),
+						resourceManager.getString('manageView', 'alert.title'));
+					isActive = true;
+				}
+			}
+			
+			private function propertyChanged():void{
+				btnSaveEnable = true;
+			}
+			
+			//根节点root不能拖动
+			private function dragStartHandler(event:DragEvent):void{
+				currentNode = treeComp.selectedItem;
+				if(currentNode.pid == null || currentNode.pid == ""){
+					DragManager.showFeedback(DragManager.NONE);
+					event.preventDefault();
+				}else{
+					DragManager.showFeedback(DragManager.MOVE);
+					btnOrderEnable = true;
+				}
+			}
+			
+			//限制拖动只能发生在同一个父节点范围内
+			private function dragOverHandler(event:DragEvent):void{
+				var targetTree:Tree = event.currentTarget as Tree;
+				//计算放置位置
+				targetTree.calculateDropIndex(event);
+				var sourceItem:Object = (event.dragSource.dataForFormat("treeItems") as Array)[0];
+				var sourceParent:Object = targetTree.getParentItem(sourceItem);
+				var targetParent:Object = targetTree.mx_internal::_dropData.parent;
+				if(sourceParent == null || targetParent == null 
+					|| !sourceParent.hasOwnProperty("uuid") 
+					|| !targetParent.hasOwnProperty("uuid")
+					|| sourceParent.uuid != targetParent.uuid)
+				{
+					DragManager.showFeedback(DragManager.NONE);
+					event.preventDefault();
+				}
+			}
+			
+			private function saveOrder():void{
+				isActive = false;
+				btnOrderEnable = false;
+				var utmost:UtmostService = new UtmostService("CategoryUtil",
+					function(event:ResultEvent):void{
+						isActive = true;
+						Alert.show(resourceManager.getString('manageView', 
+							'management.category.order.success'),
+							resourceManager.getString('manageView', 'alert.title'));
+					},
+					function(event:FaultEvent):void{
+						isActive = true;
+						btnOrderEnable = true;
+						Alert.show(resourceManager.getString('manageView', 
+							'management.category.order.failure'),
+							resourceManager.getString('manageView', 'alert.title'));
+					}
+				);
+				utmost.ro.saveOrder(typeTree);
+			}
+			
+			private function dragCompleteHandler():void{
+				treeComp.callLater(function():void{treeComp.selectedItem = currentNode});
+			}
+		]]>
+	</mx:Script>
+	<mx:Style>
+		ToolTip{
+			font-size:14;	
+		}
+		Label{
+			font-size:12;
+		}
+	</mx:Style>
+	<mx:HBox paddingTop="30" paddingBottom="30" paddingLeft="30" paddingRight="10" 
+		width="100%" height="100%" horizontalAlign="center">
+		<mx:Tree styleName="adminFCTree" id="treeComp" allowMultipleSelection="false" dataProvider="{typeTree}" 
+			labelField="{resourceManager.getString('manageView', 'management.category.tree.label.field')}" 
+			width="50%" height="100%" mouseDown="selectElement();"
+			dragEnabled="true" dragStart="dragStartHandler(event)" dropEnabled="true"
+			dragOver="dragOverHandler(event)" dragMoveEnabled="true"
+			dragComplete="dragCompleteHandler()"/>
+		<mx:VBox width="50%" paddingTop="20" paddingLeft="10" height="100%">
+			<mx:Button label="+" fontSize="14" fontWeight="bold" click="insertElement()" enabled="{isActive}"/>
+			<mx:Form width="100%" paddingLeft="60" fontSize="14">
+				<mx:FormItem label="typeUuid" includeInLayout="false" visible="false">
+					<mx:TextInput id="typeUuid" width="150"/>
+				</mx:FormItem>
+				<mx:FormItem label="typePid" includeInLayout="false" visible="false">
+					<mx:TextInput id="typePid" width="150"/>
+				</mx:FormItem>
+				<mx:FormItem required="true" label="{resourceManager.getString('manageView', 'management.category.english.name')}">
+					<mx:TextInput id="typeEnName" enabled="{andOperation(isActive, formItemEnable)}"
+						change="propertyChanged();" width="250"
+						toolTip="{resourceManager.getString('manageView', 'management.category.form.enname.required')}"/>
+				</mx:FormItem>
+				<mx:FormItem required="true" label="{resourceManager.getString('manageView', 'management.category.chinese.name')}">
+					<mx:TextInput id="typeCnName" enabled="{andOperation(isActive, formItemEnable)}"
+						change="propertyChanged();" width="250"
+						toolTip="{resourceManager.getString('manageView', 'management.category.form.cnname.required')}"/>
+				</mx:FormItem>
+				<mx:FormItem label="{resourceManager.getString('manageView', 'management.category.english.desc')}">
+					<mx:TextArea id="typeEnDesc" enabled="{andOperation(isActive, formItemEnable)}" 
+						change="propertyChanged();" width="250" height="80"
+						toolTip="{resourceManager.getString('manageView', 'management.category.form.endesc.tips')}"/>
+				</mx:FormItem>
+				<mx:FormItem label="{resourceManager.getString('manageView', 'management.category.chinese.desc')}">
+					<mx:TextArea id="typeCnDesc" enabled="{andOperation(isActive, formItemEnable)}" 
+						change="propertyChanged();" width="250" height="80"
+						toolTip="{resourceManager.getString('manageView', 'management.category.form.cndesc.tips')}"/>
+				</mx:FormItem>
+			</mx:Form>
+			<mx:HBox width="100%" horizontalAlign="center" verticalAlign="middle" horizontalGap="35" >
+				<mx:Spacer width="20%"/>
+				<mx:LinkButton label="{resourceManager.getString('manageView', 'management.category.save')}" 
+					id="btn_save" enabled="{andOperation(isActive, btnSaveEnable)}" click="saveElement()"/>
+				<mx:LinkButton label="{resourceManager.getString('manageView', 'management.category.delete')}" 
+					id="btn_del" enabled="{andOperation(isActive, btnDelEnable)}" click="deleteElement()"/>
+			</mx:HBox>
+			<mx:HBox width="100%" height="60" horizontalAlign="center" verticalAlign="middle" horizontalGap="35">
+				<mx:Spacer width="20%"/>
+				<mx:LinkButton label="{resourceManager.getString('manageView', 'management.category.order')}" 
+					id="btn_order" enabled="{andOperation(isActive, btnOrderEnable)}"
+					click="saveOrder()" toolTip="{resourceManager.getString('manageView', 'management.category.order.tooltip')}"/>
+			</mx:HBox>
+		</mx:VBox>
+	</mx:HBox>
+</mx:Module>

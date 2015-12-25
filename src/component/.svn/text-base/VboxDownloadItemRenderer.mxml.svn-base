@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" horizontalAlign="left" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+	
+	<mx:Script>
+		<![CDATA[
+			[Bindable]
+			private var fileName:Object;
+			
+			[Embed(source='../img/file/word.png')]
+  			private var wordImage:Class;
+  			[Embed(source='../img/file/powerpoint.png')]
+  			private var powerpointImage:Class;
+  			[Embed(source='../img/file/excel.jpg')]
+  			private var excelImage:Class;
+  			
+  			override public function set data(value:Object):void {
+   				super.data = value;
+   				fileName = value.name;
+   				if(String(value.type)=="doc") {
+   					file.source = wordImage;
+   				}else if(String(value.type)=="xls"){
+   					file.source = excelImage;
+   				}else {
+   					file.source = powerpointImage;
+   				}
+   			}
+		]]>
+	</mx:Script>
+	<mx:Image id="file" width="15" height="15" left="5"/>
+	<mx:Label text="{fileName}"/>
+</mx:HBox>

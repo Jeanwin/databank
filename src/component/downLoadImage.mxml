@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="init()" 
+	width="100%" horizontalAlign="center" verticalAlign="top" height="100%"
+	dataChange="init()" >
+       <mx:Script>
+        <![CDATA[
+        	import com.right.UserRight;
+        	import mx.controls.Alert;
+        	import mx.managers.PopUpManager;
+        	[Bindable]
+        	public var source:String;
+        	public var uuidimg:String;
+        	public var swfimg:String;
+        	public var fileimg:String;
+        	public var nameimg:String;
+        	public var author:String;
+        	public var last_modify_date_str:String;
+        	public var funcimg:Function;
+        	
+        	private var swfimg_val:String;
+        	private var fileimg_val:String;
+        	private var nameimg_val:String;
+        	
+        	private function init():void{
+        		swfimg_val = data[swfimg];
+        		if(swfimg_val == null) swfimg_val = "";
+        		
+        		fileimg_val = data[fileimg];
+        		if(fileimg_val == null) fileimg_val = "";
+        		
+        		nameimg_val = data[nameimg];
+        		if(nameimg_val == null) nameimg_val = "";
+        		
+        		if(data!=null){
+        			if(data.type != null && data.type == "year"){
+						img.visible = false;
+						img.enabled = false;
+					}else if(swfimg_val == "" && fileimg_val == ""){
+						img.visible = false;
+						img.enabled = false;
+					}else{
+						img.visible = true;
+						img.enabled = true;
+					}
+        		}
+			}
+         ]]>
+         </mx:Script>
+         <!--data grid download image
+         this page is for render download column-->
+        <mx:Image id="img" source="img/mini_icons/file_acrobat.gif" click="{funcimg.call(this,data[last_modify_date_str],data[author],swfimg_val,fileimg_val,nameimg_val,data[uuidimg]);}"/>
+</mx:HBox>
